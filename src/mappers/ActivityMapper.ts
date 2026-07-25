@@ -1,7 +1,4 @@
-import {
-  Activity,
-  ActivityClassification,
-} from "../types/activity";
+import { Activity, ActivityClassification, ActivityInput } from "../types/activity";
 
 export type ActivityRow = {
   id: number;
@@ -18,11 +15,12 @@ export function toActivity(row: ActivityRow): Activity {
   return {
     id: row.id,
     title: row.title,
-    description: row.description,
+    description: row.description ?? undefined,
     durationMinutes: row.duration_minutes,
     classification: row.classification as ActivityClassification,
-    activityDate: row.activity_date,
+    activityDate: new Date(row.activity_date),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
+

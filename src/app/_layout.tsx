@@ -1,10 +1,15 @@
+import "../global.css";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 
 import { initializeDatabase } from "../database/migrations";
+import { PaperProvider } from "react-native-paper";
+import { en, registerTranslation } from "react-native-paper-dates";
 
 export default function RootLayout() {
+
+  registerTranslation("en", en);
   const [isDatabaseReady, setIsDatabaseReady] = useState(false);
   const [databaseError, setDatabaseError] = useState<string | null>(null);
 
@@ -29,52 +34,40 @@ export default function RootLayout() {
 
   if (databaseError) {
     return (
-      <View style={styles.centeredContainer}>
-        <Text style={styles.errorTitle}>Baza nije pokrenuta</Text>
-        <Text style={styles.errorMessage}>{databaseError}</Text>
+      <View className="flex-1 items-center justify-center px-6">
+        <Text className="mb-2 text-2xl font-bold text-red-600">
+          Baza nije pokrenuta
+        </Text>
+
+        <Text className="text-center text-base text-slate-600">
+          {databaseError}
+        </Text>
       </View>
     );
   }
 
   if (!isDatabaseReady) {
     return (
-      <View style={styles.centeredContainer}>
+      <View className="flex-1 items-center justify-center px-6">
         <ActivityIndicator size="large" />
-        <Text style={styles.loadingText}>Pripremamo aplikaciju...</Text>
+
+        <Text className="mt-3 text-base text-slate-600">
+          Pripremamo aplikaciju...
+        </Text>
       </View>
     );
   }
 
   return (
-    <Stack>
-      <Stack.Screen
-        name="index"
-        options={{
-          title: "Životna valuta",
-        }}
-      />
-    </Stack>
+    <PaperProvider>
+      <Stack>
+        <Stack.Screen
+          name="index"
+          options={{
+            title: "Životna valuta",
+          }}
+        />
+      </Stack>
+    </PaperProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  centeredContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-  },
-  errorTitle: {
-    marginBottom: 8,
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  errorMessage: {
-    textAlign: "center",
-    fontSize: 15,
-  },
-});

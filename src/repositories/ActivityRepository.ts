@@ -31,10 +31,10 @@ export class ActivityRepository {
          VALUES (?, ?, ?, ?, ?)`,
         [
           input.title,
-          input.description,
+          input.description ?? null,
           input.durationMinutes,
           input.classification,
-          input.activityDate,
+          input.activityDate.toISOString(),
         ],
       );
 
@@ -56,10 +56,10 @@ export class ActivityRepository {
          WHERE id = ?`,
         [
           input.title,
-          input.description,
+          input.description ?? null,
           input.durationMinutes,
           input.classification,
-          input.activityDate,
+          input.activityDate.toISOString(),
           id,
         ],
       );

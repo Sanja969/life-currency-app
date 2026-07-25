@@ -6,14 +6,18 @@ export enum ActivityClassification {
 export interface Activity {
   id: number;
   title: string;
-  description: string | null;
+  description?: string;
   durationMinutes: number;
   classification: ActivityClassification;
-  activityDate: string;
+  activityDate: Date;
   createdAt: string;
   updatedAt: string;
 }
 
-export type CreateActivityInput = Omit<Activity, "id" | "createdAt" | "updatedAt">
+export type ActivityInput = Omit<
+  Activity,
+  "id" | "createdAt" | "updatedAt">;
 
-export type UpdateActivityInput = Omit<Activity, "id" | "createdAt" | "updatedAt">
+export type CreateActivityInput = ActivityInput;
+
+export type UpdateActivityInput = ActivityInput;
