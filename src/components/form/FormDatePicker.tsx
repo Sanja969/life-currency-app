@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Control, Controller, FieldPath, FieldValues } from "react-hook-form";
-import { Button, HelperText, Text } from "react-native-paper";
-import { DatePickerModal } from "react-native-paper-dates";
+import { View } from "react-native";
+import { Button, HelperText, Text, TextInput } from "react-native-paper";
+import { DatePickerModal, TimePickerModal } from "react-native-paper-dates";
 import { format } from "date-fns";
 
 type FormDatePickerProps<T extends FieldValues> = {
@@ -15,40 +16,119 @@ export function FormDatePicker<T extends FieldValues>({
   name,
   label,
 }: FormDatePickerProps<T>) {
-  const [open, setOpen] = useState(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+
+  const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
 
   return (
     <Controller
       control={control}
       name={name}
-      render={({ field, fieldState: { error } }) => (
-        <>
-          <Text variant="labelLarge">{label}</Text>
+      render={({ field, fieldState }) => {
+        const rawValue: unknown = field.value;
 
-          <Button mode="outlined" onPress={() => setOpen(true)}>
-            {field.value ? format(field.value, "dd.MM.yyyy") : "Select date"}
-          </Button>
+        const value =
+          rawValue instanceof Date
+            ? rawValue
+            : typeof rawValue === "string"
+              ? new Date(rawValue)
+              : new Date();
 
-          <DatePickerModal
-            locale="en"
-            mode="single"
-            visible={open}
-            onDismiss={() => setOpen(false)}
-            date={field.value ?? new Date()}
-            onConfirm={({ date }) => {
-              setOpen(false);
+        function handleDateConfirm(params: { date: Date | undefined }) {
+          setIsDatePickerOpen(false);
 
-              if (date) {
-                field.onChange(date);
-              }
-            }}
-          />
+          if (!params.date) {
+            return;
+          }
 
-          <HelperText type="error" visible={!!error}>
-            {error?.message}
-          </HelperText>
-        </>
-      )}
+          const nextDate = new Date(value);
+
+          nextDate.setFullYear(
+            params.date.getFullYear(),
+            params.date.getMonth(),
+            params.date.getDate(),
+          );
+
+          field.onChange(nextDate);
+        }
+
+        function handleTimeConfirm({
+          hours,
+          minutes,
+        }: {
+          hours: number;
+          minutes: number;
+        }) {
+          setIsTimePickerOpen(false);
+
+          const nextDate = new Date(value);
+
+          nextDate.setHours(hours, minutes, 0, 0);
+
+          field.onChange(nextDate);
+        }
+
+        return (
+          <View className="gap-2">
+            <Text variant="titleMedium">{label}</Text>
+
+            <View className="flex-row gap-3">
+              <TextInput
+                mode="outlined"
+                label="Date"
+                value={format(value, "dd.MM.yyyy")}
+                editable={false}
+                className="flex-1"
+                right={
+                  <TextInput.Icon
+                    icon="calendar"
+                    onPress={() => setIsDatePickerOpen(true)}
+                  />
+                }
+                onPressIn={() => setIsDatePickerOpen(true)}
+              />
+
+              <TextInput
+                mode="outlined"
+                label="Time"
+                value={format(value, "HH:mm")}
+                editable={false}
+                className="flex-1"
+                right={
+                  <TextInput.Icon
+                    icon="clock-outline"
+                    onPress={() => setIsTimePickerOpen(true)}
+                  />
+                }
+                onPressIn={() => setIsTimePickerOpen(true)}
+              />
+            </View>
+
+            <DatePickerModal
+              locale="en"
+              mode="single"
+              visible={isDatePickerOpen}
+              date={value}
+              onDismiss={() => setIsDatePickerOpen(false)}
+              onConfirm={handleDateConfirm}
+            />
+
+            <TimePickerModal
+              locale="en"
+              visible={isTimePickerOpen}
+              hours={value.getHours()}
+              minutes={value.getMinutes()}
+              onDismiss={() => setIsTimePickerOpen(false)}
+              onConfirm={handleTimeConfirm}
+              use24HourClock
+            />
+
+            <HelperText type="error" visible={!!fieldState.error}>
+              {fieldState.error?.message}
+            </HelperText>
+          </View>
+        );
+      }}
     />
   );
 }

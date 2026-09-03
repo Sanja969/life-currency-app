@@ -12,27 +12,21 @@ import {
 import { FormSegmentedControl } from "./form/FormSegmentedControl";
 import { AppButton } from "./ui/AppButton";
 import { FormDatePicker } from "./form/FormDatePicker";
-import { useEffect } from "react";
+import { useState } from "react";
 
 type ActivityFormProps = {
   initialValues?: Partial<ActivityFormInput>;
   onSubmit: (data: ActivityFormOutput) => Promise<void>;
-  isCreate?: true;
+  mode: "create" | "edit";
 };
 
 export function ActivityForm({
   initialValues,
   onSubmit,
-  isCreate,
+  mode,
 }: ActivityFormProps) {
-  const defaultValues: ActivityFormInput = {
-    title: "",
-    description: "",
-    durationMinutes: 0,
-    classification: ActivityClassification.Serves,
-    activityDate: new Date(),
-  };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { control, handleSubmit, reset } = useForm<
     ActivityFormInput,
     undefined,
@@ -40,32 +34,34 @@ export function ActivityForm({
   >({
     resolver: zodResolver(activitySchema),
     defaultValues: {
-      ...defaultValues,
+      title: "",
+      description: "",
+      durationMinutes: 0,
+      classification: ActivityClassification.Serves,
+      activityDate: new Date(),
       ...initialValues,
     },
   });
 
-  useEffect(() => {
-    if (initialValues) {
-      reset({
-        ...defaultValues,
-        ...initialValues,
-      });
-    }
-  }, [initialValues, reset]);
-
   const submit = handleSubmit(async (data) => {
-    await onSubmit(data);
+    try {
+      setIsSubmitting(true);
+      await onSubmit(data);
 
-    if (isCreate) {
-      reset();
+      if (mode === "create") {
+        reset();
+      }
+    } catch (error) {
+      console.error("Error submitting form:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   });
 
   return (
     <View className="gap-4 p-4">
       <Text className="text-2xl font-semibold">
-        {isCreate ? "Add Activity" : "Update Activity"}
+        {mode === "create" ? "Add Activity" : "Update Activity"}
       </Text>
 
       <FormTextInput
@@ -110,8 +106,12 @@ export function ActivityForm({
         label="Activity date"
       />
 
-      <AppButton onPress={submit}>
-        {isCreate ? "Add Activity" : "Update Activity"}
+      <AppButton
+        onPress={submit}
+        loading={isSubmitting}
+        disabled={isSubmitting}
+      >
+        {mode === "create" ? "Add Activity" : "Update Activity"}
       </AppButton>
     </View>
   );

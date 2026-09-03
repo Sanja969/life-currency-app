@@ -1,16 +1,22 @@
 import "../global.css";
+
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Stack } from "expo-router";
+import { useFonts } from "expo-font";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
-
-import { initializeDatabase } from "../database/migrations";
 import { PaperProvider } from "react-native-paper";
 import { en, registerTranslation } from "react-native-paper-dates";
 
-export default function RootLayout() {
+import { initializeDatabase } from "../database/migrations";
 
-  registerTranslation("en", en);
+registerTranslation("en", en);
+
+export default function RootLayout() {
+  const [fontsLoaded] = useFonts(MaterialCommunityIcons.font);
+
   const [isDatabaseReady, setIsDatabaseReady] = useState(false);
+
   const [databaseError, setDatabaseError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,7 +52,7 @@ export default function RootLayout() {
     );
   }
 
-  if (!isDatabaseReady) {
+  if (!fontsLoaded || !isDatabaseReady) {
     return (
       <View className="flex-1 items-center justify-center px-6">
         <ActivityIndicator size="large" />
@@ -59,12 +65,38 @@ export default function RootLayout() {
   }
 
   return (
-    <PaperProvider>
+    <PaperProvider
+      settings={{
+        icon: (props) => <MaterialCommunityIcons {...props} />,
+      }}
+    >
       <Stack>
         <Stack.Screen
-          name="index"
+          name="(tabs)"
           options={{
-            title: "Životna valuta",
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="activities/new"
+          options={{
+            title: "New Activity",
+            presentation: "modal"
+          }}
+        />
+
+        <Stack.Screen
+          name="activities/[id]/index"
+          options={{
+            title: "Activity Details",
+          }}
+        />
+
+        <Stack.Screen
+          name="activities/[id]/edit"
+          options={{
+            title: "Edit Activity",
           }}
         />
       </Stack>

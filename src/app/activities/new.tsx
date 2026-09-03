@@ -19,7 +19,7 @@ export default function CreateActivityScreen() {
 
   return (
     <ActivityForm
-      isCreate
+      mode="create"
       onSubmit={handleCreate}
     />
   );
