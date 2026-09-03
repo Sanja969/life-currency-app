@@ -6,16 +6,30 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerTitleAlign: "center",
-
         tabBarActiveTintColor: "#16a34a",
-
         tabBarInactiveTintColor: "#64748b",
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
+          title: "Today",
+
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons
+              name="calendar-today"
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="activities"
+        options={{
           title: "Activities",
+
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons
               name="format-list-bulleted"
@@ -27,9 +41,9 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
-        name="statistics/index"
+        name="progress"
         options={{
-          title: "Statistics",
+          title: "Progress",
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons
               name="chart-bar"

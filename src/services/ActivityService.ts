@@ -35,24 +35,42 @@ export class ActivityService {
     return activityRepository.delete(id);
   }
 
+  async getActivitiesByDate(date: Date): Promise<Activity[]> {
+    return activityRepository.getByDate(date);
+  }
+
+  async getTodayActivities(): Promise<Activity[]> {
+    return this.getActivitiesByDate(new Date());
+  }
+
   async getActivityStatistics(): Promise<ActivityStatistics> {
     const activities = await this.getAllActivities();
 
+    return this.calculateStatistics(activities);
+  }
+
+  async getTodayStatistics(): Promise<ActivityStatistics> {
+    const activities = await this.getTodayActivities();
+
+    return this.calculateStatistics(activities);
+  }
+
+  private calculateStatistics(activities: Activity[]): ActivityStatistics {
     let totalActivities = 0;
     let totalDurationMinutes = 0;
+
     let servesCount = 0;
     let doesNotServeCount = 0;
+
+    let servesDurationMinutes = 0;
+    let doesNotServeDurationMinutes = 0;
 
     let longestActivity: Activity | undefined;
     let shortestActivity: Activity | undefined;
 
-    let servesDurationMinutes = 0;
-
-    let doesNotServeDurationMinutes = 0;
-
     for (const activity of activities) {
-      totalDurationMinutes += activity.durationMinutes;
       totalActivities++;
+      totalDurationMinutes += activity.durationMinutes;
 
       if (activity.classification === ActivityClassification.Serves) {
         servesCount++;
@@ -83,9 +101,9 @@ export class ActivityService {
         : Math.round(totalDurationMinutes / totalActivities);
 
     const servesPercentage =
-      totalActivities === 0
+      totalDurationMinutes === 0
         ? 0
-        : Math.round((servesCount / totalActivities) * 100);
+        : Math.round((servesDurationMinutes / totalDurationMinutes) * 100);
 
     const netDurationMinutes =
       servesDurationMinutes - doesNotServeDurationMinutes;
@@ -93,15 +111,19 @@ export class ActivityService {
     return {
       totalActivities,
       totalDurationMinutes,
+      averageDurationMinutes,
+
       servesCount,
       doesNotServeCount,
-      longestActivity: longestActivity || undefined,
-      shortestActivity: shortestActivity || undefined,
-      servesPercentage,
-      averageDurationMinutes,
+
       servesDurationMinutes,
       doesNotServeDurationMinutes,
+
       netDurationMinutes,
+      servesPercentage,
+
+      longestActivity,
+      shortestActivity,
     };
   }
 

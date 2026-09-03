@@ -3,12 +3,12 @@ import { ActivityIndicator, ScrollView, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { Text } from "react-native-paper";
 
-import { activityService } from "../../../services/ActivityService";
-import { ActivityStatistics } from "../../../types/activity";
-import { StatisticsCard } from "../../../components/StatisticCard";
-import { formatDuration } from "../../../utils/formatDuration";
+import { activityService } from "../../services/ActivityService";
+import { ActivityStatistics } from "../../types/activity";
+import { StatisticsCard } from "../../components/StatisticCard";
+import { formatDuration } from "../../utils/formatDuration";
 
-export default function StatisticsScreen() {
+export default function ProgressScreen() {
   const [statistics, setStatistics] = useState<ActivityStatistics | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
