@@ -35,27 +35,41 @@ export function FormSegmentedControl<T extends FieldValues>({
             {items.map((item, index) => {
               const selected = field.value === item.value;
 
-              if (selected) {
-                return (
-                  <Pressable
-                    key={item.value}
-                    onPress={() => field.onChange(item.value)}
-                    className="flex-1 overflow-hidden rounded-2xl border border-[#727BFF]"
-                  >
+              const servesColors = ["#2447B8", "#4436B5", "#6C35B5"] as const;
+
+              const doesNotServeColors = [
+                "#7A1F62",
+                "#92285F",
+                "#6B245E",
+              ] as const;
+
+              const selectedColors =
+                index === 0 ? servesColors : doesNotServeColors;
+
+              return (
+                <Pressable
+                  key={item.value}
+                  onPress={() => field.onChange(item.value)}
+                  className="h-[92px] flex-1 overflow-hidden rounded-2xl"
+                >
+                  {selected ? (
                     <LinearGradient
-                      colors={["#183D8D", "#3935A9", "#5B2E8C"]}
+                      colors={selectedColors}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={{
-                        minHeight: 76,
+                        flex: 1,
                         flexDirection: "row",
                         alignItems: "center",
                         paddingHorizontal: 16,
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        borderColor: "#727BFF",
                       }}
                     >
                       <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-white/10">
                         <Ionicons
-                          name={index === 0 ? "sparkles" : "ellipse-outline"}
+                          name={index === 0 ? "sparkles" : "pulse-outline"}
                           size={20}
                           color="#FFFFFF"
                         />
@@ -71,33 +85,27 @@ export function FormSegmentedControl<T extends FieldValues>({
                         </Text>
                       </View>
                     </LinearGradient>
-                  </Pressable>
-                );
-              }
+                  ) : (
+                    <View className="flex-1 flex-row items-center rounded-2xl border border-[#26365A] bg-[#0D152B]/90 px-4">
+                      <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-white/5">
+                        <Ionicons
+                          name="ellipse-outline"
+                          size={20}
+                          color="#68738D"
+                        />
+                      </View>
 
-              return (
-                <Pressable
-                  key={item.value}
-                  onPress={() => field.onChange(item.value)}
-                  className="min-h-[76px] flex-1 flex-row items-center rounded-2xl border border-[#26365A] bg-[#0D152B]/90 px-4"
-                >
-                  <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-white/5">
-                    <Ionicons
-                      name="ellipse-outline"
-                      size={20}
-                      color="#68738D"
-                    />
-                  </View>
+                      <View className="flex-1">
+                        <Text className="font-semibold text-slate-300">
+                          {item.label}
+                        </Text>
 
-                  <View className="flex-1">
-                    <Text className="font-semibold text-slate-300">
-                      {item.label}
-                    </Text>
-
-                    <Text className="mt-1 text-xs text-slate-500">
-                      {index === 0 ? "Builds my life" : "Drains my energy"}
-                    </Text>
-                  </View>
+                        <Text className="mt-1 text-xs text-slate-500">
+                          {index === 0 ? "Builds my life" : "Drains my energy"}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                 </Pressable>
               );
             })}

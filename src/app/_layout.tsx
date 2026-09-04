@@ -82,7 +82,8 @@ export default function RootLayout() {
           name="activities/new"
           options={{
             title: "New Activity",
-            presentation: "modal"
+            presentation: "modal",
+            headerShown: false,
           }}
         />
 
