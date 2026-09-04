@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Alert, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 
 import { ActivityForm } from "../../../components/ActivityForm";
@@ -29,9 +29,16 @@ export default function EditActivityScreen() {
   }, [id]);
 
   async function handleSubmit(data: ActivityFormOutput) {
-    await activityService.updateActivity(Number(id), data);
+    try {
+      await activityService.updateActivity(Number(id), data);
 
-    router.back();
+      router.back();
+    } catch (error) {
+      Alert.alert(
+        "Unable to update activity",
+        error instanceof Error ? error.message : "Something went wrong.",
+      );
+    }
   }
 
   if (isLoading) {

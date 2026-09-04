@@ -36,3 +36,17 @@ export function activitiesOverlap(
     firstEnd.getTime() > secondStart.getTime()
   );
 }
+
+export function findOverlappingActivity(
+  candidate: ActivityInterval,
+  activities: Activity[],
+  excludedActivityId?: number,
+): Activity | undefined {
+  return activities.find((activity) => {
+    if (activity.id === excludedActivityId) {
+      return false;
+    }
+
+    return activitiesOverlap(candidate, activity);
+  });
+}

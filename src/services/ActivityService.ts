@@ -1,3 +1,4 @@
+import { activitiesOverlap } from "@/utils/activityOverlap";
 import { activityRepository } from "../repositories/ActivityRepository";
 import {
   Activity,
@@ -19,6 +20,9 @@ export class ActivityService {
 
   async createActivity(input: CreateActivityInput): Promise<Activity> {
     this.validateActivityInput(input);
+  
+    await this.validateNoOverlap(input);
+  
     return activityRepository.create(input);
   }
 
@@ -27,7 +31,9 @@ export class ActivityService {
     input: UpdateActivityInput,
   ): Promise<Activity> {
     this.validateActivityInput(input);
-
+  
+    await this.validateNoOverlap(input, id);
+  
     return activityRepository.update(id, input);
   }
 
@@ -134,6 +140,45 @@ export class ActivityService {
 
     if (input.durationMinutes <= 0) {
       throw new Error("Activity duration must be greater than zero.");
+    }
+  }
+
+  private async validateNoOverlap(
+    input: ActivityInput,
+    excludedActivityId?: number,
+  ): Promise<void> {
+    const activities = await this.getAllActivities();
+  
+    console.log("3. NEW ACTIVITY:", input);
+    console.log("4. EXISTING ACTIVITIES:", activities);
+  
+    const conflictingActivity = activities.find((activity) => {
+      if (
+        excludedActivityId !== undefined &&
+        activity.id === excludedActivityId
+      ) {
+        return false;
+      }
+  
+      const overlaps = activitiesOverlap(input, activity);
+  
+      console.log(
+        "COMPARE:",
+        input.activityDate,
+        activity.activityDate,
+        "OVERLAP:",
+        overlaps,
+      );
+  
+      return overlaps;
+    });
+  
+    console.log("5. CONFLICT:", conflictingActivity);
+  
+    if (conflictingActivity) {
+      throw new Error(
+        `Activity overlaps with "${conflictingActivity.title}".`,
+      );
     }
   }
 }
