@@ -4,6 +4,7 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -31,11 +32,22 @@ export default function ActivityDetailScreen() {
 
   const [activity, setActivity] = useState<Activity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loadActivity = useCallback(async () => {
     if (!id) {
+      setActivity(null);
       setErrorMessage("Activity id is missing.");
+      setIsLoading(false);
+      return;
+    }
+
+    const numericId = Number(id);
+
+    if (Number.isNaN(numericId)) {
+      setActivity(null);
+      setErrorMessage("Activity id is invalid.");
       setIsLoading(false);
       return;
     }
@@ -44,11 +56,7 @@ export default function ActivityDetailScreen() {
       setIsLoading(true);
       setErrorMessage(null);
 
-      const activities = await activityService.getAllActivities();
-
-      const foundActivity = activities.find(
-        (item) => String(item.id) === String(id),
-      );
+      const foundActivity = await activityService.getActivityById(numericId);
 
       if (!foundActivity) {
         setActivity(null);
@@ -58,6 +66,8 @@ export default function ActivityDetailScreen() {
 
       setActivity(foundActivity);
     } catch (error) {
+      setActivity(null);
+
       setErrorMessage(
         error instanceof Error ? error.message : "Unable to load activity.",
       );
@@ -71,6 +81,61 @@ export default function ActivityDetailScreen() {
       void loadActivity();
     }, [loadActivity]),
   );
+
+  const handleEdit = () => {
+    if (!activity) {
+      return;
+    }
+
+    router.push(`/activities/${activity.id}/edit`);
+  };
+
+  const deleteActivity = async () => {
+    if (!activity || isDeleting) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+
+      await activityService.deleteActivity(activity.id);
+
+      router.replace("/activities");
+    } catch (error) {
+      Alert.alert(
+        "Could not delete activity",
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while deleting this activity.",
+      );
+
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDelete = () => {
+    if (!activity || isDeleting) {
+      return;
+    }
+
+    Alert.alert(
+      "Delete activity?",
+      `"${activity.title}" will be permanently removed from your activity history.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            void deleteActivity();
+          },
+        },
+      ],
+    );
+  };
 
   if (isLoading) {
     return (
@@ -110,6 +175,15 @@ export default function ActivityDetailScreen() {
             <Text className="mt-2 text-center text-[14px] leading-6 text-[#7F8CA8]">
               {errorMessage ?? "This activity could not be found."}
             </Text>
+
+            <Pressable
+              onPress={() => router.replace("/activities")}
+              className="mt-6 rounded-[16px] border border-[#28375D] bg-[#0B1425] px-5 py-3"
+            >
+              <Text className="text-[14px] font-semibold text-[#C8D1E6]">
+                Back to activities
+              </Text>
+            </Pressable>
           </View>
         </SafeAreaView>
       </View>
@@ -208,7 +282,21 @@ export default function ActivityDetailScreen() {
             ACTIVITY TRACE
           </Text>
 
-          <View className="h-11 w-11" />
+          <Pressable
+            onPress={handleEdit}
+            hitSlop={12}
+            className="h-11 w-11 items-center justify-center rounded-full border border-[#26365D] bg-[#0A1325]"
+            style={({ pressed }) => ({
+              opacity: pressed ? 0.7 : 1,
+              transform: [
+                {
+                  scale: pressed ? 0.95 : 1,
+                },
+              ],
+            })}
+          >
+            <Ionicons name="pencil-outline" size={19} color={palette.primary} />
+          </Pressable>
         </View>
 
         <ScrollView
@@ -216,7 +304,7 @@ export default function ActivityDetailScreen() {
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingTop: 24,
-            paddingBottom: 60,
+            paddingBottom: 70,
           }}
         >
           {/* TITLE */}
@@ -333,7 +421,6 @@ export default function ActivityDetailScreen() {
                   className="h-[52px] w-[52px] items-center justify-center rounded-full"
                   style={{
                     backgroundColor: palette.primary,
-
                     shadowColor: palette.primary,
                     shadowOpacity: 0.9,
                     shadowRadius: 24,
@@ -367,7 +454,7 @@ export default function ActivityDetailScreen() {
             </View>
           </LinearGradient>
 
-          {/* METRICS */}
+          {/* TRACE DETAILS */}
 
           <Text className="mb-3 mt-7 text-[11px] font-bold tracking-[1.4px] text-[#65728D]">
             TRACE DETAILS
@@ -473,6 +560,74 @@ export default function ActivityDetailScreen() {
               </View>
             </View>
           </View>
+
+          {/* ACTIONS */}
+
+          <Text className="mb-3 mt-7 text-[11px] font-bold tracking-[1.4px] text-[#65728D]">
+            MANAGE TRACE
+          </Text>
+
+          <Pressable
+            onPress={handleEdit}
+            className="h-[56px] flex-row items-center justify-center rounded-[18px] border"
+            style={({ pressed }) => ({
+              borderColor: palette.border,
+              backgroundColor: serves
+                ? "rgba(72, 92, 199, 0.18)"
+                : "rgba(150, 42, 103, 0.18)",
+
+              opacity: pressed ? 0.8 : 1,
+
+              transform: [
+                {
+                  scale: pressed ? 0.985 : 1,
+                },
+              ],
+            })}
+          >
+            <Ionicons name="pencil-outline" size={19} color={palette.primary} />
+
+            <Text
+              className="ml-2.5 text-[15px] font-semibold"
+              style={{
+                color: palette.primary,
+              }}
+            >
+              Edit activity
+            </Text>
+          </Pressable>
+
+          <Pressable
+            disabled={isDeleting}
+            onPress={handleDelete}
+            className="mt-3 h-[54px] flex-row items-center justify-center rounded-[18px] border border-[#772E50]/60 bg-[#351124]/30"
+            style={({ pressed }) => ({
+              opacity: isDeleting ? 0.5 : pressed ? 0.75 : 1,
+
+              transform: [
+                {
+                  scale: pressed ? 0.985 : 1,
+                },
+              ],
+            })}
+          >
+            {isDeleting ? (
+              <ActivityIndicator size="small" color="#EF6AAB" />
+            ) : (
+              <>
+                <Ionicons name="trash-outline" size={19} color="#EF6AAB" />
+
+                <Text className="ml-2.5 text-[15px] font-semibold text-[#EF7DB5]">
+                  Delete activity
+                </Text>
+              </>
+            )}
+          </Pressable>
+
+          <Text className="mt-3 px-3 text-center text-[11px] leading-[17px] text-[#505D78]">
+            Deleting an activity permanently removes this trace from your
+            history.
+          </Text>
         </ScrollView>
       </SafeAreaView>
     </View>
