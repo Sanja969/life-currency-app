@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { setPendingActivityArrival } from "../../lib/activityArrival";
 
 import Animated, {
   Easing,
@@ -327,15 +328,13 @@ export default function CreateActivityScreen() {
 
       Keyboard.dismiss();
 
-      /*
-       * Store classification for particle colour.
-       */
       setParticleType(data.classification);
 
-      /*
-       * Allow React to commit particleType
-       * before starting visual sequence.
-       */
+      setPendingActivityArrival({
+        activityDate: data.activityDate.toISOString(),
+        classification: data.classification,
+      });
+
       requestAnimationFrame(() => {
         playCreationAnimation();
       });
