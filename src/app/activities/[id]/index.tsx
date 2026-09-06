@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
+import { DeleteActivityModal } from "@/features/activities/components/DeleteActivityModal";
 import {
   ActivityIndicator,
   Alert,
@@ -34,6 +35,7 @@ export default function ActivityDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 
   const loadActivity = useCallback(async () => {
     if (!id) {
@@ -90,6 +92,14 @@ export default function ActivityDetailScreen() {
     router.push(`/activities/${activity.id}/edit`);
   };
 
+  const handleDelete = () => {
+    if (!activity || isDeleting) {
+      return;
+    }
+
+    setIsDeleteModalVisible(true);
+  };
+
   const deleteActivity = async () => {
     if (!activity || isDeleting) {
       return;
@@ -100,41 +110,19 @@ export default function ActivityDetailScreen() {
 
       await activityService.deleteActivity(activity.id);
 
+      setIsDeleteModalVisible(false);
+
       router.replace("/activities");
     } catch (error) {
+      setIsDeleting(false);
+
       Alert.alert(
         "Could not delete activity",
         error instanceof Error
           ? error.message
           : "Something went wrong while deleting this activity.",
       );
-
-      setIsDeleting(false);
     }
-  };
-
-  const handleDelete = () => {
-    if (!activity || isDeleting) {
-      return;
-    }
-
-    Alert.alert(
-      "Delete activity?",
-      `"${activity.title}" will be permanently removed from your activity history.`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            void deleteActivity();
-          },
-        },
-      ],
-    );
   };
 
   if (isLoading) {
@@ -630,6 +618,19 @@ export default function ActivityDetailScreen() {
           </Text>
         </ScrollView>
       </SafeAreaView>
+      <DeleteActivityModal
+        visible={isDeleteModalVisible}
+        activityTitle={activity.title}
+        isDeleting={isDeleting}
+        onCancel={() => {
+          if (!isDeleting) {
+            setIsDeleteModalVisible(false);
+          }
+        }}
+        onDelete={() => {
+          void deleteActivity();
+        }}
+      />
     </View>
   );
 }
