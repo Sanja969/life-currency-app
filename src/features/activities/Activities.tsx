@@ -40,6 +40,7 @@ export function Activities() {
   );
 
   const incomingProgress = useSharedValue(0);
+  const isOpeningNewActivity = useRef(false);
 
   const listRef = useRef<FlatList<Activity>>(null);
 
@@ -90,9 +91,10 @@ export function Activities() {
       transform: [{ translateY }, { scale }],
     };
   });
-
   useFocusEffect(
     useCallback(() => {
+      isOpeningNewActivity.current = false;
+
       const pending = consumePendingActivityArrival();
 
       if (!pending) {
@@ -460,7 +462,15 @@ export function Activities() {
         {/* CREATE BUTTON */}
 
         <Pressable
-          onPress={() => router.push("/activities/new")}
+          onPress={() => {
+            if (isOpeningNewActivity.current) {
+              return;
+            }
+
+            isOpeningNewActivity.current = true;
+
+            router.push("/activities/new");
+          }}
           className="absolute bottom-[92px] right-5 h-[60px] w-[60px] items-center justify-center rounded-full border border-[#A7B3FF]/50 bg-[#586CED]"
           style={({ pressed }) => ({
             shadowColor: "#657BFF",
