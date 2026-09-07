@@ -1,7 +1,9 @@
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { ActivityStatistics } from "@/types/activity";
 import { formatDuration } from "../utils/formatDuration";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 type TodayOverviewProps = {
   statistics: ActivityStatistics;
@@ -41,10 +43,43 @@ export function TodayOverview({ statistics }: TodayOverviewProps) {
       <Text className="mt-2 text-[14px] leading-[21px] text-[#7F8CA8]">
         See where your time is becoming energy — and where it is leaking away.
       </Text>
+      <Pressable
+        onPress={() => router.push("/activities/new")}
+        className="mt-5 self-start"
+        style={({ pressed }) => ({
+          opacity: pressed ? 0.72 : 1,
+          transform: [
+            {
+              scale: pressed ? 0.97 : 1,
+            },
+          ],
+        })}
+      >
+        <View className="flex-row items-center rounded-full border border-[#304375] bg-[#0C1730] px-4 py-2.5">
+          <View
+            className="h-6 w-6 items-center justify-center rounded-full bg-[#718BFF]"
+            style={{
+              shadowColor: "#718BFF",
+              shadowOpacity: 0.65,
+              shadowRadius: 8,
+              shadowOffset: {
+                width: 0,
+                height: 0,
+              },
+            }}
+          >
+            <Ionicons name="add" size={17} color="#FFFFFF" />
+          </View>
+
+          <Text className="ml-2.5 text-[13px] font-semibold text-[#C9D2FF]">
+            Trace activity
+          </Text>
+        </View>
+      </Pressable>
 
       {/* TRACKED TIME */}
 
-      <View className="mt-7 overflow-hidden rounded-[26px] border border-[#1C2A49] bg-[#07101F]">
+      <View className="mt-5 overflow-hidden rounded-[26px] border border-[#1C2A49] bg-[#07101F]">
         <View className="px-5 pb-5 pt-5">
           <Text className="text-[11px] font-bold tracking-[1.3px] text-[#65728D]">
             TIME OBSERVED
