@@ -8,8 +8,13 @@ import { FormTextInput } from "./form/FormTextInput";
 import { FormSegmentedControl } from "./form/FormSegmentedControl";
 import { FormDatePicker } from "./form/FormDatePicker";
 import { AppButton } from "./ui/AppButton";
+import { CategorySelector } from "../features/activities/components/CategorySelector";
 
-import { Activity, ActivityClassification } from "../types/activity";
+import {
+  Activity,
+  ActivityClassification,
+  ActivityCategory,
+} from "../types/activity";
 
 import {
   activitySchema,
@@ -70,6 +75,7 @@ export function ActivityForm({
       description: "",
       durationMinutes: 30,
       classification: ActivityClassification.Serves,
+      category: ActivityCategory.Other,
       activityDate: new Date(),
       ...initialValues,
     },
@@ -83,6 +89,11 @@ export function ActivityForm({
   const activityDate = useWatch({
     control,
     name: "activityDate",
+  });
+
+  const category = useWatch({
+    control,
+    name: "category",
   });
 
   const conflictingActivity = useMemo(() => {
@@ -147,6 +158,16 @@ export function ActivityForm({
             value: ActivityClassification.DoesNotServe,
           },
         ]}
+      />
+
+      <CategorySelector
+        value={category}
+        onChange={(value) =>
+          setValue("category", value, {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+        }
       />
 
       <View className="gap-3">

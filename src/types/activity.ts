@@ -3,12 +3,26 @@ export enum ActivityClassification {
   DoesNotServe = "does_not_serve",
 }
 
+export enum ActivityCategory {
+  Work = "work",
+  Learning = "learning",
+  Health = "health",
+  Relationships = "relationships",
+  Rest = "rest",
+  Entertainment = "entertainment",
+  Mindfulness = "mindfulness",
+  Other = "other",
+}
+
 export interface Activity {
   id: number;
   title: string;
   description?: string;
   durationMinutes: number;
+
   classification: ActivityClassification;
+  category: ActivityCategory;
+
   activityDate: Date;
   createdAt: string;
   updatedAt: string;

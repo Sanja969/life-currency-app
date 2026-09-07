@@ -14,7 +14,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { activityService } from "@/services/ActivityService";
-import { Activity, ActivityClassification } from "@/types/activity";
+import {
+  Activity,
+  ActivityCategory,
+  ActivityClassification,
+} from "@/types/activity";
 
 function normalizeParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
@@ -23,6 +27,47 @@ function normalizeParam(value: string | string[] | undefined) {
 
   return value;
 }
+
+const CATEGORY_META: Record<
+  ActivityCategory,
+  {
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+  }
+> = {
+  [ActivityCategory.Work]: {
+    label: "Work",
+    icon: "briefcase-outline",
+  },
+  [ActivityCategory.Learning]: {
+    label: "Learning",
+    icon: "book-outline",
+  },
+  [ActivityCategory.Health]: {
+    label: "Health",
+    icon: "fitness-outline",
+  },
+  [ActivityCategory.Relationships]: {
+    label: "Relationships",
+    icon: "people-outline",
+  },
+  [ActivityCategory.Rest]: {
+    label: "Rest",
+    icon: "moon-outline",
+  },
+  [ActivityCategory.Entertainment]: {
+    label: "Entertainment",
+    icon: "game-controller-outline",
+  },
+  [ActivityCategory.Mindfulness]: {
+    label: "Mindfulness",
+    icon: "leaf-outline",
+  },
+  [ActivityCategory.Other]: {
+    label: "Other",
+    icon: "ellipsis-horizontal-outline",
+  },
+};
 
 export default function ActivityDetailScreen() {
   const params = useLocalSearchParams<{
@@ -179,6 +224,8 @@ export default function ActivityDetailScreen() {
   }
 
   const serves = activity.classification === ActivityClassification.Serves;
+
+  const categoryMeta = CATEGORY_META[activity.category];
 
   const palette = serves
     ? {
@@ -449,6 +496,27 @@ export default function ActivityDetailScreen() {
           </Text>
 
           <View className="overflow-hidden rounded-[22px] border border-[#192744] bg-[#07101F]">
+            {/* LIFE AREA */}
+
+            <View className="flex-row items-center px-5 py-4">
+              <View className="h-10 w-10 items-center justify-center rounded-[13px] bg-[#101A30]">
+                <Ionicons
+                  name={categoryMeta.icon}
+                  size={20}
+                  color={palette.primary}
+                />
+              </View>
+
+              <View className="ml-4 flex-1">
+                <Text className="text-[12px] text-[#71809D]">Life area</Text>
+
+                <Text className="mt-0.5 text-[16px] font-semibold text-[#E4E8F2]">
+                  {categoryMeta.label}
+                </Text>
+              </View>
+            </View>
+
+            <View className="ml-[68px] h-[1px] bg-[#17233B]" />
             {/* DURATION */}
 
             <View className="flex-row items-center px-5 py-4">

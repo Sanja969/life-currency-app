@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ActivityClassification } from "../types/activity";
+import { ActivityCategory, ActivityClassification } from "../types/activity";
 
 export const activitySchema = z.object({
     title: z.string()
@@ -13,6 +13,7 @@ export const activitySchema = z.object({
         .positive("Duration must be greater than zero"),
 
     classification: z.enum(ActivityClassification),
+    category: z.nativeEnum(ActivityCategory),
 
     activityDate: z.date({error: "Activity date is required"}),
 });
