@@ -172,7 +172,10 @@ export function Activities() {
 
             isOpeningNewActivity.current = true;
 
-            router.push("/activities/new");
+            router.push({
+              pathname: "/activities/new",
+              params: { source: "activities" },
+            });
           }}
           className="absolute bottom-[92px] right-5 h-[60px] w-[60px] items-center justify-center rounded-full border border-[#A7B3FF]/50 bg-[#586CED]"
           style={({ pressed }) => ({

@@ -10,7 +10,7 @@ import {
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { router, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { setPendingActivityArrival } from "../../lib/activityArrival";
 
@@ -36,7 +36,9 @@ import {
 
 export default function CreateActivityScreen() {
   const router = useRouter();
-
+  const { source } = useLocalSearchParams<{
+    source?: string;
+  }>();
   const [activities, setActivities] = useState<Activity[]>([]);
 
   const [particleType, setParticleType] = useState<ActivityClassification>(
@@ -334,7 +336,6 @@ export default function CreateActivityScreen() {
         activityDate: data.activityDate.toISOString(),
         classification: data.classification,
       });
-
       requestAnimationFrame(() => {
         playCreationAnimation();
       });

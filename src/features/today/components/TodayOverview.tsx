@@ -44,7 +44,12 @@ export function TodayOverview({ statistics }: TodayOverviewProps) {
         See where your time is becoming energy — and where it is leaking away.
       </Text>
       <Pressable
-        onPress={() => router.push("/activities/new")}
+        onPress={() =>
+          router.push({
+            pathname: "/activities/new",
+            params: { source: "today" },
+          })
+        }
         className="mt-5 self-start"
         style={({ pressed }) => ({
           opacity: pressed ? 0.72 : 1,
