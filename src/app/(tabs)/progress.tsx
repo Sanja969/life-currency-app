@@ -1,100 +1,101 @@
-import { useCallback, useState } from "react";
-import { ActivityIndicator, ScrollView, View } from "react-native";
-import { useFocusEffect } from "expo-router";
-import { Text } from "react-native-paper";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { activityService } from "../../services/ActivityService";
-import { ActivityStatistics } from "../../types/activity";
-import { StatisticsCard } from "../../components/StatisticCard";
-import { formatDuration } from "../../utils/formatDuration";
+import { ProgressBalance } from "@/features/progress/components/ProgressBalance";
+import { ProgressHeader } from "@/features/progress/components/ProgressHeader";
+import { useProgress } from "@/features/progress/hooks/useProgress";
+import { WeeklyPattern } from "@/features/progress/components/WeeklyPattern";
+import { LifeAreaBreakdown } from "@/features/progress/components/LifeAreaBreakdown";
+import { ProgressInsights } from "@/features/progress/components/ProgressInsights";
+import { useMemo } from "react";
+import { ThirtyDayPattern } from "@/features/progress/components/ThirtyDayPattern";
+import { buildLast30DaysPeriods } from "@/features/progress/utils/progressStatistics";
+import { ProgressComparisonCard } from "@/features/progress/components/ProgressComparisonCard";
+import { NotableShifts } from "@/features/progress/components/NotableShifts";
 
 export default function ProgressScreen() {
-  const [statistics, setStatistics] = useState<ActivityStatistics | null>(null);
+  const {
+    period,
+    setPeriod,
+    activities,
+    statistics,
+    comparison,
+    categoryTrends,
+    isLoading,
+    errorMessage,
+  } = useProgress();
 
-  const [isLoading, setIsLoading] = useState(true);
-
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  useFocusEffect(
-    useCallback(() => {
-      let isActive = true;
-
-      async function loadStatistics() {
-        try {
-          setIsLoading(true);
-          setErrorMessage(null);
-
-          const result = await activityService.getActivityStatistics();
-
-          if (isActive) {
-            setStatistics(result);
-          }
-        } catch (error) {
-          if (isActive) {
-            setErrorMessage(
-              error instanceof Error
-                ? error.message
-                : "An unexpected error occurred.",
-            );
-          }
-        } finally {
-          if (isActive) {
-            setIsLoading(false);
-          }
-        }
-      }
-
-      void loadStatistics();
-
-      return () => {
-        isActive = false;
-      };
-    }, []),
+  const thirtyDayPeriods = useMemo(
+    () => (period === "30days" ? buildLast30DaysPeriods(activities) : []),
+    [activities, period],
   );
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" />
+      <View className="flex-1 items-center justify-center bg-[#030611]">
+        <ActivityIndicator size="large" color="#718BFF" />
       </View>
     );
   }
 
-  if (errorMessage || !statistics) {
+  if (errorMessage) {
     return (
-      <View className="flex-1 items-center justify-center px-6">
-        <Text className="text-center text-red-600">
-          {errorMessage ?? "Unable to load statistics."}
-        </Text>
+      <View className="flex-1 items-center justify-center bg-[#030611] px-6">
+        <Text className="text-center text-[#E657A8]">{errorMessage}</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerClassName="gap-4 p-4">
-      <StatisticsCard title="Activities" value={statistics.totalActivities} />
+    <View className="flex-1 bg-[#030611]">
+      {/* BACKGROUND FIELD */}
 
-      <StatisticsCard
-        title="Total duration"
-        value={formatDuration(statistics.totalDurationMinutes)}
+      <View
+        pointerEvents="none"
+        className="absolute -right-32 top-[-70px] h-[320px] w-[320px] rounded-full bg-[#536DFF]"
+        style={{
+          opacity: 0.055,
+        }}
       />
 
-      <StatisticsCard
-        title="Average duration"
-        value={formatDuration(statistics.averageDurationMinutes)}
+      <View
+        pointerEvents="none"
+        className="absolute -left-40 top-[390px] h-[330px] w-[330px] rounded-full bg-[#E657A8]"
+        style={{
+          opacity: 0.025,
+        }}
       />
 
-      <StatisticsCard title="Serves" value={statistics.servesCount} />
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingTop: 18,
 
-      <StatisticsCard
-        title="Doesn't serve"
-        value={statistics.doesNotServeCount}
-      />
+            // tab bar + bottom safe area
+            paddingBottom: 130,
+          }}
+        >
+          <ProgressHeader period={period} onPeriodChange={setPeriod} />
 
-      <StatisticsCard
-        title="Positive ratio"
-        value={`${statistics.servesPercentage}%`}
-      />
-    </ScrollView>
+          <ProgressBalance statistics={statistics} period={period} />
+          <ProgressComparisonCard comparison={comparison} period={period} />
+          {period === "7days" ? (
+            <WeeklyPattern days={statistics.dailyStats} />
+          ) : (
+            <ThirtyDayPattern periods={thirtyDayPeriods} />
+          )}
+          <LifeAreaBreakdown categories={statistics.categoryStats} />
+          <NotableShifts trends={categoryTrends} period={period} />
+          <ProgressInsights
+            strongestInvestment={statistics.strongestInvestment}
+            biggestLeak={statistics.biggestLeak}
+            period={period}
+          />
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }

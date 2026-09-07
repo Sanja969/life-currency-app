@@ -8,7 +8,6 @@ import { FormTextInput } from "./form/FormTextInput";
 import { FormSegmentedControl } from "./form/FormSegmentedControl";
 import { FormDatePicker } from "./form/FormDatePicker";
 import { AppButton } from "./ui/AppButton";
-import { CategorySelector } from "../features/activities/components/CategorySelector";
 
 import {
   Activity,
@@ -26,6 +25,7 @@ import {
   activitiesOverlap,
   getActivityEndTime,
 } from "../utils/activityOverlap";
+import { CategorySelector } from "@/features/activities/components/CategorySelector";
 
 type ActivityFormProps = {
   initialValues?: Partial<ActivityFormInput>;

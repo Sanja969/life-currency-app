@@ -1,53 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "react-native";
 
-import { ActivityCategory, ActivityCategoryStatistics } from "@/types/activity";
+import { ActivityCategoryStatistics } from "@/types/activity";
 
 import { formatDuration } from "../utils/formatDuration";
+import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
 
 type CategoryBreakdownProps = {
   categories: ActivityCategoryStatistics[];
-};
-
-const CATEGORY_META: Record<
-  ActivityCategory,
-  {
-    label: string;
-    icon: keyof typeof Ionicons.glyphMap;
-  }
-> = {
-  [ActivityCategory.Work]: {
-    label: "Work",
-    icon: "briefcase-outline",
-  },
-  [ActivityCategory.Learning]: {
-    label: "Learning",
-    icon: "book-outline",
-  },
-  [ActivityCategory.Health]: {
-    label: "Health",
-    icon: "fitness-outline",
-  },
-  [ActivityCategory.Relationships]: {
-    label: "Relationships",
-    icon: "people-outline",
-  },
-  [ActivityCategory.Rest]: {
-    label: "Rest",
-    icon: "moon-outline",
-  },
-  [ActivityCategory.Entertainment]: {
-    label: "Entertainment",
-    icon: "game-controller-outline",
-  },
-  [ActivityCategory.Mindfulness]: {
-    label: "Mindfulness",
-    icon: "leaf-outline",
-  },
-  [ActivityCategory.Other]: {
-    label: "Other",
-    icon: "ellipsis-horizontal-outline",
-  },
 };
 
 export function CategoryBreakdown({ categories }: CategoryBreakdownProps) {
@@ -69,7 +29,7 @@ export function CategoryBreakdown({ categories }: CategoryBreakdownProps) {
 
       <View className="overflow-hidden rounded-[22px] border border-[#192744] bg-[#07101F]">
         {categories.map((item, index) => {
-          const meta = CATEGORY_META[item.category];
+          const meta = getActivityCategoryMeta(item.category);
 
           const growingRatio =
             item.totalDurationMinutes > 0

@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
-import { DeleteActivityModal } from "@/features/activities/components/DeleteActivityModal";
 import {
   ActivityIndicator,
   Alert,
@@ -13,12 +12,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { DeleteActivityModal } from "@/features/activities/components/DeleteActivityModal";
+import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
 import { activityService } from "@/services/ActivityService";
-import {
-  Activity,
-  ActivityCategory,
-  ActivityClassification,
-} from "@/types/activity";
+import { Activity, ActivityClassification } from "@/types/activity";
 
 function normalizeParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
@@ -28,47 +25,6 @@ function normalizeParam(value: string | string[] | undefined) {
   return value;
 }
 
-const CATEGORY_META: Record<
-  ActivityCategory,
-  {
-    label: string;
-    icon: keyof typeof Ionicons.glyphMap;
-  }
-> = {
-  [ActivityCategory.Work]: {
-    label: "Work",
-    icon: "briefcase-outline",
-  },
-  [ActivityCategory.Learning]: {
-    label: "Learning",
-    icon: "book-outline",
-  },
-  [ActivityCategory.Health]: {
-    label: "Health",
-    icon: "fitness-outline",
-  },
-  [ActivityCategory.Relationships]: {
-    label: "Relationships",
-    icon: "people-outline",
-  },
-  [ActivityCategory.Rest]: {
-    label: "Rest",
-    icon: "moon-outline",
-  },
-  [ActivityCategory.Entertainment]: {
-    label: "Entertainment",
-    icon: "game-controller-outline",
-  },
-  [ActivityCategory.Mindfulness]: {
-    label: "Mindfulness",
-    icon: "leaf-outline",
-  },
-  [ActivityCategory.Other]: {
-    label: "Other",
-    icon: "ellipsis-horizontal-outline",
-  },
-};
-
 export default function ActivityDetailScreen() {
   const params = useLocalSearchParams<{
     id?: string | string[];
@@ -77,9 +33,13 @@ export default function ActivityDetailScreen() {
   const id = normalizeParam(params.id);
 
   const [activity, setActivity] = useState<Activity | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
+
   const [isDeleting, setIsDeleting] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 
   const loadActivity = useCallback(async () => {
@@ -225,7 +185,7 @@ export default function ActivityDetailScreen() {
 
   const serves = activity.classification === ActivityClassification.Serves;
 
-  const categoryMeta = CATEGORY_META[activity.category];
+  const categoryMeta = getActivityCategoryMeta(activity.category);
 
   const palette = serves
     ? {
@@ -517,6 +477,7 @@ export default function ActivityDetailScreen() {
             </View>
 
             <View className="ml-[68px] h-[1px] bg-[#17233B]" />
+
             {/* DURATION */}
 
             <View className="flex-row items-center px-5 py-4">
@@ -628,6 +589,7 @@ export default function ActivityDetailScreen() {
             className="h-[56px] flex-row items-center justify-center rounded-[18px] border"
             style={({ pressed }) => ({
               borderColor: palette.border,
+
               backgroundColor: serves
                 ? "rgba(72, 92, 199, 0.18)"
                 : "rgba(150, 42, 103, 0.18)",
@@ -686,6 +648,7 @@ export default function ActivityDetailScreen() {
           </Text>
         </ScrollView>
       </SafeAreaView>
+
       <DeleteActivityModal
         visible={isDeleteModalVisible}
         activityTitle={activity.title}
