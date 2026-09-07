@@ -11,14 +11,14 @@ type ProgressComparisonCardProps = {
 type ChangeRowProps = {
   label: string;
   value: number | null;
-  positiveIsGood?: boolean;
+  direction?: "positive" | "negative" | "neutral";
   suffix?: string;
 };
 
 function ChangeRow({
   label,
   value,
-  positiveIsGood = true,
+  direction = "neutral",
   suffix = "%",
 }: ChangeRowProps) {
   if (value === null) {
@@ -31,17 +31,20 @@ function ChangeRow({
     );
   }
 
-  const improved = value === 0 ? null : positiveIsGood ? value > 0 : value < 0;
-
-  const color =
-    improved === null ? "#8290A8" : improved ? "#718BFF" : "#E657A8";
-
   const icon =
     value > 0
       ? "arrow-up-outline"
       : value < 0
         ? "arrow-down-outline"
         : "remove-outline";
+
+  let color = "#8290A8";
+
+  if (value !== 0 && direction !== "neutral") {
+    const improved = direction === "positive" ? value > 0 : value < 0;
+
+    color = improved ? "#718BFF" : "#E657A8";
+  }
 
   const formattedValue = value > 0 ? `+${value}` : `${value}`;
 
@@ -84,7 +87,7 @@ export function ProgressComparisonCard({
         <ChangeRow
           label="Time observed"
           value={comparison.totalMinutesChangePercent}
-          positiveIsGood
+          direction="neutral"
         />
 
         <View className="h-[1px] bg-[#17233B]" />
@@ -92,7 +95,7 @@ export function ProgressComparisonCard({
         <ChangeRow
           label="Growing share"
           value={comparison.growingPercentagePointChange}
-          positiveIsGood
+          direction="positive"
           suffix=" pp"
         />
 
@@ -101,7 +104,7 @@ export function ProgressComparisonCard({
         <ChangeRow
           label="Life Leak share"
           value={comparison.leakPercentagePointChange}
-          positiveIsGood={false}
+          direction="negative"
           suffix=" pp"
         />
       </View>

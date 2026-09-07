@@ -1,123 +1,154 @@
 import { Text, View } from "react-native";
 
+import { formatDuration } from "@/features/today/utils/formatDuration";
+
 import { PeriodProgressStat } from "../utils/progressStatistics";
 
 type ThirtyDayPatternProps = {
   periods: PeriodProgressStat[];
 };
 
-const MAX_BAR_HEIGHT = 118;
+function formatShortDate(date: Date) {
+  return date.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function getPeriodLabel(startDate: Date, endDate: Date) {
+  const sameMonth = startDate.getMonth() === endDate.getMonth();
+
+  if (sameMonth) {
+    const month = startDate.toLocaleDateString([], {
+      month: "short",
+    });
+
+    return `${month} ${startDate.getDate()}–${endDate.getDate()}`;
+  }
+
+  return `${formatShortDate(startDate)}–${formatShortDate(endDate)}`;
+}
 
 export function ThirtyDayPattern({ periods }: ThirtyDayPatternProps) {
-  const maxMinutes = Math.max(...periods.map((item) => item.totalMinutes), 1);
+  const maxMinutes = Math.max(
+    ...periods.map((period) => period.totalMinutes),
+    1,
+  );
+
+  const totalMinutes = periods.reduce(
+    (sum, period) => sum + period.totalMinutes,
+    0,
+  );
 
   return (
     <View className="mt-7">
-      <View className="mb-3">
+      <View className="mb-4">
         <Text className="text-[11px] font-bold tracking-[1.4px] text-[#65728D]">
           30-DAY PATTERN
         </Text>
 
         <Text className="mt-1 text-[12px] text-[#56637D]">
-          How your observed time shifted across the last 30 days
+          How your tracked time changed across the last 30 days
         </Text>
       </View>
 
-      <View className="rounded-[26px] border border-[#192744] bg-[#07101F] px-5 pb-4 pt-5">
-        <View
-          className="flex-row items-end justify-between"
-          style={{ height: 155 }}
-        >
-          {periods.map((item) => {
-            const totalHeight =
-              item.totalMinutes > 0
-                ? Math.max(8, (item.totalMinutes / maxMinutes) * MAX_BAR_HEIGHT)
-                : 4;
+      <View className="rounded-[26px] border border-[#192744] bg-[#07101F] px-4 pb-4 pt-5">
+        {totalMinutes === 0 ? (
+          <View className="items-center py-8">
+            <Text className="text-[14px] font-medium text-[#7A879F]">
+              No activity yet
+            </Text>
 
-            const growingRatio =
-              item.totalMinutes > 0
-                ? item.growingMinutes / item.totalMinutes
-                : 0;
+            <Text className="mt-1 text-center text-[12px] text-[#56637D]">
+              Your 30-day pattern will form as you track your time.
+            </Text>
+          </View>
+        ) : (
+          <>
+            <View className="h-[180px] flex-row items-end justify-between">
+              {periods.map((period, index) => {
+                const heightRatio = period.totalMinutes / maxMinutes;
 
-            const growingHeight = totalHeight * growingRatio;
+                const barHeight =
+                  period.totalMinutes > 0 ? Math.max(14, heightRatio * 150) : 4;
 
-            const leakHeight = totalHeight - growingHeight;
+                const growingRatio =
+                  period.totalMinutes > 0
+                    ? period.growingMinutes / period.totalMinutes
+                    : 0;
 
-            return (
-              <View
-                key={item.startDate.toISOString()}
-                className="flex-1 items-center"
-              >
-                <View
-                  className="w-[28px] justify-end overflow-hidden rounded-full bg-[#111A2C]"
-                  style={{
-                    height: MAX_BAR_HEIGHT,
-                  }}
-                >
-                  {item.totalMinutes > 0 ? (
+                const leakRatio =
+                  period.totalMinutes > 0
+                    ? period.leakMinutes / period.totalMinutes
+                    : 0;
+
+                return (
+                  <View
+                    key={`${period.startDate.toISOString()}-${index}`}
+                    className="flex-1 items-center"
+                  >
+                    <Text className="mb-2 text-[10px] font-medium text-[#6F7D99]">
+                      {period.totalMinutes > 0
+                        ? formatDuration(period.totalMinutes)
+                        : ""}
+                    </Text>
+
                     <View
-                      className="mt-auto overflow-hidden rounded-full"
+                      className="w-[32px] overflow-hidden rounded-full bg-[#111A2C]"
                       style={{
-                        height: totalHeight,
+                        height: barHeight,
                       }}
                     >
-                      {leakHeight > 0 ? (
-                        <View
-                          className="bg-[#E657A8]"
-                          style={{
-                            height: leakHeight,
-                          }}
-                        />
-                      ) : null}
+                      {period.totalMinutes > 0 ? (
+                        <>
+                          <View
+                            className="w-full bg-[#718BFF]"
+                            style={{
+                              height: `${growingRatio * 100}%`,
+                            }}
+                          />
 
-                      {growingHeight > 0 ? (
-                        <View
-                          className="bg-[#718BFF]"
-                          style={{
-                            height: growingHeight,
-                          }}
-                        />
+                          <View
+                            className="w-full bg-[#E657A8]"
+                            style={{
+                              height: `${leakRatio * 100}%`,
+                            }}
+                          />
+                        </>
                       ) : null}
                     </View>
-                  ) : (
-                    <View className="mt-auto h-[4px] rounded-full bg-[#26324B]" />
-                  )}
-                </View>
+                  </View>
+                );
+              })}
+            </View>
 
-                <Text
-                  className="mt-3 text-[11px] font-semibold"
-                  style={{
-                    color: item.label === "Now" ? "#DCE2FF" : "#65728D",
-                  }}
+            <View className="mt-3 flex-row justify-between">
+              {periods.map((period, index) => (
+                <View
+                  key={`${period.startDate.toISOString()}-label-${index}`}
+                  className="flex-1 items-center px-0.5"
                 >
-                  {item.label}
-                </Text>
+                  <Text
+                    numberOfLines={2}
+                    className="text-center text-[9px] leading-[12px] text-[#65728D]"
+                  >
+                    {getPeriodLabel(period.startDate, period.endDate)}
+                  </Text>
+                </View>
+              ))}
+            </View>
 
-                {item.label === "Now" ? (
-                  <View className="mt-1 h-[3px] w-[3px] rounded-full bg-[#718BFF]" />
-                ) : (
-                  <View className="mt-1 h-[3px]" />
-                )}
-              </View>
-            );
-          })}
-        </View>
+            <View className="mt-5 flex-row items-center justify-center">
+              <View className="mr-1.5 h-[7px] w-[7px] rounded-full bg-[#718BFF]" />
 
-        <View className="mt-4 h-[1px] bg-[#17233B]" />
+              <Text className="mr-5 text-[10px] text-[#6F7D99]">Growing</Text>
 
-        <View className="mt-4 flex-row justify-center">
-          <View className="mr-5 flex-row items-center">
-            <View className="mr-2 h-[6px] w-[6px] rounded-full bg-[#718BFF]" />
+              <View className="mr-1.5 h-[7px] w-[7px] rounded-full bg-[#E657A8]" />
 
-            <Text className="text-[11px] text-[#71809D]">Growing</Text>
-          </View>
-
-          <View className="flex-row items-center">
-            <View className="mr-2 h-[6px] w-[6px] rounded-full bg-[#E657A8]" />
-
-            <Text className="text-[11px] text-[#71809D]">Life Leak</Text>
-          </View>
-        </View>
+              <Text className="text-[10px] text-[#6F7D99]">Life Leak</Text>
+            </View>
+          </>
+        )}
       </View>
     </View>
   );
