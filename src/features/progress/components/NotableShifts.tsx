@@ -78,7 +78,6 @@ function getShiftContent(shift: Shift) {
     return {
       eyebrow: "GROWING DECREASED",
       message: "less Growing time",
-      icon: "trending-down-outline" as const,
     };
   }
 
@@ -86,14 +85,12 @@ function getShiftContent(shift: Shift) {
     return {
       eyebrow: "LIFE LEAK DECREASED",
       message: "less Life Leak time",
-      icon: "trending-down-outline" as const,
     };
   }
 
   return {
     eyebrow: "LIFE LEAK INCREASED",
     message: "more Life Leak time",
-    icon: "trending-up-outline" as const,
   };
 }
 
