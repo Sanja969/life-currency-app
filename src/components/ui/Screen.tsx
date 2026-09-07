@@ -6,16 +6,21 @@ type ScreenProps = PropsWithChildren<{
   scrollable?: boolean;
 }>;
 
-export function Screen({
-  children,
-  scrollable = false,
-}: ScreenProps) {
+export function Screen({ children, scrollable = false }: ScreenProps) {
   if (scrollable) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView
+        style={{ flex: 1 }}
+        className="bg-background"
+        edges={["top", "left", "right", "bottom"]}
+      >
         <ScrollView
-          className="flex-1"
-          contentContainerClassName="flex-grow p-screen"
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            padding: 16,
+            paddingBottom: 120,
+          }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -26,8 +31,12 @@ export function Screen({
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <View className="flex-1 p-screen">{children}</View>
+    <SafeAreaView
+      style={{ flex: 1 }}
+      className="bg-background"
+      edges={["top", "left", "right", "bottom"]}
+    >
+      <View style={{ flex: 1, padding: 16 }}>{children}</View>
     </SafeAreaView>
   );
 }

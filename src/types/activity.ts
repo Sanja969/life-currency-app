@@ -14,6 +14,14 @@ export enum ActivityCategory {
   Other = "other",
 }
 
+export type ActivityCategoryStatistics = {
+  category: ActivityCategory;
+  totalDurationMinutes: number;
+  servesDurationMinutes: number;
+  doesNotServeDurationMinutes: number;
+  percentage: number;
+};
+
 export interface Activity {
   id: number;
   title: string;
@@ -52,4 +60,8 @@ export type ActivityStatistics = {
 
   longestActivity?: Activity;
   shortestActivity?: Activity;
+  categoryStatistics: ActivityCategoryStatistics[];
+
+  strongestInvestment?: ActivityCategoryStatistics;
+  biggestLeak?: ActivityCategoryStatistics;
 };

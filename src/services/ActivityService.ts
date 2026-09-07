@@ -2,6 +2,8 @@ import { activitiesOverlap } from "@/utils/activityOverlap";
 import { activityRepository } from "../repositories/ActivityRepository";
 import {
   Activity,
+  ActivityCategory,
+  ActivityCategoryStatistics,
   ActivityClassification,
   ActivityInput,
   ActivityStatistics,
@@ -60,39 +62,66 @@ export class ActivityService {
 
     return this.calculateStatistics(activities);
   }
-
-  private calculateStatistics(activities: Activity[]): ActivityStatistics {
+  private calculateStatistics(
+    activities: Activity[],
+  ): ActivityStatistics {
     let totalActivities = 0;
     let totalDurationMinutes = 0;
-
+  
     let servesCount = 0;
     let doesNotServeCount = 0;
-
+  
     let servesDurationMinutes = 0;
     let doesNotServeDurationMinutes = 0;
-
+  
     let longestActivity: Activity | undefined;
     let shortestActivity: Activity | undefined;
-
+  
+    const categoryMap = new Map<
+      ActivityCategory,
+      {
+        totalDurationMinutes: number;
+        servesDurationMinutes: number;
+        doesNotServeDurationMinutes: number;
+      }
+    >();
+  
     for (const activity of activities) {
       totalActivities++;
       totalDurationMinutes += activity.durationMinutes;
-
-      if (activity.classification === ActivityClassification.Serves) {
+  
+      const category = categoryMap.get(activity.category) ?? {
+        totalDurationMinutes: 0,
+        servesDurationMinutes: 0,
+        doesNotServeDurationMinutes: 0,
+      };
+  
+      category.totalDurationMinutes += activity.durationMinutes;
+  
+      if (
+        activity.classification === ActivityClassification.Serves
+      ) {
         servesCount++;
         servesDurationMinutes += activity.durationMinutes;
+  
+        category.servesDurationMinutes += activity.durationMinutes;
       } else {
         doesNotServeCount++;
         doesNotServeDurationMinutes += activity.durationMinutes;
+  
+        category.doesNotServeDurationMinutes +=
+          activity.durationMinutes;
       }
-
+  
+      categoryMap.set(activity.category, category);
+  
       if (
         !longestActivity ||
         activity.durationMinutes > longestActivity.durationMinutes
       ) {
         longestActivity = activity;
       }
-
+  
       if (
         !shortestActivity ||
         activity.durationMinutes < shortestActivity.durationMinutes
@@ -100,34 +129,98 @@ export class ActivityService {
         shortestActivity = activity;
       }
     }
-
+  
     const averageDurationMinutes =
       totalActivities === 0
         ? 0
         : Math.round(totalDurationMinutes / totalActivities);
-
+  
     const servesPercentage =
       totalDurationMinutes === 0
         ? 0
-        : Math.round((servesDurationMinutes / totalDurationMinutes) * 100);
-
+        : Math.round(
+            (servesDurationMinutes / totalDurationMinutes) * 100,
+          );
+  
     const netDurationMinutes =
       servesDurationMinutes - doesNotServeDurationMinutes;
-
+  
+    const categoryStatistics: ActivityCategoryStatistics[] =
+      Array.from(categoryMap.entries())
+        .map(([category, statistics]) => ({
+          category,
+  
+          ...statistics,
+  
+          percentage:
+            totalDurationMinutes === 0
+              ? 0
+              : Math.round(
+                  (statistics.totalDurationMinutes /
+                    totalDurationMinutes) *
+                    100,
+                ),
+        }))
+        .sort(
+          (a, b) =>
+            b.totalDurationMinutes - a.totalDurationMinutes,
+        );
+  
+    const strongestInvestment = categoryStatistics
+      .filter((category) => category.servesDurationMinutes > 0)
+      .reduce<ActivityCategoryStatistics | undefined>(
+        (strongest, category) => {
+          if (
+            !strongest ||
+            category.servesDurationMinutes >
+              strongest.servesDurationMinutes
+          ) {
+            return category;
+          }
+  
+          return strongest;
+        },
+        undefined,
+      );
+  
+    const biggestLeak = categoryStatistics
+      .filter(
+        (category) =>
+          category.doesNotServeDurationMinutes > 0,
+      )
+      .reduce<ActivityCategoryStatistics | undefined>(
+        (biggest, category) => {
+          if (
+            !biggest ||
+            category.doesNotServeDurationMinutes >
+              biggest.doesNotServeDurationMinutes
+          ) {
+            return category;
+          }
+  
+          return biggest;
+        },
+        undefined,
+      );
+  
     return {
       totalActivities,
       totalDurationMinutes,
       averageDurationMinutes,
-
+  
       servesCount,
       doesNotServeCount,
-
+  
       servesDurationMinutes,
       doesNotServeDurationMinutes,
-
+  
       netDurationMinutes,
       servesPercentage,
-
+  
+      categoryStatistics,
+      strongestInvestment,
+      biggestLeak,
+  
       longestActivity,
       shortestActivity,
     };
