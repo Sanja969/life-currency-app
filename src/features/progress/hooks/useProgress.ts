@@ -100,8 +100,16 @@ export function useProgress() {
                     setIsLoading(true);
                     setErrorMessage(null);
 
+                    const end = getEndOfToday();
+
+                    const start = new Date(end);
+                    start.setDate(start.getDate() - 60);
+
                     const result =
-                        await activityService.getAllActivities();
+                        await activityService.getActivitiesByDateRange(
+                            start,
+                            end,
+                        );
 
                     if (active) {
                         setActivities(result);
@@ -134,9 +142,11 @@ export function useProgress() {
         const end = getEndOfToday();
 
         return activities.filter((activity) => {
-            const date = new Date(activity.activityDate);
 
-            return date >= start && date < end;
+            return (
+                activity.activityDate >= start &&
+                activity.activityDate < end
+            );
         });
     }, [activities, period]);
 
@@ -162,9 +172,11 @@ export function useProgress() {
             getPreviousPeriodRange(period);
 
         return activities.filter((activity) => {
-            const date = new Date(activity.activityDate);
 
-            return date >= start && date < end;
+            return (
+                activity.activityDate >= start &&
+                activity.activityDate < end
+            );
         });
     }, [activities, period]);
 

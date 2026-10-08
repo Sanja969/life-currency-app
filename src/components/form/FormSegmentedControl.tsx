@@ -15,6 +15,10 @@ type FormSegmentedControlProps<T extends FieldValues> = {
   items: SegmentItem[];
 };
 
+const SERVES_COLORS = ["#2447B8", "#4436B5", "#6C35B5"] as const;
+
+const DOES_NOT_SERVE_COLORS = ["#7A1F62", "#92285F", "#6B245E"] as const;
+
 export function FormSegmentedControl<T extends FieldValues>({
   control,
   name,
@@ -35,16 +39,8 @@ export function FormSegmentedControl<T extends FieldValues>({
             {items.map((item, index) => {
               const selected = field.value === item.value;
 
-              const servesColors = ["#2447B8", "#4436B5", "#6C35B5"] as const;
-
-              const doesNotServeColors = [
-                "#7A1F62",
-                "#92285F",
-                "#6B245E",
-              ] as const;
-
               const selectedColors =
-                index === 0 ? servesColors : doesNotServeColors;
+                index === 0 ? SERVES_COLORS : DOES_NOT_SERVE_COLORS;
 
               return (
                 <Pressable

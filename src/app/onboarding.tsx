@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, SafeAreaView, Text, View } from "react-native";
+import { useOnboardingCompletion } from "@/lib/OnboardingContext";
 
 import { completeOnboarding } from "@/lib/onboarding";
 
@@ -37,6 +38,8 @@ const STEPS: OnboardingStep[] = [
 ];
 
 export default function OnboardingScreen() {
+  const { markOnboardingCompleted } = useOnboardingCompletion();
+
   const [stepIndex, setStepIndex] = useState(0);
   const [isFinishing, setIsFinishing] = useState(false);
 
@@ -59,6 +62,8 @@ export default function OnboardingScreen() {
       setIsFinishing(true);
 
       await completeOnboarding();
+
+      markOnboardingCompleted();
 
       router.replace("/(tabs)");
     } catch (error) {

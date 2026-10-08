@@ -101,7 +101,7 @@ export function calculateProgressStatistics(
 
         categoryMap.set(activity.category, category);
 
-        const date = new Date(activity.activityDate);
+        const date = activity.activityDate;
 
         const dayKey = [
             date.getFullYear(),

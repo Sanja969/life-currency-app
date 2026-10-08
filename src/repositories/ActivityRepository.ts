@@ -43,6 +43,24 @@ export class ActivityRepository {
     return rows.map(toActivity);
   }
 
+  async getByDateRange(
+    start: Date,
+    end: Date,
+  ): Promise<Activity[]> {
+    const database = await getDatabase();
+  
+    const rows = await database.getAllAsync<ActivityRow>(
+      `SELECT *
+       FROM activities
+       WHERE activity_date >= ?
+         AND activity_date < ?
+       ORDER BY activity_date DESC`,
+      [start.toISOString(), end.toISOString()],
+    );
+  
+    return rows.map(toActivity);
+  }
+
   async getById(id: number): Promise<Activity | null> {
     const database = await getDatabase();
 

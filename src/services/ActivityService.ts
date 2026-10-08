@@ -16,6 +16,13 @@ export class ActivityService {
     return activityRepository.getAll();
   }
 
+  async getActivitiesByDateRange(
+    start: Date,
+    end: Date,
+  ): Promise<Activity[]> {
+    return activityRepository.getByDateRange(start, end);
+  }
+
   async getActivityById(id: number): Promise<Activity | null> {
     return activityRepository.getById(id);
   }
@@ -62,7 +69,7 @@ export class ActivityService {
 
     return this.calculateStatistics(activities);
   }
-  private calculateStatistics(
+  calculateStatistics(
     activities: Activity[],
   ): ActivityStatistics {
     let totalActivities = 0;

@@ -10,16 +10,15 @@ import { en, registerTranslation } from "react-native-paper-dates";
 
 import { initializeDatabase } from "../database/migrations";
 import { hasCompletedOnboarding } from "../lib/onboarding";
+import { OnboardingContext } from "../lib/OnboardingContext";
 
 registerTranslation("en", en);
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(MaterialCommunityIcons.font);
 
-  const [isDatabaseReady, setIsDatabaseReady] = useState(false);
-  const [isOnboardingReady, setIsOnboardingReady] = useState(false);
+  const [isAppReady, setIsAppReady] = useState(false);
   const [hasCompleted, setHasCompleted] = useState<boolean | null>(null);
-
   const [databaseError, setDatabaseError] = useState<string | null>(null);
 
   const segments = useSegments();
@@ -27,13 +26,13 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepareApp() {
       try {
-        await initializeDatabase();
-
-        const completed = await hasCompletedOnboarding();
+        const [, completed] = await Promise.all([
+          initializeDatabase(),
+          hasCompletedOnboarding(),
+        ]);
 
         setHasCompleted(completed);
-        setIsDatabaseReady(true);
-        setIsOnboardingReady(true);
+        setIsAppReady(true);
       } catch (error) {
         console.error("Failed to initialize app:", error);
 
@@ -49,37 +48,25 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (
-      !fontsLoaded ||
-      !isDatabaseReady ||
-      !isOnboardingReady ||
-      hasCompleted === null
-    ) {
+    if (!fontsLoaded || !isAppReady || hasCompleted === null) {
       return;
     }
 
     const isOnboardingRoute = segments[0] === "onboarding";
 
-    async function checkRoute() {
-      if (!hasCompleted && !isOnboardingRoute) {
-        const completed = await hasCompletedOnboarding();
-
-        if (completed) {
-          setHasCompleted(true);
-          return;
-        }
-
-        router.replace("/onboarding");
-        return;
-      }
-
-      if (hasCompleted && isOnboardingRoute) {
-        router.replace("/(tabs)");
-      }
+    if (!hasCompleted && !isOnboardingRoute) {
+      router.replace("/onboarding");
+      return;
     }
 
-    void checkRoute();
-  }, [fontsLoaded, isDatabaseReady, isOnboardingReady, hasCompleted, segments]);
+    if (hasCompleted && isOnboardingRoute) {
+      router.replace("/(tabs)");
+    }
+  }, [fontsLoaded, isAppReady, hasCompleted, segments]);
+
+  function markOnboardingCompleted() {
+    setHasCompleted(true);
+  }
 
   if (databaseError) {
     return (
@@ -95,12 +82,7 @@ export default function RootLayout() {
     );
   }
 
-  if (
-    !fontsLoaded ||
-    !isDatabaseReady ||
-    !isOnboardingReady ||
-    hasCompleted === null
-  ) {
+  if (!fontsLoaded || !isAppReady || hasCompleted === null) {
     return (
       <View className="flex-1 items-center justify-center bg-[#030712] px-6">
         <ActivityIndicator size="large" color="#718BFF" />
@@ -113,49 +95,51 @@ export default function RootLayout() {
   }
 
   return (
-    <PaperProvider
-      settings={{
-        icon: (props) => <MaterialCommunityIcons {...props} />,
-      }}
-    >
-      <Stack>
-        <Stack.Screen
-          name="(tabs)"
-          options={{
-            headerShown: false,
-          }}
-        />
+    <OnboardingContext.Provider value={{ markOnboardingCompleted }}>
+      <PaperProvider
+        settings={{
+          icon: (props) => <MaterialCommunityIcons {...props} />,
+        }}
+      >
+        <Stack>
+          <Stack.Screen
+            name="(tabs)"
+            options={{
+              headerShown: false,
+            }}
+          />
 
-        <Stack.Screen
-          name="onboarding"
-          options={{
-            headerShown: false,
-          }}
-        />
+          <Stack.Screen
+            name="onboarding"
+            options={{
+              headerShown: false,
+            }}
+          />
 
-        <Stack.Screen
-          name="activities/new"
-          options={{
-            title: "New Activity",
-            presentation: "modal",
-            headerShown: false,
-          }}
-        />
+          <Stack.Screen
+            name="activities/new"
+            options={{
+              title: "New Activity",
+              presentation: "modal",
+              headerShown: false,
+            }}
+          />
 
-        <Stack.Screen
-          name="activities/[id]/index"
-          options={{
-            title: "Activity Details",
-          }}
-        />
+          <Stack.Screen
+            name="activities/[id]/index"
+            options={{
+              title: "Activity Details",
+            }}
+          />
 
-        <Stack.Screen
-          name="activities/[id]/edit"
-          options={{
-            title: "Edit Activity",
-          }}
-        />
-      </Stack>
-    </PaperProvider>
+          <Stack.Screen
+            name="activities/[id]/edit"
+            options={{
+              title: "Edit Activity",
+            }}
+          />
+        </Stack>
+      </PaperProvider>
+    </OnboardingContext.Provider>
   );
 }

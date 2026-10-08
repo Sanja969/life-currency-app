@@ -6,10 +6,12 @@ import { Activity, ActivityStatistics } from "@/types/activity";
 
 export function useToday() {
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [statistics, setStatistics] = useState<ActivityStatistics | null>(null);
+  const [statistics, setStatistics] =
+    useState<ActivityStatistics | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] =
+    useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -20,10 +22,13 @@ export function useToday() {
           setIsLoading(true);
           setErrorMessage(null);
 
-          const [activitiesResult, statisticsResult] = await Promise.all([
-            activityService.getTodayActivities(),
-            activityService.getTodayStatistics(),
-          ]);
+          const activitiesResult =
+            await activityService.getTodayActivities();
+
+          const statisticsResult =
+            activityService.calculateStatistics(
+              activitiesResult,
+            );
 
           if (!isActive) return;
 

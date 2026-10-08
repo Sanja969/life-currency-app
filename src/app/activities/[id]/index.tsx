@@ -217,16 +217,14 @@ export default function ActivityDetailScreen() {
         message: "This activity is taking energy from your day.",
       };
 
-  const date = new Date(activity.activityDate);
-
-  const formattedDate = date.toLocaleDateString([], {
+  const formattedDate = activity.activityDate.toLocaleDateString([], {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
   });
 
-  const formattedTime = date.toLocaleTimeString([], {
+  const formattedTime = activity.activityDate.toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
   });

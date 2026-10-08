@@ -37,6 +37,17 @@ type ActivityFormProps = {
 
 const QUICK_DURATIONS = [15, 30, 45, 60, 90, 120];
 
+const CLASSIFICATION_ITEMS = [
+  {
+    label: "Serves me",
+    value: ActivityClassification.Serves,
+  },
+  {
+    label: "Doesn't serve",
+    value: ActivityClassification.DoesNotServe,
+  },
+];
+
 function getDurationLabel(minutes: number) {
   if (minutes === 60) return "1h";
   if (minutes === 90) return "1h 30";
@@ -148,16 +159,7 @@ export function ActivityForm({
         control={control}
         name="classification"
         label="How did this time serve you?"
-        items={[
-          {
-            label: "Serves me",
-            value: ActivityClassification.Serves,
-          },
-          {
-            label: "Doesn't serve",
-            value: ActivityClassification.DoesNotServe,
-          },
-        ]}
+        items={CLASSIFICATION_ITEMS}
       />
 
       <CategorySelector

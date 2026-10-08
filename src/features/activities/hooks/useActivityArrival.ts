@@ -181,31 +181,34 @@ export function useActivityArrival(activities: Activity[]) {
    * First move approximately towards it.
    */
 
-  function handleScrollToIndexFailed(info: {
-    index: number;
-    highestMeasuredFrameIndex: number;
-    averageItemLength: number;
-  }) {
-    const targetIndex = pendingScrollIndex.current;
+  const handleScrollToIndexFailed = useCallback(
+    (info: {
+      index: number;
+      highestMeasuredFrameIndex: number;
+      averageItemLength: number;
+    }) => {
+      const targetIndex = pendingScrollIndex.current;
 
-    if (targetIndex === null) {
-      return;
-    }
+      if (targetIndex === null) {
+        return;
+      }
 
-    scrollPhase.current = "approximating";
+      scrollPhase.current = "approximating";
 
-    listRef.current?.scrollToOffset({
-      offset: info.averageItemLength * targetIndex,
-      animated: true,
-    });
-  }
+      listRef.current?.scrollToOffset({
+        offset: info.averageItemLength * targetIndex,
+        animated: true,
+      });
+    },
+    [],
+  );
 
   /*
    * Once the approximate scroll finishes, FlatList
    * should have measured the target row.
    */
 
-  function handleMomentumScrollEnd() {
+  const handleMomentumScrollEnd = useCallback(() => {
     const targetIndex = pendingScrollIndex.current;
 
     if (
@@ -222,15 +225,20 @@ export function useActivityArrival(activities: Activity[]) {
       animated: true,
       viewPosition: 0.35,
     });
-  }
+  }, []);
 
-  function isArrivingActivity(activity: Activity): boolean {
-    if (!arrivalActivityDate) {
-      return false;
-    }
+  const isArrivingActivity = useCallback(
+    (activity: Activity): boolean => {
+      if (!arrivalActivityDate) {
+        return false;
+      }
 
-    return activity.activityDate.toISOString() === arrivalActivityDate;
-  }
+      return (
+        activity.activityDate.toISOString() === arrivalActivityDate
+      );
+    },
+    [arrivalActivityDate],
+  );
 
   return {
     arrival,

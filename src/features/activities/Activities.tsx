@@ -1,12 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, FlatList, Pressable, View, Text } from "react-native";
+import { useCallback, useMemo, useRef } from "react";
+import { FlatList, Pressable, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useActivityArrival } from "./hooks/useActivityArrival";
-import Animated, { useSharedValue } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 
-import { ActivityClassification } from "@/types/activity";
+import { Activity, ActivityClassification } from "@/types/activity";
 
 import { ActivitiesBackground } from "./components/ActivitiesBackground";
 import { ActivityTrace } from "./components/ActivityTrace";
@@ -14,7 +14,10 @@ import { EmptyField } from "./components/EmptyField";
 import { useActivities } from "./hooks/useActivities";
 import { isSameDay } from "./utils/activityDate";
 import { ActivitiesHeader } from "./components/ActivitiesHeader";
-import { activityService } from "@/services/ActivityService";
+
+const VIEWABILITY_CONFIG = {
+  itemVisiblePercentThreshold: 60,
+};
 
 export function Activities() {
   const {
@@ -37,29 +40,25 @@ export function Activities() {
     isArrivingActivity,
   } = useActivityArrival(activities);
 
-  const [arrivalActivityDate, setArrivalActivityDate] = useState<string | null>(
-    null,
-  );
-
-  const incomingProgress = useSharedValue(0);
   const isOpeningNewActivity = useRef(false);
 
-  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const { growingCount, leaksCount } = useMemo(() => {
+    let growingCount = 0;
+    let leaksCount = 0;
 
-  const hasStartedArrival = useRef(false);
+    for (const activity of activities) {
+      if (activity.classification === ActivityClassification.Serves) {
+        growingCount++;
+      } else {
+        leaksCount++;
+      }
+    }
 
-  const pendingScrollIndex = useRef<number | null>(null);
-
-  const scrollPhase = useRef<"idle" | "approximating" | "target">("idle");
-
-  const growingCount = activities.filter(
-    (activity) => activity.classification === ActivityClassification.Serves,
-  ).length;
-
-  const leaksCount = activities.filter(
-    (activity) =>
-      activity.classification === ActivityClassification.DoesNotServe,
-  ).length;
+    return {
+      growingCount,
+      leaksCount,
+    };
+  }, [activities]);
 
   const totalCount = growingCount + leaksCount;
 
@@ -68,81 +67,30 @@ export function Activities() {
 
   const leaksPercent = totalCount > 0 ? 100 - growingPercent : 0;
 
-  function handleDeleteAllActivities() {
-    if (isDeletingAll) {
-      return;
-    }
+  const renderActivity = useCallback(
+    ({ item, index }: { item: Activity; index: number }) => {
+      const previousActivity = index > 0 ? activities[index - 1] : undefined;
 
-    Alert.alert(
-      "Delete all test activities?",
-      "This will permanently remove every activity stored on this device.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Delete all",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setIsDeletingAll(true);
+      const showDate =
+        !previousActivity ||
+        !isSameDay(item.activityDate, previousActivity.activityDate);
 
-              await activityService.deleteAllActivities();
-
-              setSearchQuery("");
-              setFilter("all");
-              await reload();
-            } catch (error) {
-              console.error("Failed to delete all activities:", error);
-
-              Alert.alert("Could not delete activities", "Please try again.");
-            } finally {
-              setIsDeletingAll(false);
-            }
-          },
-        },
-      ],
-    );
-  }
+      return (
+        <ActivityTrace
+          activity={item}
+          showDate={showDate}
+          isArriving={isArrivingActivity(item)}
+        />
+      );
+    },
+    [activities, isArrivingActivity],
+  );
 
   useFocusEffect(
     useCallback(() => {
       isOpeningNewActivity.current = false;
     }, []),
   );
-
-  useEffect(() => {
-    if (!arrival) {
-      return;
-    }
-
-    const arrivalIndex = activities.findIndex(
-      (activity) =>
-        activity.activityDate.toISOString() === arrival.activityDate,
-    );
-
-    if (arrivalIndex === -1) {
-      return;
-    }
-
-    if (hasStartedArrival.current) {
-      return;
-    }
-
-    hasStartedArrival.current = true;
-
-    pendingScrollIndex.current = arrivalIndex;
-    scrollPhase.current = "target";
-
-    incomingProgress.value = 0;
-
-    listRef.current?.scrollToIndex({
-      index: arrivalIndex,
-      animated: true,
-      viewPosition: 0.35,
-    });
-  }, [arrival, activities]);
 
   return (
     <View className="flex-1 bg-[#030611]">
@@ -176,31 +124,14 @@ export function Activities() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={{
-            itemVisiblePercentThreshold: 60,
-          }}
+          viewabilityConfig={VIEWABILITY_CONFIG}
           onScrollToIndexFailed={handleScrollToIndexFailed}
           onMomentumScrollEnd={handleMomentumScrollEnd}
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingBottom: 170,
           }}
-          renderItem={({ item, index }) => {
-            const previousActivity =
-              index > 0 ? activities[index - 1] : undefined;
-
-            const showDate =
-              !previousActivity ||
-              !isSameDay(item.activityDate, previousActivity.activityDate);
-
-            return (
-              <ActivityTrace
-                activity={item}
-                showDate={showDate}
-                isArriving={isArrivingActivity(item)}
-              />
-            );
-          }}
+          renderItem={renderActivity}
           ListEmptyComponent={!errorMessage ? <EmptyField /> : null}
         />
 

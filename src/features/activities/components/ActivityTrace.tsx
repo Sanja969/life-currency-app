@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import Animated, {
@@ -25,7 +25,35 @@ type ActivityTraceProps = {
   isArriving: boolean;
 };
 
-export function ActivityTrace({
+const GROWING_PALETTE = {
+  core: "#718BFF",
+  coreLight: "#D8DEFF",
+  gradientStart: "rgba(37, 54, 135, 0.72)",
+  gradientMiddle: "rgba(18, 30, 75, 0.72)",
+  gradientEnd: "rgba(8, 15, 34, 0.92)",
+  border: "rgba(91, 117, 255, 0.78)",
+  glow: "#627AFF",
+  ringStrong: "rgba(115, 139, 255, 0.55)",
+  ringSoft: "rgba(115, 139, 255, 0.22)",
+  label: "#7890FF",
+  fieldLine: "rgba(103, 126, 255, 0.20)",
+};
+
+const LEAK_PALETTE = {
+  core: "#E657A8",
+  coreLight: "#FFD0EB",
+  gradientStart: "rgba(112, 25, 78, 0.72)",
+  gradientMiddle: "rgba(68, 19, 57, 0.68)",
+  gradientEnd: "rgba(13, 11, 29, 0.94)",
+  border: "rgba(230, 70, 164, 0.72)",
+  glow: "#E447A5",
+  ringStrong: "rgba(235, 87, 177, 0.52)",
+  ringSoft: "rgba(235, 87, 177, 0.20)",
+  label: "#F06BB9",
+  fieldLine: "rgba(230, 79, 170, 0.18)",
+};
+
+export function ActivityTraceComponent({
   activity,
   showDate,
   isArriving,
@@ -35,45 +63,7 @@ export function ActivityTrace({
 
   const serves = activity.classification === ActivityClassification.Serves;
 
-  const palette = serves
-    ? {
-        core: "#718BFF",
-        coreLight: "#D8DEFF",
-
-        gradientStart: "rgba(37, 54, 135, 0.72)",
-        gradientMiddle: "rgba(18, 30, 75, 0.72)",
-        gradientEnd: "rgba(8, 15, 34, 0.92)",
-
-        border: "rgba(91, 117, 255, 0.78)",
-
-        glow: "#627AFF",
-
-        ringStrong: "rgba(115, 139, 255, 0.55)",
-        ringSoft: "rgba(115, 139, 255, 0.22)",
-
-        label: "#7890FF",
-
-        fieldLine: "rgba(103, 126, 255, 0.20)",
-      }
-    : {
-        core: "#E657A8",
-        coreLight: "#FFD0EB",
-
-        gradientStart: "rgba(112, 25, 78, 0.72)",
-        gradientMiddle: "rgba(68, 19, 57, 0.68)",
-        gradientEnd: "rgba(13, 11, 29, 0.94)",
-
-        border: "rgba(230, 70, 164, 0.72)",
-
-        glow: "#E447A5",
-
-        ringStrong: "rgba(235, 87, 177, 0.52)",
-        ringSoft: "rgba(235, 87, 177, 0.20)",
-
-        label: "#F06BB9",
-
-        fieldLine: "rgba(230, 79, 170, 0.18)",
-      };
+  const palette = serves ? GROWING_PALETTE : LEAK_PALETTE;
 
   const date = normalizeDate(activity.activityDate);
 
@@ -305,3 +295,5 @@ export function ActivityTrace({
     </View>
   );
 }
+
+export const ActivityTrace = memo(ActivityTraceComponent);
