@@ -56,7 +56,7 @@ export class ActivityRepository {
 
   async create(input: CreateActivityInput): Promise<Activity> {
     const database = await getDatabase();
-  
+
     const result = await database.runAsync(
       `INSERT INTO activities (
         title,
@@ -76,19 +76,19 @@ export class ActivityRepository {
         input.activityDate.toISOString(),
       ],
     );
-  
+
     const createdActivity = await this.getById(result.lastInsertRowId);
-  
+
     if (!createdActivity) {
       throw new Error("Created activity could not be loaded.");
     }
-  
+
     return createdActivity;
   }
 
   async update(id: number, input: UpdateActivityInput): Promise<Activity> {
     const database = await getDatabase();
-  
+
     const result = await database.runAsync(
       `UPDATE activities
        SET
@@ -110,17 +110,17 @@ export class ActivityRepository {
         id,
       ],
     );
-  
+
     if (result.changes === 0) {
       throw new Error(`Activity with id ${id} not found.`);
     }
-  
+
     const updatedActivity = await this.getById(id);
-  
+
     if (!updatedActivity) {
       throw new Error("Updated activity could not be loaded.");
     }
-  
+
     return updatedActivity;
   }
 
@@ -135,6 +135,14 @@ export class ActivityRepository {
     if (result.changes === 0) {
       throw new Error(`Activity with id ${id} not found.`);
     }
+  }
+
+  async deleteAll(): Promise<void> {
+    const database = await getDatabase();
+
+    await database.runAsync(
+      `DELETE FROM activities`,
+    );
   }
 }
 

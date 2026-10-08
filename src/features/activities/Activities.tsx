@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FlatList, Pressable, View } from "react-native";
+import { Alert, FlatList, Pressable, View, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useActivityArrival } from "./hooks/useActivityArrival";
 import Animated, { useSharedValue } from "react-native-reanimated";
@@ -14,6 +14,7 @@ import { EmptyField } from "./components/EmptyField";
 import { useActivities } from "./hooks/useActivities";
 import { isSameDay } from "./utils/activityDate";
 import { ActivitiesHeader } from "./components/ActivitiesHeader";
+import { activityService } from "@/services/ActivityService";
 
 export function Activities() {
   const {
@@ -23,6 +24,7 @@ export function Activities() {
     errorMessage,
     setSearchQuery,
     setFilter,
+    reload,
   } = useActivities();
 
   const {
@@ -41,6 +43,8 @@ export function Activities() {
 
   const incomingProgress = useSharedValue(0);
   const isOpeningNewActivity = useRef(false);
+
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   const hasStartedArrival = useRef(false);
 
@@ -63,6 +67,44 @@ export function Activities() {
     totalCount > 0 ? Math.round((growingCount / totalCount) * 100) : 0;
 
   const leaksPercent = totalCount > 0 ? 100 - growingPercent : 0;
+
+  function handleDeleteAllActivities() {
+    if (isDeletingAll) {
+      return;
+    }
+
+    Alert.alert(
+      "Delete all test activities?",
+      "This will permanently remove every activity stored on this device.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete all",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsDeletingAll(true);
+
+              await activityService.deleteAllActivities();
+
+              setSearchQuery("");
+              setFilter("all");
+              await reload();
+            } catch (error) {
+              console.error("Failed to delete all activities:", error);
+
+              Alert.alert("Could not delete activities", "Please try again.");
+            } finally {
+              setIsDeletingAll(false);
+            }
+          },
+        },
+      ],
+    );
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -123,6 +165,21 @@ export function Activities() {
           setSearchQuery={setSearchQuery}
           setFilter={setFilter}
         />
+
+        {__DEV__ ? (
+          <Pressable
+            disabled={isDeletingAll}
+            onPress={handleDeleteAllActivities}
+            className="mx-5 mb-3 self-end rounded-xl border border-[#E657A8]/30 bg-[#2A1024] px-3 py-2"
+            style={({ pressed }) => ({
+              opacity: pressed || isDeletingAll ? 0.6 : 1,
+            })}
+          >
+            <Text className="text-[11px] font-semibold text-[#F38DC7]">
+              {isDeletingAll ? "Deleting..." : "Delete test data"}
+            </Text>
+          </Pressable>
+        ) : null}
 
         {/* SCROLLABLE TIMELINE */}
 
