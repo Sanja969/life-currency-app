@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 
 import { ActivityStatistics } from "@/types/activity";
-import { formatDuration } from "../utils/formatDuration";
+import { formatDuration } from "@/utils/formatDuration";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 

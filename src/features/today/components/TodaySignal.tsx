@@ -7,7 +7,7 @@ import {
   ActivityStatistics,
 } from "@/types/activity";
 
-import { formatDuration } from "../utils/formatDuration";
+import { formatDuration } from "@/utils/formatDuration";
 
 type TodaySignalProps = {
   statistics: ActivityStatistics;

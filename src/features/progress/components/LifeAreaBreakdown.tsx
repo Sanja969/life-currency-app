@@ -1,8 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "react-native";
 
-import { ActivityCategory } from "@/types/activity";
-import { formatDuration } from "@/features/today/utils/formatDuration";
+import { formatDuration } from "@/utils/formatDuration";
 
 import { ProgressCategoryStat } from "../hooks/useProgress";
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";

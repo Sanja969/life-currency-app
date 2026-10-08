@@ -144,6 +144,41 @@ export class ActivityRepository {
       `DELETE FROM activities`,
     );
   }
+
+  async replaceAll(activities: Activity[]): Promise<void> {
+    const database = await getDatabase();
+  
+    await database.withTransactionAsync(async () => {
+      await database.runAsync(`DELETE FROM activities`);
+  
+      for (const activity of activities) {
+        await database.runAsync(
+          `INSERT INTO activities (
+            id,
+            title,
+            description,
+            duration_minutes,
+            classification,
+            category,
+            activity_date,
+            created_at,
+            updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          
+            activity.id,
+            activity.title,
+            activity.description ?? null,
+            activity.durationMinutes,
+            activity.classification,
+            activity.category,
+            activity.activityDate.toISOString(),
+            activity.createdAt.toISOString(),
+            activity.updatedAt.toISOString(),
+        );
+      }
+    });
+  }
 }
 
 export const activityRepository = new ActivityRepository();

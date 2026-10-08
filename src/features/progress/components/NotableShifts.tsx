@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
-import { formatDuration } from "@/features/today/utils/formatDuration";
+import { formatDuration } from "@/utils/formatDuration";
 
 import { ProgressCategoryTrend, ProgressPeriod } from "../hooks/useProgress";
 

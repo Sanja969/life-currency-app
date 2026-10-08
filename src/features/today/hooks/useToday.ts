@@ -16,7 +16,6 @@ export function useToday() {
       let isActive = true;
 
       async function load() {
-        console.log("TODAY LOAD");
         try {
           setIsLoading(true);
           setErrorMessage(null);

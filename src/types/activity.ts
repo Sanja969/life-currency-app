@@ -32,8 +32,8 @@ export interface Activity {
   category: ActivityCategory;
 
   activityDate: Date;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export type ActivityInput = Omit<Activity, "id" | "createdAt" | "updatedAt">;

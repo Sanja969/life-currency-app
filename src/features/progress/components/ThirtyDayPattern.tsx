@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
 
-import { formatDuration } from "@/features/today/utils/formatDuration";
+import { formatDuration } from "@/utils/formatDuration";
 
 import { PeriodProgressStat } from "../utils/progressStatistics";
 

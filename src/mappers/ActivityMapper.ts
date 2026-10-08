@@ -25,7 +25,7 @@ export function toActivity(row: ActivityRow): Activity {
     classification: row.classification as ActivityClassification,
     category: row.category as ActivityCategory,
     activityDate: new Date(row.activity_date),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
   };
 }

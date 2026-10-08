@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 
 import { ActivityStatistics } from "@/types/activity";
-import { formatDuration } from "../utils/formatDuration";
+import { formatDuration } from "@/utils/formatDuration";
 
 type LifeFieldProps = {
   statistics: ActivityStatistics;

@@ -3,7 +3,7 @@ import { Text, View } from "react-native";
 
 import { ActivityCategoryStatistics } from "@/types/activity";
 
-import { formatDuration } from "../utils/formatDuration";
+import { formatDuration } from "@/utils/formatDuration";
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
 
 type CategoryBreakdownProps = {

@@ -166,21 +166,6 @@ export function Activities() {
           setFilter={setFilter}
         />
 
-        {__DEV__ ? (
-          <Pressable
-            disabled={isDeletingAll}
-            onPress={handleDeleteAllActivities}
-            className="mx-5 mb-3 self-end rounded-xl border border-[#E657A8]/30 bg-[#2A1024] px-3 py-2"
-            style={({ pressed }) => ({
-              opacity: pressed || isDeletingAll ? 0.6 : 1,
-            })}
-          >
-            <Text className="text-[11px] font-semibold text-[#F38DC7]">
-              {isDeletingAll ? "Deleting..." : "Delete test data"}
-            </Text>
-          </Pressable>
-        ) : null}
-
         {/* SCROLLABLE TIMELINE */}
 
         <FlatList

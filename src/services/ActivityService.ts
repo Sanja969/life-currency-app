@@ -242,9 +242,6 @@ export class ActivityService {
   ): Promise<void> {
     const activities = await this.getAllActivities();
 
-    console.log("3. NEW ACTIVITY:", input);
-    console.log("4. EXISTING ACTIVITIES:", activities);
-
     const conflictingActivity = activities.find((activity) => {
       if (
         excludedActivityId !== undefined &&
@@ -255,18 +252,8 @@ export class ActivityService {
 
       const overlaps = activitiesOverlap(input, activity);
 
-      console.log(
-        "COMPARE:",
-        input.activityDate,
-        activity.activityDate,
-        "OVERLAP:",
-        overlaps,
-      );
-
       return overlaps;
     });
-
-    console.log("5. CONFLICT:", conflictingActivity);
 
     if (conflictingActivity) {
       throw new Error(
@@ -276,6 +263,12 @@ export class ActivityService {
   }
   async deleteAllActivities(): Promise<void> {
     await activityRepository.deleteAll();
+  }
+
+  async replaceAllActivities(
+    activities: Activity[],
+  ): Promise<void> {
+    await activityRepository.replaceAll(activities);
   }
 }
 
