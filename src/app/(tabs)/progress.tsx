@@ -12,6 +12,7 @@ import { ThirtyDayPattern } from "@/features/progress/components/ThirtyDayPatter
 import { buildLast30DaysPeriods } from "@/features/progress/utils/progressStatistics";
 import { ProgressComparisonCard } from "@/features/progress/components/ProgressComparisonCard";
 import { NotableShifts } from "@/features/progress/components/NotableShifts";
+import { ProgressEmptyState } from "@/features/progress/components/ProgressEmptyState";
 
 export default function ProgressScreen() {
   const {
@@ -80,20 +81,31 @@ export default function ProgressScreen() {
         >
           <ProgressHeader period={period} onPeriodChange={setPeriod} />
 
-          <ProgressBalance statistics={statistics} period={period} />
-          <ProgressComparisonCard comparison={comparison} period={period} />
-          {period === "7days" ? (
-            <WeeklyPattern days={statistics.dailyStats} />
+          {statistics.totalMinutes === 0 ? (
+            <ProgressEmptyState />
           ) : (
-            <ThirtyDayPattern periods={thirtyDayPeriods} />
+            <>
+              <ProgressBalance statistics={statistics} period={period} />
+
+              <ProgressComparisonCard comparison={comparison} period={period} />
+
+              {period === "7days" ? (
+                <WeeklyPattern days={statistics.dailyStats} />
+              ) : (
+                <ThirtyDayPattern periods={thirtyDayPeriods} />
+              )}
+
+              <LifeAreaBreakdown categories={statistics.categoryStats} />
+
+              <NotableShifts trends={categoryTrends} period={period} />
+
+              <ProgressInsights
+                strongestInvestment={statistics.strongestInvestment}
+                biggestLeak={statistics.biggestLeak}
+                period={period}
+              />
+            </>
           )}
-          <LifeAreaBreakdown categories={statistics.categoryStats} />
-          <NotableShifts trends={categoryTrends} period={period} />
-          <ProgressInsights
-            strongestInvestment={statistics.strongestInvestment}
-            biggestLeak={statistics.biggestLeak}
-            period={period}
-          />
         </ScrollView>
       </SafeAreaView>
     </View>
