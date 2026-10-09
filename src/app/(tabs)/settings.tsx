@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, View, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { dataBackupService } from "@/services/DataBackupService";
 import { activityService } from "@/services/ActivityService";
+import Constants from "expo-constants";
 
 type SettingsRowProps = {
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
@@ -200,7 +201,7 @@ export default function SettingsScreen() {
           },
         },
       ],
-      { cancelable: false }
+      { cancelable: false },
     );
   }
 
@@ -326,7 +327,7 @@ export default function SettingsScreen() {
                 </Text>
 
                 <Text className="mt-1 text-[12px] text-[#697791]">
-                  Version 1.0.0
+                  Version {Constants.expoConfig?.version ?? "1.0.0"}
                 </Text>
               </View>
             </View>
