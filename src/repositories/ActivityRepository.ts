@@ -278,6 +278,38 @@ export class ActivityRepository {
 
     return result?.position ?? 0;
   }
+
+  async findOverlappingActivity(
+    activityDate: Date,
+    durationMinutes: number,
+    excludedActivityId?: number,
+  ): Promise<Activity | null> {
+    const database = await getDatabase();
+
+    const start = activityDate.toISOString();
+
+    const end = new Date(
+      activityDate.getTime() + durationMinutes * 60_000,
+    ).toISOString();
+
+    const row = await database.getFirstAsync<ActivityRow>(
+      `SELECT *
+       FROM activities
+       WHERE activity_date < ?
+         AND julianday(activity_date) +
+             duration_minutes / 1440.0 > julianday(?)
+         AND (? IS NULL OR id != ?)
+       LIMIT 1`,
+      [
+        end,
+        start,
+        excludedActivityId ?? null,
+        excludedActivityId ?? null,
+      ],
+    );
+
+    return row ? toActivity(row) : null;
+  }
 }
 
 export const activityRepository = new ActivityRepository();

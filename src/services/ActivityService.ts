@@ -1,4 +1,3 @@
-import { activitiesOverlap } from "@/utils/activityOverlap";
 import { activityRepository } from "../repositories/ActivityRepository";
 import {
   Activity,
@@ -247,20 +246,12 @@ export class ActivityService {
     input: ActivityInput,
     excludedActivityId?: number,
   ): Promise<void> {
-    const activities = await this.getAllActivities();
-
-    const conflictingActivity = activities.find((activity) => {
-      if (
-        excludedActivityId !== undefined &&
-        activity.id === excludedActivityId
-      ) {
-        return false;
-      }
-
-      const overlaps = activitiesOverlap(input, activity);
-
-      return overlaps;
-    });
+    const conflictingActivity =
+      await activityRepository.findOverlappingActivity(
+        input.activityDate,
+        input.durationMinutes,
+        excludedActivityId,
+      );
 
     if (conflictingActivity) {
       throw new Error(
@@ -268,6 +259,7 @@ export class ActivityService {
       );
     }
   }
+
   async deleteAllActivities(): Promise<void> {
     await activityRepository.deleteAll();
   }
