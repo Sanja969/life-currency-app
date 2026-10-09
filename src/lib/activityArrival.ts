@@ -7,6 +7,10 @@ export type ActivityArrival = {
 
 let pendingArrival: ActivityArrival | null = null;
 
+export function getPendingActivityArrival(): ActivityArrival | null {
+  return pendingArrival;
+}
+
 export function setPendingActivityArrival(
   arrival: ActivityArrival,
 ) {

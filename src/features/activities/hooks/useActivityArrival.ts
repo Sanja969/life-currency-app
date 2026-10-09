@@ -1,4 +1,3 @@
-import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList } from "react-native";
 import {
@@ -9,10 +8,7 @@ import {
   withTiming,
 } from "react-native-reanimated";
 
-import {
-  ActivityArrival,
-  consumePendingActivityArrival,
-} from "@/lib/activityArrival";
+import { ActivityArrival } from "@/lib/activityArrival";
 import { Activity } from "@/types/activity";
 
 type ScrollPhase = "idle" | "approximating" | "target";
@@ -21,7 +17,11 @@ type ViewableItem = {
   index: number | null;
 };
 
-export function useActivityArrival(activities: Activity[]) {
+export function useActivityArrival(
+  activities: Activity[],
+  pendingArrival: ActivityArrival | null,
+  onArrivalComplete: () => void,
+) {
   const [arrival, setArrival] = useState<ActivityArrival | null>(null);
 
   const [arrivalActivityDate, setArrivalActivityDate] = useState<string | null>(
@@ -73,21 +73,17 @@ export function useActivityArrival(activities: Activity[]) {
    * when the Activities screen becomes focused again.
    */
 
-  useFocusEffect(
-    useCallback(() => {
-      const pending = consumePendingActivityArrival();
+  useEffect(() => {
+    if (!pendingArrival) {
+      return;
+    }
 
-      if (!pending) {
-        return;
-      }
+    hasStartedArrival.current = false;
+    hasPlayedArrivalAnimation.current = false;
 
-      hasStartedArrival.current = false;
-      hasPlayedArrivalAnimation.current = false;
-
-      setArrival(pending);
-      setArrivalActivityDate(pending.activityDate);
-    }, []),
-  );
+    setArrival(pendingArrival);
+    setArrivalActivityDate(pendingArrival.activityDate);
+  }, [pendingArrival]);
 
   /*
    * Wait until the refreshed activities contain the
@@ -170,6 +166,7 @@ export function useActivityArrival(activities: Activity[]) {
         hasPlayedArrivalAnimation.current = false;
 
         scrollPhase.current = "idle";
+        onArrivalComplete();
       }, 1100);
     },
   ).current;

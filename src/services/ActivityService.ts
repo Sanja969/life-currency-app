@@ -297,6 +297,18 @@ export class ActivityService {
   ): Promise<{ growingCount: number; leaksCount: number }> {
     return activityRepository.getActivityCounts(searchQuery, filter);
   }
+
+  async getActivityPosition(
+    activityDate: string,
+    searchQuery = "",
+    filter = "all",
+  ): Promise<number> {
+    return activityRepository.getActivityPosition(
+      activityDate,
+      searchQuery,
+      filter,
+    );
+  }
 }
 
 export const activityService = new ActivityService();

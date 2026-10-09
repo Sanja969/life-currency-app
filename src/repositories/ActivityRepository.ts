@@ -252,7 +252,31 @@ export class ActivityRepository {
     return {
       growingCount: result?.growingCount ?? 0,
       leaksCount: result?.leaksCount ?? 0,
-    };
+    }
+
+  }
+  async getActivityPosition(
+    activityDate: string,
+    searchQuery = "",
+    filter = "all",
+  ): Promise<number> {
+    const database = await getDatabase();
+    const query = searchQuery.trim().toLowerCase();
+
+    const result = await database.getFirstAsync<{ position: number }>(
+      `SELECT COUNT(*) AS position
+       FROM activities
+       WHERE activity_date > ?
+         AND (
+           ? = ''
+           OR LOWER(title) LIKE '%' || ? || '%'
+           OR LOWER(COALESCE(description, '')) LIKE '%' || ? || '%'
+         )
+         AND (? = 'all' OR classification = ?)`,
+      [activityDate, query, query, query, filter, filter],
+    );
+
+    return result?.position ?? 0;
   }
 }
 

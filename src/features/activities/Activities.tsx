@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { FlatList, Pressable, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useActivityArrival } from "./hooks/useActivityArrival";
@@ -22,12 +22,17 @@ const VIEWABILITY_CONFIG = {
 export function Activities() {
   const {
     activities,
+    counts,
     searchQuery,
     filter,
     errorMessage,
+    isLoadingMore,
+    hasMore,
     setSearchQuery,
     setFilter,
-    reload,
+    loadMore,
+    pendingArrival,
+    completeArrival,
   } = useActivities();
 
   const {
@@ -38,27 +43,11 @@ export function Activities() {
     handleScrollToIndexFailed,
     handleMomentumScrollEnd,
     isArrivingActivity,
-  } = useActivityArrival(activities);
+  } = useActivityArrival(activities, pendingArrival, completeArrival);
 
   const isOpeningNewActivity = useRef(false);
 
-  const { growingCount, leaksCount } = useMemo(() => {
-    let growingCount = 0;
-    let leaksCount = 0;
-
-    for (const activity of activities) {
-      if (activity.classification === ActivityClassification.Serves) {
-        growingCount++;
-      } else {
-        leaksCount++;
-      }
-    }
-
-    return {
-      growingCount,
-      leaksCount,
-    };
-  }, [activities]);
+  const { growingCount, leaksCount } = counts;
 
   const totalCount = growingCount + leaksCount;
 
@@ -133,6 +122,12 @@ export function Activities() {
           }}
           renderItem={renderActivity}
           ListEmptyComponent={!errorMessage ? <EmptyField /> : null}
+          onEndReached={() => {
+            if (hasMore && !isLoadingMore) {
+              void loadMore();
+            }
+          }}
+          onEndReachedThreshold={0.5}
         />
 
         {/* CREATE BUTTON */}
