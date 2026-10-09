@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "life-currency-app",
+    "name": "Life Currency",
     "slug": "life-currency-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,9 +8,10 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.life-currency-app"
+      "bundleIdentifier": "com.sanjaverse.lifecurrency"
     },
     "android": {
+      "package": "com.sanjaverse.lifecurrency",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -26,7 +27,6 @@
       "expo-sqlite",
       "expo-router",
       "@react-native-community/datetimepicker",
-      "react-native-localize",
       "expo-font",
       "expo-sharing"
     ]
