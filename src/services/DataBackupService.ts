@@ -21,6 +21,19 @@ type LifeCurrencyBackup = {
     >;
 };
 
+function isValidIsoDate(value: unknown): value is string {
+    if (typeof value !== "string") {
+        return false;
+    }
+
+    const date = new Date(value);
+
+    return (
+        !Number.isNaN(date.getTime()) &&
+        date.toISOString() === value
+    );
+}
+
 export class DataBackupService {
     async exportData(): Promise<void> {
         const activities = await activityService.getAllActivities();
@@ -137,10 +150,13 @@ export class DataBackupService {
         if (
             backup.format !== BACKUP_FORMAT ||
             backup.version !== BACKUP_VERSION ||
+            !isValidIsoDate(backup.exportedAt) ||
             !Array.isArray(backup.activities)
         ) {
             return false;
         }
+
+        const seenIds = new Set<number>();
 
         return backup.activities.every((activity) => {
             if (
@@ -152,23 +168,33 @@ export class DataBackupService {
 
             const item = activity as Record<string, unknown>;
 
+            if (!Number.isSafeInteger(item.id) || (item.id as number) <= 0) {
+                return false;
+            }
+
+            const id = item.id as number;
+
+            if (seenIds.has(id)) {
+                return false;
+            }
+
+            seenIds.add(id);
+
             return (
-                typeof item.id === "number" &&
+                Number.isSafeInteger(item.id) &&
+                (item.id as number) > 0 &&
                 typeof item.title === "string" &&
-                typeof item.durationMinutes === "number" &&
-                item.durationMinutes > 0 &&
+                Number.isSafeInteger(item.durationMinutes) &&
+                (item.durationMinutes as number) > 0 &&
                 Object.values(ActivityClassification).includes(
                     item.classification as ActivityClassification,
                 ) &&
                 Object.values(ActivityCategory).includes(
                     item.category as ActivityCategory,
                 ) &&
-                typeof item.activityDate === "string" &&
-                !Number.isNaN(Date.parse(item.activityDate)) &&
-                typeof item.createdAt === "string" &&
-                !Number.isNaN(Date.parse(item.createdAt)) &&
-                typeof item.updatedAt === "string" &&
-                !Number.isNaN(Date.parse(item.updatedAt)) &&
+                isValidIsoDate(item.activityDate) &&
+                isValidIsoDate(item.createdAt) &&
+                isValidIsoDate(item.updatedAt) &&
                 (
                     item.description === undefined ||
                     item.description === null ||
@@ -210,7 +236,12 @@ export class DataBackupService {
                     ? ""
                     : String(value);
 
-            return `"${stringValue.replace(/"/g, '""')}"`;
+            const safeValue =
+                /^[\s]*[=+\-@]/.test(stringValue)
+                    ? `'${stringValue}`
+                    : stringValue;
+
+            return `"${safeValue.replace(/"/g, '""')}"`;
         };
 
         const header = [
