@@ -1,4 +1,5 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { useRef } from "react";
 import { Pressable, ScrollView, Text, View, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { dataBackupService } from "@/services/DataBackupService";
@@ -61,7 +62,22 @@ function SettingsRow({
 }
 
 export default function SettingsScreen() {
+  const operationRunning = useRef(false);
+
+  function startOperation() {
+    if (operationRunning.current) return false;
+
+    operationRunning.current = true;
+
+    return true;
+  }
+
+  function finishOperation() {
+    operationRunning.current = false;
+  }
+
   async function handleExportData() {
+    if (!startOperation()) return;
     try {
       await dataBackupService.exportData();
     } catch (error) {
@@ -71,10 +87,13 @@ export default function SettingsScreen() {
         "Export failed",
         "Your Life Currency data could not be exported. Please try again.",
       );
+    } finally {
+      finishOperation();
     }
   }
 
   async function handleImportData() {
+    if (!startOperation()) return;
     try {
       const activities = await dataBackupService.pickBackup();
 
@@ -122,10 +141,13 @@ export default function SettingsScreen() {
         "Invalid backup",
         "The selected file is not a valid Life Currency backup.",
       );
+    } finally {
+      finishOperation();
     }
   }
 
   async function handleExportCsv() {
+    if (!startOperation()) return;
     try {
       await dataBackupService.exportCsv();
     } catch (error) {
@@ -135,10 +157,13 @@ export default function SettingsScreen() {
         "Export failed",
         "Your activity data could not be exported as CSV. Please try again.",
       );
+    } finally {
+      finishOperation();
     }
   }
 
   function handleDeleteAllData() {
+    if (!startOperation()) return;
     Alert.alert(
       "Delete all activity data?",
       "This will permanently delete your entire activity history from this device. This action cannot be undone.",
@@ -146,6 +171,7 @@ export default function SettingsScreen() {
         {
           text: "Cancel",
           style: "cancel",
+          onPress: finishOperation,
         },
         {
           text: "Delete all",
@@ -168,10 +194,13 @@ export default function SettingsScreen() {
                 "Delete failed",
                 "Your activity data could not be deleted. Please try again.",
               );
+            } finally {
+              finishOperation();
             }
           },
         },
       ],
+      { cancelable: false }
     );
   }
 
