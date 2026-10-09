@@ -48,7 +48,7 @@ export class ActivityRepository {
     end: Date,
   ): Promise<Activity[]> {
     const database = await getDatabase();
-  
+
     const rows = await database.getAllAsync<ActivityRow>(
       `SELECT *
        FROM activities
@@ -57,7 +57,7 @@ export class ActivityRepository {
        ORDER BY activity_date DESC`,
       [start.toISOString(), end.toISOString()],
     );
-  
+
     return rows.map(toActivity);
   }
 
@@ -165,10 +165,10 @@ export class ActivityRepository {
 
   async replaceAll(activities: Activity[]): Promise<void> {
     const database = await getDatabase();
-  
+
     await database.withTransactionAsync(async () => {
       await database.runAsync(`DELETE FROM activities`);
-  
+
       for (const activity of activities) {
         await database.runAsync(
           `INSERT INTO activities (
@@ -183,19 +183,76 @@ export class ActivityRepository {
             updated_at
           )
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          
-            activity.id,
-            activity.title,
-            activity.description ?? null,
-            activity.durationMinutes,
-            activity.classification,
-            activity.category,
-            activity.activityDate.toISOString(),
-            activity.createdAt.toISOString(),
-            activity.updatedAt.toISOString(),
+
+          activity.id,
+          activity.title,
+          activity.description ?? null,
+          activity.durationMinutes,
+          activity.classification,
+          activity.category,
+          activity.activityDate.toISOString(),
+          activity.createdAt.toISOString(),
+          activity.updatedAt.toISOString(),
         );
       }
     });
+  }
+  async getPage(
+    limit: number,
+    offset: number,
+    searchQuery: string = "",
+    filter: string = "all",
+  ): Promise<Activity[]> {
+    const database = await getDatabase();
+
+    const query = searchQuery.trim().toLowerCase();
+
+    const rows = await database.getAllAsync<ActivityRow>(
+      `SELECT *
+       FROM activities
+       WHERE (
+         ? = ''
+         OR LOWER(title) LIKE '%' || ? || '%'
+         OR LOWER(COALESCE(description, '')) LIKE '%' || ? || '%'
+       )
+       AND (? = 'all' OR classification = ?)
+       ORDER BY activity_date DESC, id DESC
+       LIMIT ? OFFSET ?`,
+      [query, query, query, filter, filter, limit, offset],
+    );
+
+    return rows.map(toActivity);
+  }
+
+  async getActivityCounts(
+    searchQuery: string = "",
+    filter: string = "all",
+  ): Promise<{ growingCount: number; leaksCount: number }> {
+    const database = await getDatabase();
+
+    const query = searchQuery.trim().toLowerCase();
+
+    const result = await database.getFirstAsync<{
+      growingCount: number;
+      leaksCount: number;
+    }>(
+      `SELECT
+         COUNT(CASE WHEN classification = 'serves' THEN 1 END) AS growingCount,
+         COUNT(CASE WHEN classification = 'does_not_serve' THEN 1 END) AS leaksCount
+       FROM activities
+       WHERE (
+         ? = ''
+         OR LOWER(title) LIKE '%' || ? || '%'
+         OR LOWER(COALESCE(description, '')) LIKE '%' || ? || '%'
+       )
+       AND (? = 'all' OR classification = ?)`,
+      [query, query, query, filter, filter],
+    );
+
+    return {
+      growingCount: result?.growingCount ?? 0,
+      leaksCount: result?.leaksCount ?? 0,
+    };
   }
 }
 

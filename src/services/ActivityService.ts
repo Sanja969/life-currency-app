@@ -277,6 +277,26 @@ export class ActivityService {
   ): Promise<void> {
     await activityRepository.replaceAll(activities);
   }
+
+  async getActivitiesPage(
+    limit: number,
+    offset: number,
+    searchQuery: string = "",
+    filter: string = "all",
+  ): Promise<Activity[]> {
+    return activityRepository.getPage(
+      limit,
+      offset,
+      searchQuery,
+      filter,
+    );
+  }
+  async getActivityCounts(
+    searchQuery: string = "",
+    filter: string = "all",
+  ): Promise<{ growingCount: number; leaksCount: number }> {
+    return activityRepository.getActivityCounts(searchQuery, filter);
+  }
 }
 
 export const activityService = new ActivityService();
