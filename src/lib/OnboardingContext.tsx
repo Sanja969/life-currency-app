@@ -2,6 +2,7 @@ import { createContext, useContext } from "react";
 
 type OnboardingContextValue = {
   markOnboardingCompleted: () => void;
+  restartOnboarding: () => Promise<void>;
 };
 
 export const OnboardingContext =

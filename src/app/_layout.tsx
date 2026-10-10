@@ -9,7 +9,10 @@ import { PaperProvider } from "react-native-paper";
 import { en, registerTranslation } from "react-native-paper-dates";
 
 import { initializeDatabase } from "../database/migrations";
-import { hasCompletedOnboarding } from "../lib/onboarding";
+import {
+  hasCompletedOnboarding,
+  resetOnboarding,
+} from "../lib/onboarding";
 import { OnboardingContext } from "../lib/OnboardingContext";
 
 registerTranslation("en", en);
@@ -64,7 +67,8 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, isAppReady, hasCompleted, segments]);
 
-  function markOnboardingCompleted() {
+  async function markOnboardingCompleted() {
+    await resetOnboarding();
     setHasCompleted(true);
   }
 
@@ -95,7 +99,7 @@ export default function RootLayout() {
   }
 
   return (
-    <OnboardingContext.Provider value={{ markOnboardingCompleted }}>
+    <OnboardingContext.Provider value={{ markOnboardingCompleted, restartOnboarding: resetOnboarding }}>
       <PaperProvider
         settings={{
           icon: (props) => <MaterialCommunityIcons {...props} />,
