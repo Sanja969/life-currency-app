@@ -338,4 +338,34 @@ export async function initializeDatabase(): Promise<void> {
       "Weekly intentions database migration completed.",
     );
   }
+  // ============================================
+  // DAILY REFLECTIONS
+  // ============================================
+
+  await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS daily_reflections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+      reflection_date TEXT NOT NULL UNIQUE
+        CHECK (
+          length(reflection_date) = 10
+          AND reflection_date GLOB
+            '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+        ),
+
+      content TEXT NOT NULL
+        CHECK (length(trim(content)) > 0),
+
+      created_at TEXT NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+      updated_at TEXT NOT NULL
+        DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_daily_reflections_date
+      ON daily_reflections(reflection_date);
+  `);
+
+  console.log("Daily reflections database schema verified.");
 }

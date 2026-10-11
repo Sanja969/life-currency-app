@@ -3,8 +3,8 @@ import { StyleSheet, Text, View } from "react-native";
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
 import { CLASSIFICATION_THEME } from "@/theme/classification";
 import { COLORS } from "@/theme/colors";
+
 import { ActivityClassification, ActivityStatistics } from "@/types/activity";
-import { formatDuration } from "@/utils/formatDuration";
 
 type LifeFieldProps = {
   statistics: ActivityStatistics;
@@ -17,6 +17,13 @@ type Particle = {
   classification: ActivityClassification;
   opacity: number;
 };
+
+/*
+ * PARTICLE POSITIONS
+ *
+ * Fixed positions keep the visualization
+ * stable between renders.
+ */
 
 const PARTICLE_POSITIONS = [
   [18, 26],
@@ -42,17 +49,23 @@ const CLASSIFICATION_ORDER = [
   ActivityClassification.DoesNotServe,
 ] as const;
 
-/**
- * Distributes a limited number of visual particles
- * proportionally across all three classifications.
+/*
+ * PARTICLE DISTRIBUTION
+ *
+ * Distributes particles proportionally
+ * to recorded time.
+ *
+ * Uses the largest remainder method
+ * to preserve the total particle count.
  */
+
 function distributeParticles(
   count: number,
   durations: readonly number[],
 ): number[] {
   const total = durations.reduce((sum, duration) => sum + duration, 0);
 
-  if (total <= 0) {
+  if (total <= 0 || count <= 0) {
     return durations.map(() => 0);
   }
 
@@ -70,7 +83,9 @@ function distributeParticles(
     .sort((a, b) => b.remainder - a.remainder || a.index - b.index);
 
   for (const item of priorities) {
-    if (remaining <= 0) break;
+    if (remaining <= 0) {
+      break;
+    }
 
     counts[item.index] += 1;
     remaining -= 1;
@@ -79,16 +94,29 @@ function distributeParticles(
   return counts;
 }
 
-/**
- * Builds deterministic particles based on
- * the recorded duration of each classification.
+/*
+ * BUILD PARTICLES
+ *
+ * Particle colors represent the
+ * relative distribution of Growing,
+ * Restoring and Life Leaks.
+ *
+ * Particle positions are deterministic.
  */
+
 function buildParticles(statistics: ActivityStatistics): Particle[] {
   const totalMinutes = statistics.totalDurationMinutes;
 
   if (totalMinutes <= 0) {
     return [];
   }
+
+  /*
+   * PARTICLE COUNT
+   *
+   * Minimum: 3
+   * Maximum: 15
+   */
 
   const count = Math.min(
     PARTICLE_POSITIONS.length,
@@ -103,6 +131,10 @@ function buildParticles(statistics: ActivityStatistics): Particle[] {
 
   const distribution = distributeParticles(count, durations);
 
+  /*
+   * BUILD CLASSIFICATION ARRAY
+   */
+
   const classifications: ActivityClassification[] = [];
 
   CLASSIFICATION_ORDER.forEach((classification, index) => {
@@ -111,23 +143,54 @@ function buildParticles(statistics: ActivityStatistics): Particle[] {
     }
   });
 
-  return PARTICLE_POSITIONS.slice(0, count).map(([x, y], index) => {
-    // Spread classifications across the field
-    // rather than grouping colors together.
-    const classificationIndex = (index * 7) % count;
+  /*
+   * SPREAD CLASSIFICATIONS
+   *
+   * The previous implementation used:
+   *
+   * (index * 7) % count
+   *
+   * This could repeat indices when count
+   * was divisible by 7.
+   *
+   * We now use a deterministic shuffle
+   * that preserves every classification.
+   */
 
-    return {
-      x,
-      y,
-      classification: classifications[classificationIndex],
-      size: 5 + ((index * 7) % 8),
-      opacity: 0.45 + ((index * 11) % 45) / 100,
-    };
-  });
+  const shuffledClassifications = [...classifications];
+
+  for (let index = shuffledClassifications.length - 1; index > 0; index--) {
+    const swapIndex = (index * 7 + 3) % (index + 1);
+
+    [shuffledClassifications[index], shuffledClassifications[swapIndex]] = [
+      shuffledClassifications[swapIndex],
+      shuffledClassifications[index],
+    ];
+  }
+
+  /*
+   * CREATE PARTICLES
+   */
+
+  return PARTICLE_POSITIONS.slice(0, count).map(([x, y], index) => ({
+    x,
+    y,
+    classification: shuffledClassifications[index],
+    size: 5 + ((index * 7) % 8),
+    opacity: 0.45 + ((index * 11) % 45) / 100,
+  }));
 }
+
+/*
+ * LIFE FIELD
+ */
 
 export function LifeField({ statistics }: LifeFieldProps) {
   const hasData = statistics.totalDurationMinutes > 0;
+
+  /*
+   * CLASSIFICATION THEMES
+   */
 
   const growingTheme = CLASSIFICATION_THEME[ActivityClassification.Serves];
 
@@ -135,53 +198,66 @@ export function LifeField({ statistics }: LifeFieldProps) {
 
   const leakTheme = CLASSIFICATION_THEME[ActivityClassification.DoesNotServe];
 
+  /*
+   * CLASSIFICATION PERCENTAGES
+   *
+   * Used only for ambient glow intensity.
+   * Percentages are no longer displayed.
+   */
+
   const growingPercent = statistics.servesPercentage;
+
   const restoringPercent = statistics.restoresPercentage;
+
   const leakPercent = statistics.doesNotServePercentage;
+
+  /*
+   * PARTICLES
+   */
 
   const particles = buildParticles(statistics);
 
-  // Determine the dominant classification by duration.
-  const dominantClassification = CLASSIFICATION_ORDER.reduce(
-    (dominant, current) => {
-      const durations = {
-        [ActivityClassification.Serves]: statistics.servesDurationMinutes,
-        [ActivityClassification.Restores]: statistics.restoresDurationMinutes,
-        [ActivityClassification.DoesNotServe]:
-          statistics.doesNotServeDurationMinutes,
-      };
+  /*
+   * DOMINANT CLASSIFICATION
+   *
+   * Determines the central core color.
+   */
 
-      return durations[current] > durations[dominant] ? current : dominant;
-    },
+  const durations: Record<ActivityClassification, number> = {
+    [ActivityClassification.Serves]: statistics.servesDurationMinutes,
+
+    [ActivityClassification.Restores]: statistics.restoresDurationMinutes,
+
+    [ActivityClassification.DoesNotServe]:
+      statistics.doesNotServeDurationMinutes,
+  };
+
+  const dominantClassification = CLASSIFICATION_ORDER.reduce(
+    (dominant, current) =>
+      durations[current] > durations[dominant] ? current : dominant,
   );
 
-  const dominantTheme = CLASSIFICATION_THEME[dominantClassification];
+  const dominantColor = CLASSIFICATION_THEME[dominantClassification].color;
 
-  const dominantColor = dominantTheme.color;
+  /*
+   * RENDER
+   */
 
   return (
     <View style={styles.container}>
       {/* HEADER */}
 
       <View style={styles.header}>
-        <View>
-          <View style={styles.titleRow}>
-            <Text style={styles.title}>LIFE FIELD</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>LIFE FIELD</Text>
 
-            <Text style={styles.sparkle}>✦</Text>
-          </View>
-
-          <Text style={styles.subtitle}>Your observed energy today</Text>
+          <Text style={styles.sparkle}>✦</Text>
         </View>
 
-        {hasData && (
-          <Text style={styles.duration}>
-            {formatDuration(statistics.totalDurationMinutes)}
-          </Text>
-        )}
+        <Text style={styles.subtitle}>Your day, visualized.</Text>
       </View>
 
-      {/* FIELD */}
+      {/* COSMIC FIELD */}
 
       <CosmicPanel
         variant="default"
@@ -261,18 +337,27 @@ export function LifeField({ statistics }: LifeFieldProps) {
                   pointerEvents="none"
                   style={{
                     position: "absolute",
+
                     left: `${particle.x}%`,
                     top: `${particle.y}%`,
+
                     width: particle.size,
                     height: particle.size,
+
                     marginLeft: -particle.size / 2,
+
                     marginTop: -particle.size / 2,
+
                     borderRadius: particle.size / 2,
+
                     backgroundColor: color,
+
                     opacity: particle.opacity,
+
                     shadowColor: color,
                     shadowOpacity: 0.9,
                     shadowRadius: 11,
+
                     shadowOffset: {
                       width: 0,
                       height: 0,
@@ -307,6 +392,7 @@ export function LifeField({ statistics }: LifeFieldProps) {
                         styles.coreLight,
                         {
                           backgroundColor: dominantColor,
+
                           shadowColor: dominantColor,
                         },
                       ]}
@@ -316,59 +402,12 @@ export function LifeField({ statistics }: LifeFieldProps) {
               </View>
             </View>
 
-            {/* FIELD LABEL */}
+            {/* FIELD FOOTER */}
 
             <View style={styles.fieldFooter}>
-              <View style={styles.classificationLegend}>
-                <View style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendDot,
-                      {
-                        backgroundColor: growingTheme.color,
-                      },
-                    ]}
-                  />
-
-                  <Text style={styles.legendText}>
-                    {Math.round(growingPercent)}%
-                  </Text>
-                </View>
-
-                <View style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendDot,
-                      {
-                        backgroundColor: restoringTheme.color,
-                      },
-                    ]}
-                  />
-
-                  <Text style={styles.legendText}>
-                    {Math.round(restoringPercent)}%
-                  </Text>
-                </View>
-
-                <View style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendDot,
-                      {
-                        backgroundColor: leakTheme.color,
-                      },
-                    ]}
-                  />
-
-                  <Text style={styles.legendText}>
-                    {Math.round(leakPercent)}%
-                  </Text>
-                </View>
-              </View>
-
               <View style={styles.fieldFooterLine} />
 
-              <Text style={styles.fieldHint}>YOUR ENERGY IN MOTION</Text>
+              <Text style={styles.fieldHint}>A VISUAL TRACE OF YOUR DAY</Text>
             </View>
           </>
         ) : (
@@ -391,16 +430,21 @@ export function LifeField({ statistics }: LifeFieldProps) {
   );
 }
 
+/*
+ * STYLES
+ */
+
 const styles = StyleSheet.create({
   container: {
     marginTop: 24,
     width: "100%",
   },
 
+  /*
+   * HEADER
+   */
+
   header: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
     marginBottom: 15,
   },
 
@@ -429,11 +473,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
-  duration: {
-    color: COLORS.lightGold,
-    fontSize: 12,
-    fontWeight: "500",
-  },
+  /*
+   * FIELD
+   */
 
   field: {
     height: 300,
@@ -442,12 +484,20 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
 
+  /*
+   * AMBIENT GLOW
+   */
+
   ambientGlow: {
     position: "absolute",
     width: 230,
     height: 230,
     borderRadius: 115,
   },
+
+  /*
+   * ORBITS
+   */
 
   orbit: {
     position: "absolute",
@@ -482,6 +532,10 @@ const styles = StyleSheet.create({
     borderColor: "rgba(214,173,101,0.11)",
   },
 
+  /*
+   * ORBIT ACCENTS
+   */
+
   orbitAccentTop: {
     position: "absolute",
     width: 7,
@@ -495,7 +549,10 @@ const styles = StyleSheet.create({
     shadowColor: COLORS.gold,
     shadowOpacity: 0.7,
     shadowRadius: 9,
-    shadowOffset: { width: 0, height: 0 },
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
   },
 
   orbitAccentBottom: {
@@ -509,6 +566,10 @@ const styles = StyleSheet.create({
     marginLeft: -2.5,
     opacity: 0.5,
   },
+
+  /*
+   * CENTRAL CORE
+   */
 
   coreContainer: {
     position: "absolute",
@@ -555,8 +616,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     shadowOpacity: 1,
     shadowRadius: 20,
-    shadowOffset: { width: 0, height: 0 },
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
   },
+
+  /*
+   * FIELD FOOTER
+   */
 
   fieldFooter: {
     position: "absolute",
@@ -566,37 +634,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  classificationLegend: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 20,
-  },
-
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-
-  legendDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-
-  legendText: {
-    color: COLORS.lightGold,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-
   fieldFooterLine: {
     width: 24,
     height: 1,
     backgroundColor: COLORS.gold,
     opacity: 0.45,
-    marginTop: 8,
   },
 
   fieldHint: {
@@ -605,6 +647,10 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
     marginTop: 8,
   },
+
+  /*
+   * EMPTY STATE
+   */
 
   emptyState: {
     flex: 1,
@@ -632,7 +678,10 @@ const styles = StyleSheet.create({
     shadowColor: COLORS.gold,
     shadowOpacity: 0.6,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
   },
 
   emptyTitle: {

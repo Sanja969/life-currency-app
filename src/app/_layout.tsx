@@ -145,6 +145,12 @@ export default function RootLayout() {
               headerShown: false,
             }}
           />
+          <Stack.Screen
+            name="reflections/index"
+            options={{
+              headerShown: false,
+            }}
+          />
         </Stack>
       </PaperProvider>
     </OnboardingContext.Provider>

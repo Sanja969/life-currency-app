@@ -360,6 +360,19 @@ export class ActivityRepository {
 
     return row ? toActivity(row) : null;
   }
+  async getQuickAddCandidates(limit: number = 100): Promise<Activity[]> {
+    const database = await getDatabase();
+
+    const rows = await database.getAllAsync<ActivityRow>(
+      `SELECT *
+       FROM activities
+       ORDER BY activity_date DESC, id DESC
+       LIMIT ?`,
+      [limit],
+    );
+
+    return rows.map(toActivity);
+  }
 }
 
 export const activityRepository = new ActivityRepository();

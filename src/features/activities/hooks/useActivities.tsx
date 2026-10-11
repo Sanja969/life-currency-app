@@ -375,19 +375,33 @@ export function useActivities() {
    * MANUAL RELOAD
    */
 
-  const reload = useCallback(async () => {
-    clearSearchTimer();
+  const reload = useCallback(
+    async (arrival: ActivityArrival | null = null) => {
+      clearSearchTimer();
 
-    const query: ActivityQuery = {
-      searchQuery: searchQueryRef.current,
-      filter: filterRef.current,
-    };
+      if (arrival) {
+        arrivalRef.current = arrival;
+        setPendingArrival(arrival);
 
-    await Promise.all([
-      loadActivities(query, arrivalRef.current),
-      loadGlobalCounts(),
-    ]);
-  }, [clearSearchTimer, loadActivities, loadGlobalCounts]);
+        searchQueryRef.current = "";
+        filterRef.current = "all";
+
+        setSearchQuery("");
+        setFilter("all");
+      }
+
+      const query: ActivityQuery = {
+        searchQuery: searchQueryRef.current,
+        filter: filterRef.current,
+      };
+
+      await Promise.all([
+        loadActivities(query, arrivalRef.current),
+        loadGlobalCounts(),
+      ]);
+    },
+    [clearSearchTimer, loadActivities, loadGlobalCounts],
+  );
 
   /*
    * SCREEN FOCUS

@@ -17,13 +17,96 @@ type ProgressInsightsProps = {
   period: ProgressPeriod;
 };
 
+type InsightType = "growing" | "restoring" | "leak";
+
+type InsightContent = {
+  label: string;
+  description: string;
+  reflection: string;
+  icon: "sparkles-outline" | "leaf-outline" | "compass-outline";
+  accent: string;
+  iconBackground: string;
+  iconBorder: string;
+};
+
+function getInsightContent(
+  type: InsightType,
+  category: string,
+  periodLabel: string,
+): InsightContent {
+  switch (type) {
+    case "growing":
+      return {
+        label: "WHERE YOU'RE GROWING",
+
+        description:
+          `You dedicated more Growing time to ${category} ` +
+          `than to any other life area over the ${periodLabel}.`,
+
+        reflection: "Does this reflect what matters most to you right now?",
+
+        icon: "sparkles-outline",
+
+        accent: COLORS.growing,
+
+        iconBackground: "#211D35",
+
+        iconBorder: "#383052",
+      };
+
+    case "restoring":
+      return {
+        label: "SPACE FOR RESTORATION",
+
+        description:
+          `${category} received the most time you marked ` +
+          `as Restoring over the ${periodLabel}.`,
+
+        reflection:
+          "Are you making enough space for the kind of rest you value?",
+
+        icon: "leaf-outline",
+
+        accent: COLORS.restoring,
+
+        iconBackground: "#142B2A",
+
+        iconBorder: "#28514B",
+      };
+
+    case "leak":
+      return {
+        label: "WHERE TIME SLIPS AWAY",
+
+        description:
+          `${category} accounted for the most time you ` +
+          `classified as Life Leaks over the ${periodLabel}.`,
+
+        reflection: "Is this how you want to spend this part of your time?",
+
+        icon: "compass-outline",
+
+        accent: COLORS.leak,
+
+        iconBackground: COLORS.dangerBackground,
+
+        iconBorder: COLORS.dangerBorder,
+      };
+  }
+}
+
 export function ProgressInsights({
   strongestInvestment,
   strongestRestoration,
   biggestLeak,
   period,
 }: ProgressInsightsProps) {
-  if (!strongestInvestment && !strongestRestoration && !biggestLeak) {
+  const hasInsights =
+    strongestInvestment !== null ||
+    strongestRestoration !== null ||
+    biggestLeak !== null;
+
+  if (!hasInsights) {
     return null;
   }
 
@@ -31,114 +114,132 @@ export function ProgressInsights({
 
   return (
     <View style={styles.container}>
+      {/* SECTION HEADER */}
+
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View style={styles.goldDot} />
 
-          <Text style={styles.sectionTitle}>CURRENT SIGNALS</Text>
+          <Text style={styles.sectionTitle}>YOUR LIFE PATTERNS</Text>
         </View>
 
         <Text style={styles.sectionDescription}>
-          What stands out in this period
+          A closer look at where your time has been going.
         </Text>
       </View>
 
-      <View style={styles.signals}>
+      {/* INSIGHT CARDS */}
+
+      <View style={styles.insights}>
         {strongestInvestment && (
-          <SignalCard
-            label="STRONGEST INVESTMENT"
+          <InsightCard
+            type="growing"
             category={
               getActivityCategoryMeta(strongestInvestment.category).label
             }
             duration={formatDuration(strongestInvestment.growingMinutes)}
-            description={`Most Growing time in the ${periodLabel}.`}
-            icon="trending-up-outline"
-            accent={COLORS.growing}
-            iconBackground="#211D35"
-            iconBorder="#383052"
+            periodLabel={periodLabel}
           />
         )}
 
         {strongestRestoration && (
-          <SignalCard
-            label="MOST RESTORING TIME"
+          <InsightCard
+            type="restoring"
             category={
               getActivityCategoryMeta(strongestRestoration.category).label
             }
             duration={formatDuration(strongestRestoration.restoringMinutes)}
-            description={`Most Restoring time in the ${periodLabel}.`}
-            icon="leaf-outline"
-            accent={COLORS.restoring}
-            iconBackground="#142B2A"
-            iconBorder="#28514B"
+            periodLabel={periodLabel}
           />
         )}
 
         {biggestLeak && (
-          <SignalCard
-            label="BIGGEST LEAK"
+          <InsightCard
+            type="leak"
             category={getActivityCategoryMeta(biggestLeak.category).label}
             duration={formatDuration(biggestLeak.leakMinutes)}
-            description={`Most Life Leak time in the ${periodLabel}.`}
-            icon="trending-down-outline"
-            accent={COLORS.leak}
-            iconBackground={COLORS.dangerBackground}
-            iconBorder={COLORS.dangerBorder}
+            periodLabel={periodLabel}
           />
         )}
+      </View>
+
+      {/* CLOSING REFLECTION */}
+
+      <View style={styles.closingReflection}>
+        <Ionicons name="sparkles-outline" size={16} color={COLORS.gold} />
+
+        <Text style={styles.closingText}>
+          Awareness is the first step toward living more intentionally.
+        </Text>
       </View>
     </View>
   );
 }
 
-type SignalCardProps = {
-  label: string;
+type InsightCardProps = {
+  type: InsightType;
   category: string;
   duration: string;
-  description: string;
-  icon: "trending-up-outline" | "trending-down-outline" | "leaf-outline";
-  accent: string;
-  iconBackground: string;
-  iconBorder: string;
+  periodLabel: string;
 };
 
-function SignalCard({
-  label,
+function InsightCard({
+  type,
   category,
   duration,
-  description,
-  icon,
-  accent,
-  iconBackground,
-  iconBorder,
-}: SignalCardProps) {
-  return (
-    <View style={styles.signalCard}>
-      <View style={[styles.topAccent, { backgroundColor: accent }]} />
+  periodLabel,
+}: InsightCardProps) {
+  const content = getInsightContent(type, category, periodLabel);
 
-      <View style={styles.signalHeader}>
+  return (
+    <View style={styles.insightCard}>
+      {/* CLASSIFICATION ACCENT */}
+
+      <View style={[styles.topAccent, { backgroundColor: content.accent }]} />
+
+      {/* MAIN INFORMATION */}
+
+      <View style={styles.insightHeader}>
         <View
           style={[
             styles.iconContainer,
             {
-              backgroundColor: iconBackground,
-              borderColor: iconBorder,
+              backgroundColor: content.iconBackground,
+              borderColor: content.iconBorder,
             },
           ]}
         >
-          <Ionicons name={icon} size={21} color={accent} />
+          <Ionicons name={content.icon} size={21} color={content.accent} />
         </View>
 
-        <View style={styles.signalInfo}>
-          <Text style={[styles.signalLabel, { color: accent }]}>{label}</Text>
+        <View style={styles.insightInfo}>
+          <Text style={[styles.insightLabel, { color: content.accent }]}>
+            {content.label}
+          </Text>
 
-          <Text style={styles.categoryName}>{category}</Text>
+          <Text style={styles.categoryName} numberOfLines={2}>
+            {category}
+          </Text>
         </View>
 
-        <Text style={[styles.duration, { color: accent }]}>{duration}</Text>
+        <Text style={[styles.duration, { color: content.accent }]}>
+          {duration}
+        </Text>
       </View>
 
-      <Text style={styles.description}>{description}</Text>
+      {/* DATA-BASED DESCRIPTION */}
+
+      <Text style={styles.description}>{content.description}</Text>
+
+      {/* PERSONAL REFLECTION */}
+
+      <View style={styles.reflectionContainer}>
+        <View
+          style={[styles.reflectionAccent, { backgroundColor: content.accent }]}
+        />
+
+        <Text style={styles.reflectionText}>{content.reflection}</Text>
+      </View>
     </View>
   );
 }
@@ -148,8 +249,12 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
 
+  /*
+   * SECTION HEADER
+   */
+
   header: {
-    marginBottom: 15,
+    marginBottom: 17,
   },
 
   headerRow: {
@@ -174,14 +279,19 @@ const styles = StyleSheet.create({
   sectionDescription: {
     color: COLORS.subtle,
     fontSize: 12,
+    lineHeight: 19,
     marginTop: 8,
   },
 
-  signals: {
+  /*
+   * INSIGHTS
+   */
+
+  insights: {
     gap: 12,
   },
 
-  signalCard: {
+  insightCard: {
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -197,7 +307,11 @@ const styles = StyleSheet.create({
     height: 2,
   },
 
-  signalHeader: {
+  /*
+   * CARD HEADER
+   */
+
+  insightHeader: {
     flexDirection: "row",
     alignItems: "center",
   },
@@ -210,16 +324,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
 
-  signalInfo: {
+  insightInfo: {
     flex: 1,
     marginLeft: 13,
     minWidth: 0,
   },
 
-  signalLabel: {
+  insightLabel: {
     fontSize: 10,
     fontWeight: "700",
-    letterSpacing: 1.1,
+    letterSpacing: 1,
+    lineHeight: 15,
   },
 
   categoryName: {
@@ -230,16 +345,71 @@ const styles = StyleSheet.create({
   },
 
   duration: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
     marginLeft: 10,
+    flexShrink: 0,
   },
+
+  /*
+   * DESCRIPTION
+   */
 
   description: {
     color: COLORS.muted,
     fontSize: 12,
-    lineHeight: 18,
-    marginTop: 14,
-    marginLeft: 55,
+    lineHeight: 19,
+    marginTop: 17,
+  },
+
+  /*
+   * REFLECTION
+   */
+
+  reflectionContainer: {
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+
+  reflectionAccent: {
+    width: 2,
+    height: 28,
+    marginTop: 2,
+    opacity: 0.75,
+  },
+
+  reflectionText: {
+    flex: 1,
+    color: COLORS.text,
+    fontSize: 12,
+    lineHeight: 19,
+    fontStyle: "italic",
+    opacity: 0.85,
+  },
+
+  /*
+   * CLOSING REFLECTION
+   */
+
+  closingReflection: {
+    marginTop: 22,
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    gap: 10,
+  },
+
+  closingText: {
+    flex: 1,
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 19,
+    fontStyle: "italic",
   },
 });

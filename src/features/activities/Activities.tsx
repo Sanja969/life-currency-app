@@ -8,7 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Animated from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 
-import { Activity, ActivityClassification } from "@/types/activity";
+import { Activity } from "@/types/activity";
 
 import { COLORS } from "@/theme/colors";
 import { CLASSIFICATION_THEME } from "@/theme/classification";
@@ -18,8 +18,12 @@ import { ActivityTrace } from "./components/ActivityTrace";
 import { EmptyField } from "./components/EmptyField";
 import { ActivitiesHeader } from "./components/ActivitiesHeader";
 
+import { QuickAddSection } from "./components/QuickAddSection";
+import { QuickAddModal } from "./components/QuickAddModal";
+
 import { useActivities } from "./hooks/useActivities";
 import { useActivityArrival } from "./hooks/useActivityArrival";
+import { useQuickAdd } from "./hooks/useQuickAdd";
 
 import { isSameDay } from "./utils/activityDate";
 
@@ -64,10 +68,26 @@ export function Activities() {
     hasMore,
     setSearchQuery,
     setFilter,
+    reload,
     loadMore,
     pendingArrival,
     completeArrival,
   } = useActivities();
+
+  /*
+   * QUICK ADD
+   */
+
+  const {
+    suggestions,
+    selectedSuggestion,
+    isSaving,
+    errorMessage: quickAddError,
+    loadSuggestions,
+    openSuggestion,
+    closeSuggestion,
+    addActivity,
+  } = useQuickAdd();
 
   /*
    * ARRIVAL ANIMATION
@@ -95,9 +115,7 @@ export function Activities() {
 
   const { growingPercent, restoringPercent, leaksPercent } = useMemo(() => {
     const growingMinutes = counts.growingMinutes ?? 0;
-
     const restoringMinutes = counts.restoringMinutes ?? 0;
-
     const leaksMinutes = counts.leaksMinutes ?? 0;
 
     const totalMinutes = growingMinutes + restoringMinutes + leaksMinutes;
@@ -116,12 +134,6 @@ export function Activities() {
       restoringMinutes,
       totalMinutes,
     );
-
-    /*
-     * Use the remainder for the final
-     * classification so all percentages
-     * add up to exactly 100%.
-     */
 
     const leaksPercent = 100 - growingPercent - restoringPercent;
 
@@ -166,13 +178,15 @@ export function Activities() {
   );
 
   /*
-   * RESET NAVIGATION GUARD
+   * SCREEN FOCUS
    */
 
   useFocusEffect(
     useCallback(() => {
       isOpeningNewActivity.current = false;
-    }, []),
+
+      void loadSuggestions();
+    }, [loadSuggestions]),
   );
 
   /*
@@ -195,6 +209,40 @@ export function Activities() {
   }
 
   /*
+   * QUICK ADD CONFIRMATION
+   */
+
+  async function handleQuickAdd(durationMinutes: number, activityDate: Date) {
+    const created = await addActivity(durationMinutes, activityDate);
+
+    if (!created) {
+      return;
+    }
+
+    /*
+     * Refresh suggestions because
+     * the newly added activity may
+     * change their frequency.
+     */
+
+    void loadSuggestions();
+
+    /*
+     * Refresh timeline and global
+     * statistics without navigation.
+     *
+     * Pass the new activity as an
+     * arrival so its particle animation
+     * can play on the current screen.
+     */
+
+    await reload({
+      activityDate: created.activityDate.toISOString(),
+      classification: created.classification,
+    });
+  }
+
+  /*
    * RENDER
    */
 
@@ -212,16 +260,23 @@ export function Activities() {
           style={styles.list}
           data={activities}
           ListHeaderComponent={
-            <ActivitiesHeader
-              growingPercent={growingPercent}
-              restoringPercent={restoringPercent}
-              leaksPercent={leaksPercent}
-              searchQuery={searchQuery}
-              filter={filter}
-              errorMessage={errorMessage}
-              setSearchQuery={setSearchQuery}
-              setFilter={setFilter}
-            />
+            <>
+              <ActivitiesHeader
+                growingPercent={growingPercent}
+                restoringPercent={restoringPercent}
+                leaksPercent={leaksPercent}
+                searchQuery={searchQuery}
+                filter={filter}
+                errorMessage={errorMessage}
+                setSearchQuery={setSearchQuery}
+                setFilter={setFilter}
+              />
+
+              <QuickAddSection
+                suggestions={suggestions}
+                onSelect={openSuggestion}
+              />
+            </>
           }
           keyExtractor={(item) => String(item.id)}
           showsVerticalScrollIndicator={false}
@@ -232,7 +287,13 @@ export function Activities() {
           onMomentumScrollEnd={handleMomentumScrollEnd}
           contentContainerStyle={styles.listContent}
           renderItem={renderActivity}
-          ListEmptyComponent={!errorMessage ? <EmptyField /> : null}
+          ListEmptyComponent={
+            !errorMessage ? (
+              <EmptyField
+                isFiltered={filter !== "all" || searchQuery.trim().length > 0}
+              />
+            ) : null
+          }
           onEndReached={() => {
             if (hasMore && !isLoadingMore) {
               void loadMore();
@@ -293,6 +354,19 @@ export function Activities() {
         </Pressable>
       </SafeAreaView>
 
+      {/* QUICK ADD MODAL */}
+
+      <QuickAddModal
+        visible={selectedSuggestion !== null}
+        suggestion={selectedSuggestion}
+        isSaving={isSaving}
+        errorMessage={quickAddError}
+        onClose={closeSuggestion}
+        onConfirm={(durationMinutes, activityDate) => {
+          void handleQuickAdd(durationMinutes, activityDate);
+        }}
+      />
+
       {/* INCOMING ACTIVITY PARTICLE */}
 
       {arrival && arrivalTheme && (
@@ -305,7 +379,6 @@ export function Activities() {
               styles.arrivalParticle,
               {
                 backgroundColor: arrivalTheme.color,
-
                 shadowColor: arrivalTheme.color,
               },
             ]}

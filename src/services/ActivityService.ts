@@ -10,6 +10,16 @@ import {
   UpdateActivityInput,
 } from "../types/activity";
 
+export type QuickAddSuggestion = {
+  key: string;
+  title: string;
+  description?: string | null;
+  category: ActivityCategory;
+  classification: ActivityClassification;
+  durationMinutes: number;
+  frequency: number;
+};
+
 export class ActivityService {
   async getAllActivities(): Promise<Activity[]> {
     return activityRepository.getAll();
@@ -315,6 +325,93 @@ export class ActivityService {
       searchQuery,
       filter,
     );
+  }
+  async getQuickAddSuggestions(
+    limit: number = 5,
+  ): Promise<QuickAddSuggestion[]> {
+    const activities =
+      await activityRepository.getQuickAddCandidates(100);
+
+    const groups = new Map<
+      string,
+      {
+        title: string;
+        description?: string | null;
+        category: ActivityCategory;
+        classification: ActivityClassification;
+        durations: number[];
+        frequency: number;
+        mostRecentDate: number;
+      }
+    >();
+
+    for (const activity of activities) {
+      const normalizedTitle = activity.title.trim().toLowerCase();
+
+      const key = JSON.stringify([
+        normalizedTitle,
+        activity.category,
+        activity.classification,
+      ]);
+
+      const existing = groups.get(key);
+
+      if (existing) {
+        existing.durations.push(activity.durationMinutes);
+        existing.frequency += 1;
+
+        existing.mostRecentDate = Math.max(
+          existing.mostRecentDate,
+          activity.activityDate.getTime(),
+        );
+      } else {
+        groups.set(key, {
+          title: activity.title,
+          description: activity.description,
+          category: activity.category,
+          classification: activity.classification,
+          durations: [activity.durationMinutes],
+          frequency: 1,
+          mostRecentDate: activity.activityDate.getTime(),
+        });
+      }
+    }
+
+    return Array.from(groups.entries())
+      .map(([key, group]) => {
+        const sortedDurations = [...group.durations].sort(
+          (a, b) => a - b,
+        );
+
+        const middle = Math.floor(sortedDurations.length / 2);
+
+        const median =
+          sortedDurations.length % 2 === 0
+            ? Math.round(
+              (sortedDurations[middle - 1] +
+                sortedDurations[middle]) /
+              2,
+            )
+            : sortedDurations[middle];
+
+        return {
+          key,
+          title: group.title,
+          description: group.description,
+          category: group.category,
+          classification: group.classification,
+          durationMinutes: median,
+          frequency: group.frequency,
+          mostRecentDate: group.mostRecentDate,
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.frequency - a.frequency ||
+          b.mostRecentDate - a.mostRecentDate,
+      )
+      .slice(0, Math.max(0, limit))
+      .map(({ mostRecentDate, ...suggestion }) => suggestion);
   }
 }
 

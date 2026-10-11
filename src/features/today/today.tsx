@@ -8,6 +8,7 @@ import { TodayOverview } from "./components/TodayOverview";
 import { LifeField } from "./components/LifeField";
 import { TodaySignal } from "./components/TodaySignal";
 import { TodayActivitySummary } from "./components/TodayActivitySummary";
+import { DailyReflectionCard } from "./components/DailyReflectionCard";
 
 import { useToday } from "./hooks/useToday";
 
@@ -73,6 +74,12 @@ export function Today() {
 
       <Section>
         <TodayActivitySummary statistics={statistics} />
+      </Section>
+
+      {/* DAILY REFLECTION */}
+
+      <Section>
+        <DailyReflectionCard />
       </Section>
     </>
   );

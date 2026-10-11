@@ -2,15 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
-import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
 import { CLASSIFICATION_THEME } from "@/theme/classification";
 import { COLORS } from "@/theme/colors";
 
-import {
-  ActivityCategoryStatistics,
-  ActivityClassification,
-  ActivityStatistics,
-} from "@/types/activity";
+import { ActivityClassification, ActivityStatistics } from "@/types/activity";
 
 import { formatDuration } from "@/utils/formatDuration";
 
@@ -27,127 +22,189 @@ type Signal = {
   tone: SignalTone;
 };
 
+/*
+ * GENERATE TODAY'S INSIGHT
+ *
+ * Insights are based on recorded activities,
+ * not assumptions about the user's emotions
+ * or the objective quality of their day.
+ */
+
 function getSignal(statistics: ActivityStatistics): Signal {
   const {
-    strongestInvestment,
-    biggestLeak,
+    servesDurationMinutes,
     restoresDurationMinutes,
+    doesNotServeDurationMinutes,
     totalDurationMinutes,
   } = statistics;
 
-  // NO ACTIVITIES
+  const growing = servesDurationMinutes;
+  const restoring = restoresDurationMinutes;
+  const leaks = doesNotServeDurationMinutes;
+
+  const intentionalTime = growing + restoring;
+
+  /*
+   * NO ACTIVITIES
+   */
 
   if (totalDurationMinutes === 0) {
     return {
       icon: "sparkles-outline",
-      title: "Your field is still forming",
+      title: "Every moment has meaning",
       message:
-        "Trace more of your day to reveal where your time is creating energy.",
+        "Start tracing your day to discover what helps you grow, what restores you, and where your time goes.",
       tone: "neutral",
     };
   }
 
-  // ONLY RESTORING
+  /*
+   * ONLY RESTORING
+   */
 
-  if (!strongestInvestment && !biggestLeak && restoresDurationMinutes > 0) {
+  if (restoring > 0 && growing === 0 && leaks === 0) {
     return {
       icon: "leaf-outline",
-      title: "A moment of restoration",
+      title: "Making space to recharge",
       message: `You've dedicated ${formatDuration(
-        restoresDurationMinutes,
-      )} to rest and recovery today. Restoring your energy is part of living intentionally.`,
+        restoring,
+      )} to restoration today. Rest is an important part of a meaningful life.`,
       tone: ActivityClassification.Restores,
     };
   }
 
-  // ONLY GROWING
+  /*
+   * ONLY GROWING
+   */
 
-  if (strongestInvestment && !biggestLeak) {
-    const category = getActivityCategoryMeta(strongestInvestment.category);
-
-    return {
-      icon: "trending-up-outline",
-      title: "Strong investment today",
-      message: `${category.label} is your strongest investment with ${formatDuration(
-        strongestInvestment.servesDurationMinutes,
-      )} of Growing time.`,
-      tone: ActivityClassification.Serves,
-    };
-  }
-
-  // ONLY LIFE LEAKS
-
-  if (!strongestInvestment && biggestLeak) {
-    const category = getActivityCategoryMeta(biggestLeak.category);
-
-    return {
-      icon: "trending-down-outline",
-      title: "Main leak today",
-      message: `${category.label} is your biggest Life Leak with ${formatDuration(
-        biggestLeak.doesNotServeDurationMinutes,
-      )}.`,
-      tone: ActivityClassification.DoesNotServe,
-    };
-  }
-
-  // GROWING IS STRONGER THAN LIFE LEAKS
-
-  if (
-    strongestInvestment &&
-    biggestLeak &&
-    strongestInvestment.servesDurationMinutes >=
-      biggestLeak.doesNotServeDurationMinutes
-  ) {
-    const category = getActivityCategoryMeta(strongestInvestment.category);
-
+  if (growing > 0 && restoring === 0 && leaks === 0) {
     return {
       icon: "sparkles-outline",
-      title: "Your strongest signal",
-      message: `${category.label} is leading your day with ${formatDuration(
-        strongestInvestment.servesDurationMinutes,
-      )} of Growing time.`,
+      title: "Time invested in yourself",
+      message: `You've spent ${formatDuration(
+        growing,
+      )} on activities you've classified as supporting your growth.`,
       tone: ActivityClassification.Serves,
     };
   }
 
-  // LIFE LEAKS ARE STRONGER
+  /*
+   * ONLY LIFE LEAKS
+   */
 
-  if (biggestLeak) {
-    const category = getActivityCategoryMeta(biggestLeak.category);
-
+  if (leaks > 0 && intentionalTime === 0) {
     return {
-      icon: "pulse-outline",
-      title: "Watch this pattern",
-      message: `${category.label} is your largest Life Leak today at ${formatDuration(
-        biggestLeak.doesNotServeDurationMinutes,
-      )}.`,
+      icon: "compass-outline",
+      title: "Noticing where time goes",
+      message: `${formatDuration(
+        leaks,
+      )} of your recorded time went toward activities you've marked as Life Leaks. Awareness gives you space to decide what matters next.`,
       tone: ActivityClassification.DoesNotServe,
     };
   }
 
-  // FALLBACK
+  /*
+   * GROWING AND RESTORING ARE
+   * APPROXIMATELY BALANCED
+   *
+   * This is an observation, not an
+   * ideal ratio the user should achieve.
+   */
+
+  if (
+    growing > 0 &&
+    restoring > 0 &&
+    Math.abs(growing - restoring) <= intentionalTime * 0.2 &&
+    intentionalTime >= leaks
+  ) {
+    return {
+      icon: "infinite-outline",
+      title: "Growth and restoration",
+      message:
+        "You've made room for both personal growth and recovery today. Both deserve a place in your life.",
+      tone: "neutral",
+    };
+  }
+
+  /*
+   * RESTORING IS DOMINANT
+   */
+
+  if (restoring > growing && restoring >= leaks) {
+    return {
+      icon: "leaf-outline",
+      title: "Restoration is leading",
+      message: `You've spent ${formatDuration(
+        restoring,
+      )} on activities you've marked as Restoring today. Making space for recovery can be just as meaningful as pursuing a goal.`,
+      tone: ActivityClassification.Restores,
+    };
+  }
+
+  /*
+   * GROWING IS DOMINANT
+   */
+
+  if (growing >= restoring && growing >= leaks) {
+    return {
+      icon: "sparkles-outline",
+      title: "Investing in what matters",
+      message: `You've dedicated ${formatDuration(
+        growing,
+      )} to activities you've marked as Growing today. This is where much of your recorded time has been going.`,
+      tone: ActivityClassification.Serves,
+    };
+  }
+
+  /*
+   * LIFE LEAKS ARE DOMINANT
+   */
+
+  if (leaks > growing && leaks > restoring) {
+    return {
+      icon: "compass-outline",
+      title: "A moment of awareness",
+      message: `${formatDuration(
+        leaks,
+      )} of your recorded time went toward Life Leaks. Does this reflect how you wanted to spend your time today?`,
+      tone: ActivityClassification.DoesNotServe,
+    };
+  }
+
+  /*
+   * FALLBACK
+   */
 
   return {
     icon: "sparkles-outline",
     title: "Your day is taking shape",
-    message: "Every traced moment helps reveal the patterns of your life.",
+    message:
+      "Every moment you record helps you understand how you're spending your time and what matters to you.",
     tone: "neutral",
   };
 }
 
+/*
+ * TODAY'S INSIGHT COMPONENT
+ */
+
 export function TodaySignal({ statistics }: TodaySignalProps) {
   const signal = getSignal(statistics);
-
-  // CENTRALIZED THEME
 
   const accent =
     signal.tone === "neutral"
       ? COLORS.gold
       : CLASSIFICATION_THEME[signal.tone].color;
 
+  const hasActivities = statistics.totalDurationMinutes > 0;
+
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionLabel}>TODAY'S SIGNAL</Text>
+      {/* SECTION TITLE */}
+
+      <Text style={styles.sectionLabel}>TODAY'S INSIGHT</Text>
+
+      {/* COSMIC PANEL */}
 
       <CosmicPanel
         variant="signal"
@@ -158,30 +215,43 @@ export function TodaySignal({ statistics }: TodaySignalProps) {
           {/* TOP ROW */}
 
           <View style={styles.topRow}>
-            <View style={styles.iconFrame}>
+            <View
+              style={[
+                styles.iconFrame,
+                {
+                  borderColor: `${accent}33`,
+                  backgroundColor: `${accent}0E`,
+                },
+              ]}
+            >
               <Ionicons name={signal.icon} size={18} color={accent} />
             </View>
 
-            <Text style={styles.systemLabel}>LIFE INTELLIGENCE</Text>
+            <Text style={styles.systemLabel}>YOUR TIME PATTERNS</Text>
           </View>
 
-          {/* SIGNAL TITLE */}
+          {/* INSIGHT TITLE */}
 
           <Text style={styles.title}>{signal.title}</Text>
 
-          {/* SIGNAL MESSAGE */}
+          {/* INSIGHT MESSAGE */}
 
           <Text style={styles.message}>{signal.message}</Text>
 
           {/* STATUS */}
 
           <View style={styles.bottomRow}>
-            <View style={[styles.signalDot, { backgroundColor: accent }]} />
+            <View
+              style={[
+                styles.signalDot,
+                {
+                  backgroundColor: accent,
+                },
+              ]}
+            />
 
             <Text style={styles.statusText}>
-              {signal.tone === "neutral"
-                ? "AWAITING ACTIVITY"
-                : "SIGNAL DETECTED"}
+              {hasActivities ? "BASED ON YOUR ACTIVITIES" : "AWAITING ACTIVITY"}
             </Text>
 
             <View style={styles.bottomLine} />
@@ -191,6 +261,10 @@ export function TodaySignal({ statistics }: TodaySignalProps) {
     </View>
   );
 }
+
+/*
+ * STYLES
+ */
 
 const styles = StyleSheet.create({
   container: {
@@ -224,15 +298,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(214,173,101,0.20)",
-    backgroundColor: "rgba(214,173,101,0.055)",
   },
 
   systemLabel: {
     fontSize: 9,
     fontWeight: "700",
     letterSpacing: 1.5,
-    color: "#77716B",
+    color: COLORS.subtle,
   },
 
   title: {
@@ -266,13 +338,14 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: "700",
     letterSpacing: 1.1,
-    color: "#77716B",
+    color: COLORS.subtle,
   },
 
   bottomLine: {
     flex: 1,
     height: 1,
     marginLeft: 12,
-    backgroundColor: "rgba(214,173,101,0.12)",
+    backgroundColor: COLORS.goldBorder,
+    opacity: 0.5,
   },
 });
