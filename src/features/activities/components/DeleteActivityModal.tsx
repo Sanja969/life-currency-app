@@ -1,5 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
-import { ActivityIndicator, Modal, Pressable, Text, View } from "react-native";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from "react-native";
+import Svg, { Path } from "react-native-svg";
 
 type DeleteActivityModalProps = {
   visible: boolean;
@@ -8,6 +18,67 @@ type DeleteActivityModalProps = {
   onCancel: () => void;
   onDelete: () => void;
 };
+
+const COLORS = {
+  surface: "#151720",
+  gold: "#D6AD65",
+  text: "#F5F0E7",
+  muted: "#9295A5",
+  danger: "#E78A8A",
+};
+
+function AngularCard({ children }: { children: React.ReactNode }) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  function handleLayout(event: LayoutChangeEvent) {
+    const { width, height } = event.nativeEvent.layout;
+
+    setSize((previous) => {
+      if (
+        Math.abs(previous.width - width) < 0.5 &&
+        Math.abs(previous.height - height) < 0.5
+      ) {
+        return previous;
+      }
+
+      return { width, height };
+    });
+  }
+
+  const cut = 16;
+
+  const path = `
+    M ${cut} 0
+    L ${size.width} 0
+    L ${size.width} ${size.height - cut}
+    L ${size.width - cut} ${size.height}
+    L 0 ${size.height}
+    L 0 ${cut}
+    Z
+  `;
+
+  return (
+    <View onLayout={handleLayout} style={styles.card}>
+      {size.width > 0 && size.height > 0 && (
+        <Svg
+          pointerEvents="none"
+          width={size.width}
+          height={size.height}
+          style={StyleSheet.absoluteFill}
+        >
+          <Path
+            d={path}
+            fill={COLORS.surface}
+            stroke="rgba(214,173,101,0.3)"
+            strokeWidth={1}
+          />
+        </Svg>
+      )}
+
+      {children}
+    </View>
+  );
+}
 
 export function DeleteActivityModal({
   visible,
@@ -23,150 +94,198 @@ export function DeleteActivityModal({
       animationType="fade"
       statusBarTranslucent
       onRequestClose={() => {
-        if (!isDeleting) {
-          onCancel();
-        }
+        if (!isDeleting) onCancel();
       }}
     >
-      <View className="flex-1 items-center justify-center bg-black/75 px-6">
+      <View style={styles.overlay}>
         <Pressable
-          className="absolute inset-0"
+          style={StyleSheet.absoluteFill}
           disabled={isDeleting}
           onPress={onCancel}
+          accessibilityLabel="Close delete confirmation"
         />
 
-        <View
-          className="w-full max-w-[380px] overflow-hidden rounded-[28px] border border-[#6F294D] bg-[#080D19]"
-          style={{
-            shadowColor: "#E657A8",
-            shadowOpacity: 0.24,
-            shadowRadius: 30,
-            shadowOffset: {
-              width: 0,
-              height: 12,
-            },
-            elevation: 20,
-          }}
-        >
-          {/* BACKGROUND FIELD */}
+        <AngularCard>
+          <View style={styles.content}>
+            <Text style={styles.eyebrow}>LIFE CURRENCY</Text>
 
-          <View
-            pointerEvents="none"
-            className="absolute -right-20 -top-24 h-[220px] w-[220px] rounded-full"
-            style={{
-              backgroundColor: "#E657A8",
-              opacity: 0.08,
-            }}
-          />
-
-          <View
-            pointerEvents="none"
-            className="absolute -bottom-28 -left-24 h-[220px] w-[220px] rounded-full border"
-            style={{
-              borderColor: "rgba(230,87,168,0.10)",
-            }}
-          />
-
-          <View className="items-center px-6 pb-6 pt-7">
-            {/* DELETE CORE */}
-
-            <View className="h-[76px] w-[76px] items-center justify-center rounded-full border border-[#E657A8]/25 bg-[#E657A8]/[0.06]">
-              <View
-                className="h-[48px] w-[48px] items-center justify-center rounded-full bg-[#351124]"
-                style={{
-                  shadowColor: "#E657A8",
-                  shadowOpacity: 0.45,
-                  shadowRadius: 18,
-                  shadowOffset: {
-                    width: 0,
-                    height: 0,
-                  },
-                }}
-              >
-                <Ionicons name="trash-outline" size={23} color="#F06BB9" />
-              </View>
+            <View style={styles.iconContainer}>
+              <Ionicons name="trash-outline" size={25} color={COLORS.danger} />
             </View>
 
-            <Text className="mt-5 text-center text-[21px] font-bold tracking-[-0.4px] text-white">
-              Delete activity?
+            <Text style={styles.title}>Delete this trace?</Text>
+
+            <Text style={styles.description}>
+              You're about to permanently remove
             </Text>
 
-            <Text className="mt-2 text-center text-[14px] leading-[21px] text-[#8591AB]">
-              This will permanently remove
-            </Text>
-
-            <Text
-              numberOfLines={2}
-              className="mt-1 max-w-[270px] text-center text-[15px] font-semibold leading-[21px] text-[#E4E8F2]"
-            >
+            <Text numberOfLines={2} style={styles.activityTitle}>
               “{activityTitle}”
             </Text>
 
-            <Text className="mt-1 text-center text-[14px] leading-[21px] text-[#8591AB]">
-              from your activity history.
-            </Text>
+            <Text style={styles.description}>from your activity history.</Text>
 
-            {/* WARNING */}
+            <View style={styles.warning}>
+              <Ionicons
+                name="alert-circle-outline"
+                size={18}
+                color={COLORS.danger}
+              />
 
-            <View className="mt-5 w-full flex-row items-center rounded-[15px] border border-[#71304F]/40 bg-[#351124]/40 px-4 py-3">
-              <Ionicons name="alert-circle-outline" size={18} color="#E96AAA" />
-
-              <Text className="ml-2.5 flex-1 text-[12px] leading-[18px] text-[#B9819F]">
+              <Text style={styles.warningText}>
                 This action cannot be undone.
               </Text>
             </View>
 
-            {/* ACTIONS */}
-
-            <View className="mt-6 w-full flex-row">
+            <View style={styles.actions}>
               <Pressable
                 disabled={isDeleting}
                 onPress={onCancel}
-                className="mr-2 h-[52px] flex-1 items-center justify-center rounded-[16px] border border-[#26344F] bg-[#101827]"
-                style={({ pressed }) => ({
-                  opacity: isDeleting ? 0.45 : pressed ? 0.7 : 1,
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                })}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.cancelButton,
+                  { opacity: isDeleting ? 0.5 : pressed ? 0.75 : 1 },
+                ]}
               >
-                <Text className="text-[14px] font-semibold text-[#C4CCDE]">
-                  Keep trace
-                </Text>
+                <Text style={styles.cancelText}>Keep trace</Text>
               </Pressable>
 
               <Pressable
                 disabled={isDeleting}
                 onPress={onDelete}
-                className="ml-2 h-[52px] flex-1 flex-row items-center justify-center rounded-[16px] border border-[#D74A91]/70 bg-[#8D285D]/40"
-                style={({ pressed }) => ({
-                  opacity: isDeleting ? 0.7 : pressed ? 0.75 : 1,
-
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-
-                  shadowColor: "#E657A8",
-                  shadowOpacity: pressed ? 0.35 : 0.18,
-                  shadowRadius: 12,
-                  shadowOffset: {
-                    width: 0,
-                    height: 4,
-                  },
-                })}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.deleteButton,
+                  { opacity: isDeleting ? 0.7 : pressed ? 0.75 : 1 },
+                ]}
               >
                 {isDeleting ? (
-                  <ActivityIndicator size="small" color="#F7B1D4" />
+                  <ActivityIndicator size="small" color={COLORS.danger} />
                 ) : (
                   <>
-                    <Ionicons name="trash-outline" size={17} color="#F38AC0" />
-
-                    <Text className="ml-2 text-[14px] font-semibold text-[#F38AC0]">
-                      Delete
-                    </Text>
+                    <Ionicons
+                      name="trash-outline"
+                      size={17}
+                      color={COLORS.danger}
+                    />
+                    <Text style={styles.deleteText}>Delete</Text>
                   </>
                 )}
               </Pressable>
             </View>
           </View>
-        </View>
+        </AngularCard>
       </View>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    backgroundColor: "rgba(0,0,0,0.82)",
+  },
+  card: {
+    width: "100%",
+    maxWidth: 380,
+  },
+  content: {
+    paddingHorizontal: 22,
+    paddingTop: 24,
+    paddingBottom: 24,
+    alignItems: "center",
+  },
+  eyebrow: {
+    color: COLORS.gold,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 2,
+    marginBottom: 20,
+  },
+  iconContainer: {
+    width: 60,
+    height: 60,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(231,138,138,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(231,138,138,0.3)",
+    marginBottom: 18,
+  },
+  title: {
+    color: COLORS.text,
+    fontSize: 23,
+    fontWeight: "600",
+    letterSpacing: -0.5,
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  description: {
+    color: COLORS.muted,
+    fontSize: 13,
+    lineHeight: 21,
+    textAlign: "center",
+  },
+  activityTitle: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: "600",
+    textAlign: "center",
+    marginVertical: 4,
+  },
+  warning: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 13,
+    backgroundColor: "rgba(231,138,138,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(231,138,138,0.22)",
+    marginTop: 22,
+  },
+  warningText: {
+    color: "#D9A9AC",
+    fontSize: 12,
+    flex: 1,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+    marginTop: 24,
+  },
+  cancelButton: {
+    flex: 1,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#11141D",
+    borderWidth: 1,
+    borderColor: "rgba(214,173,101,0.22)",
+  },
+  cancelText: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  deleteButton: {
+    flex: 1,
+    height: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "rgba(231,138,138,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(231,138,138,0.45)",
+  },
+  deleteText: {
+    color: COLORS.danger,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+});

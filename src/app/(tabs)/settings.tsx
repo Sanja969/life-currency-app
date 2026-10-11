@@ -1,10 +1,31 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import Constants from "expo-constants";
 import { useRef } from "react";
-import { Pressable, ScrollView, Text, View, Alert } from "react-native";
+
+import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
+
 import { dataBackupService } from "@/services/DataBackupService";
 import { activityService } from "@/services/ActivityService";
-import Constants from "expo-constants";
+
+const COLORS = {
+  background: "#080A10",
+  surface: "#11141D",
+  border: "#252936",
+
+  gold: "#D6AD65",
+  goldBackground: "#24231F",
+  goldBorder: "#403728",
+
+  text: "#F5F0E8",
+  muted: "#9295A3",
+  subtle: "#686C7A",
+
+  danger: "#D88455",
+  dangerBackground: "#302019",
+  dangerBorder: "#493127",
+};
 
 type SettingsRowProps = {
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
@@ -21,44 +42,74 @@ function SettingsRow({
   destructive = false,
   onPress,
 }: SettingsRowProps) {
-  const color = destructive ? "#E657A8" : "#8FA3FF";
+  const accent = destructive ? COLORS.danger : COLORS.gold;
+
+  const iconBackground = destructive
+    ? COLORS.dangerBackground
+    : COLORS.goldBackground;
+
+  const iconBorder = destructive ? COLORS.dangerBorder : COLORS.goldBorder;
 
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center px-4 py-4"
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint={description}
+      className="flex-row items-center px-4 py-[17px]"
       style={({ pressed }) => ({
         opacity: pressed ? 0.65 : 1,
       })}
     >
+      {/* ICON */}
+
       <View
-        className="h-10 w-10 items-center justify-center rounded-xl"
+        className="h-11 w-11 items-center justify-center rounded-[14px] border"
         style={{
-          backgroundColor: destructive
-            ? "rgba(230, 87, 168, 0.08)"
-            : "rgba(113, 139, 255, 0.08)",
+          backgroundColor: iconBackground,
+          borderColor: iconBorder,
         }}
       >
-        <MaterialCommunityIcons name={icon} size={20} color={color} />
+        <MaterialCommunityIcons name={icon} size={21} color={accent} />
       </View>
 
-      <View className="ml-4 flex-1">
+      {/* CONTENT */}
+
+      <View className="ml-3.5 flex-1">
         <Text
-          className="text-[15px] font-semibold"
+          className="text-[14px] font-semibold"
           style={{
-            color: destructive ? "#F38DC7" : "#E9EDFA",
+            color: destructive ? COLORS.danger : COLORS.text,
           }}
         >
           {title}
         </Text>
 
-        <Text className="mt-1 text-[12px] leading-[17px] text-[#697791]">
+        <Text className="mt-1 text-[12px] leading-[18px] text-[#9295A3]">
           {description}
         </Text>
       </View>
 
-      <MaterialCommunityIcons name="chevron-right" size={21} color="#46516A" />
+      {/* CHEVRON */}
+
+      <MaterialCommunityIcons
+        name="chevron-right"
+        size={21}
+        color={COLORS.subtle}
+      />
     </Pressable>
+  );
+}
+
+function SettingsDivider() {
+  return <View className="ml-[72px] h-px bg-[#252936]" />;
+}
+
+function SettingsSectionHeader({ title }: { title: string }) {
+  return (
+    <Text className="mb-3 mt-8 text-[10px] font-bold tracking-[2px] text-[#9295A3]">
+      {title}
+    </Text>
   );
 }
 
@@ -66,7 +117,9 @@ export default function SettingsScreen() {
   const operationRunning = useRef(false);
 
   function startOperation() {
-    if (operationRunning.current) return false;
+    if (operationRunning.current) {
+      return false;
+    }
 
     operationRunning.current = true;
 
@@ -77,8 +130,11 @@ export default function SettingsScreen() {
     operationRunning.current = false;
   }
 
+  // EXPORT BACKUP
+
   async function handleExportData() {
     if (!startOperation()) return;
+
     try {
       await dataBackupService.exportData();
     } catch (error) {
@@ -93,14 +149,21 @@ export default function SettingsScreen() {
     }
   }
 
+  // IMPORT BACKUP
+
   async function handleImportData() {
     if (!startOperation()) return;
+
+    let confirmationShown = false;
+
     try {
       const activities = await dataBackupService.pickBackup();
 
       if (!activities) {
         return;
       }
+
+      confirmationShown = true;
 
       Alert.alert(
         "Restore backup?",
@@ -111,6 +174,7 @@ export default function SettingsScreen() {
           {
             text: "Cancel",
             style: "cancel",
+            onPress: finishOperation,
           },
           {
             text: "Restore",
@@ -128,12 +192,17 @@ export default function SettingsScreen() {
 
                 Alert.alert(
                   "Restore failed",
-                  "Your existing activity data was not changed.",
+                  "Your activity data could not be restored. Please try again.",
                 );
+              } finally {
+                finishOperation();
               }
             },
           },
         ],
+        {
+          cancelable: false,
+        },
       );
     } catch (error) {
       console.error("Failed to read Life Currency backup:", error);
@@ -143,12 +212,17 @@ export default function SettingsScreen() {
         "The selected file is not a valid Life Currency backup.",
       );
     } finally {
-      finishOperation();
+      if (!confirmationShown) {
+        finishOperation();
+      }
     }
   }
 
+  // EXPORT CSV
+
   async function handleExportCsv() {
     if (!startOperation()) return;
+
     try {
       await dataBackupService.exportCsv();
     } catch (error) {
@@ -163,8 +237,11 @@ export default function SettingsScreen() {
     }
   }
 
+  // DELETE ALL DATA
+
   function handleDeleteAllData() {
     if (!startOperation()) return;
+
     Alert.alert(
       "Delete all activity data?",
       "This will permanently delete your entire activity history from this device. This action cannot be undone.",
@@ -201,25 +278,14 @@ export default function SettingsScreen() {
           },
         },
       ],
-      { cancelable: false },
+      {
+        cancelable: false,
+      },
     );
   }
 
   return (
-    <View className="flex-1 bg-[#030611]">
-      {/* QUANTUM BACKGROUND */}
-      <View
-        pointerEvents="none"
-        className="absolute -right-32 top-[-80px] h-[320px] w-[320px] rounded-full bg-[#536DFF]"
-        style={{ opacity: 0.055 }}
-      />
-
-      <View
-        pointerEvents="none"
-        className="absolute -left-40 top-[440px] h-[330px] w-[330px] rounded-full bg-[#E657A8]"
-        style={{ opacity: 0.02 }}
-      />
-
+    <View className="flex-1 bg-[#080A10]">
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -230,30 +296,26 @@ export default function SettingsScreen() {
           }}
         >
           {/* HEADER */}
-          <Text className="text-[11px] font-bold tracking-[2px] text-[#718BFF]">
-            LIFE CURRENCY
-          </Text>
 
-          <Text className="mt-2 text-[30px] font-bold text-[#F2F4FC]">
-            Settings
-          </Text>
+          <View>
+            <Text className="text-[10px] font-bold tracking-[2px] text-[#D6AD65]">
+              LIFE CURRENCY
+            </Text>
 
-          <Text className="mt-2 text-[14px] leading-[21px] text-[#74819B]">
-            Manage your Life Currency data and preferences.
-          </Text>
+            <Text className="mt-2 text-[30px] font-bold text-[#F5F0E8]">
+              Settings
+            </Text>
+
+            <Text className="mt-2 text-[14px] leading-[21px] text-[#9295A3]">
+              Manage your data and preferences.
+            </Text>
+          </View>
 
           {/* DATA & PRIVACY */}
-          <Text className="mb-3 mt-9 text-[11px] font-bold tracking-[1.5px] text-[#66738D]">
-            DATA & PRIVACY
-          </Text>
 
-          <View
-            className="overflow-hidden rounded-[22px] border"
-            style={{
-              backgroundColor: "rgba(11, 17, 34, 0.72)",
-              borderColor: "rgba(95, 112, 160, 0.16)",
-            }}
-          >
+          <SettingsSectionHeader title="DATA & PRIVACY" />
+
+          <View className="overflow-hidden rounded-[24px] border border-[#252936] bg-[#11141D]">
             <SettingsRow
               icon="export-variant"
               title="Export data"
@@ -261,7 +323,7 @@ export default function SettingsScreen() {
               onPress={handleExportData}
             />
 
-            <View className="ml-[68px] h-px bg-[#1A2235]" />
+            <SettingsDivider />
 
             <SettingsRow
               icon="import"
@@ -270,7 +332,7 @@ export default function SettingsScreen() {
               onPress={handleImportData}
             />
 
-            <View className="ml-[68px] h-px bg-[#1A2235]" />
+            <SettingsDivider />
 
             <SettingsRow
               icon="file-delimited-outline"
@@ -278,9 +340,28 @@ export default function SettingsScreen() {
               description="Open your activity history in spreadsheets."
               onPress={handleExportCsv}
             />
+          </View>
 
-            <View className="ml-[68px] h-px bg-[#1A2235]" />
+          {/* PRIVACY NOTE */}
 
+          <View className="mt-4 flex-row items-start px-1">
+            <MaterialCommunityIcons
+              name="shield-check-outline"
+              size={17}
+              color={COLORS.gold}
+            />
+
+            <Text className="ml-2 flex-1 text-[12px] leading-[19px] text-[#686C7A]">
+              Your activity history is stored on this device. Export a backup
+              before deleting the app or changing devices.
+            </Text>
+          </View>
+
+          {/* DANGER ZONE */}
+
+          <SettingsSectionHeader title="DANGER ZONE" />
+
+          <View className="overflow-hidden rounded-[24px] border border-[#252936] bg-[#11141D]">
             <SettingsRow
               icon="delete-outline"
               title="Delete all activity data"
@@ -290,52 +371,53 @@ export default function SettingsScreen() {
             />
           </View>
 
-          <Text className="mt-3 px-2 text-[12px] leading-[18px] text-[#56627A]">
-            Your activity history is stored on this device. Export a backup
-            before deleting the app or changing devices.
-          </Text>
-
           {/* ABOUT */}
-          <Text className="mb-3 mt-9 text-[11px] font-bold tracking-[1.5px] text-[#66738D]">
-            ABOUT
-          </Text>
 
-          <View
-            className="rounded-[22px] border px-4 py-4"
-            style={{
-              backgroundColor: "rgba(11, 17, 34, 0.72)",
-              borderColor: "rgba(95, 112, 160, 0.16)",
-            }}
-          >
+          <SettingsSectionHeader title="ABOUT" />
+
+          <View className="rounded-[24px] border border-[#252936] bg-[#11141D] p-4">
             <View className="flex-row items-center">
-              <View
-                className="h-10 w-10 items-center justify-center rounded-xl"
-                style={{
-                  backgroundColor: "rgba(113, 139, 255, 0.08)",
-                }}
-              >
+              {/* APP ICON */}
+
+              <View className="h-11 w-11 items-center justify-center rounded-[14px] border border-[#403728] bg-[#24231F]">
                 <MaterialCommunityIcons
                   name="orbit"
-                  size={21}
-                  color="#8FA3FF"
+                  size={23}
+                  color={COLORS.gold}
                 />
               </View>
 
-              <View className="ml-4">
-                <Text className="text-[15px] font-semibold text-[#E9EDFA]">
+              {/* APP INFO */}
+
+              <View className="ml-3.5 flex-1">
+                <Text className="text-[15px] font-semibold text-[#F5F0E8]">
                   Life Currency
                 </Text>
 
-                <Text className="mt-1 text-[12px] text-[#697791]">
+                <Text className="mt-1 text-[12px] text-[#9295A3]">
                   Version {Constants.expoConfig?.version ?? "1.0.0"}
+                </Text>
+              </View>
+
+              {/* VERSION INDICATOR */}
+
+              <View className="rounded-full border border-[#403728] bg-[#24231F] px-3 py-1.5">
+                <Text className="text-[10px] font-semibold text-[#D6AD65]">
+                  v1
                 </Text>
               </View>
             </View>
           </View>
 
-          <Text className="mt-7 text-center text-[11px] leading-[17px] text-[#46516A]">
-            Your time is your life currency.
-          </Text>
+          {/* FOOTER */}
+
+          <View className="mt-9 items-center">
+            <View className="mb-4 h-px w-10 bg-[#403728]" />
+
+            <Text className="text-center text-[12px] italic tracking-[0.3px] text-[#9295A3]">
+              Your time is your life currency.
+            </Text>
+          </View>
         </ScrollView>
       </SafeAreaView>
     </View>

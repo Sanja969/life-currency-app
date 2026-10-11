@@ -227,7 +227,12 @@ export class ActivityRepository {
   async getActivityCounts(
     searchQuery: string = "",
     filter: string = "all",
-  ): Promise<{ growingCount: number; leaksCount: number }> {
+  ): Promise<{
+    growingCount: number;
+    leaksCount: number;
+    growingMinutes: number;
+    leaksMinutes: number;
+  }> {
     const database = await getDatabase();
 
     const query = searchQuery.trim().toLowerCase();
@@ -235,16 +240,38 @@ export class ActivityRepository {
     const result = await database.getFirstAsync<{
       growingCount: number;
       leaksCount: number;
+      growingMinutes: number;
+      leaksMinutes: number;
     }>(
       `SELECT
-         COUNT(CASE WHEN classification = 'serves' THEN 1 END) AS growingCount,
-         COUNT(CASE WHEN classification = 'does_not_serve' THEN 1 END) AS leaksCount
+         COUNT(CASE
+           WHEN classification = 'serves' THEN 1
+         END) AS growingCount,
+  
+         COUNT(CASE
+           WHEN classification = 'does_not_serve' THEN 1
+         END) AS leaksCount,
+  
+         COALESCE(SUM(CASE
+           WHEN classification = 'serves'
+           THEN duration_minutes
+           ELSE 0
+         END), 0) AS growingMinutes,
+  
+         COALESCE(SUM(CASE
+           WHEN classification = 'does_not_serve'
+           THEN duration_minutes
+           ELSE 0
+         END), 0) AS leaksMinutes
+  
        FROM activities
+  
        WHERE (
          ? = ''
          OR LOWER(title) LIKE '%' || ? || '%'
          OR LOWER(COALESCE(description, '')) LIKE '%' || ? || '%'
        )
+  
        AND (? = 'all' OR classification = ?)`,
       [query, query, query, filter, filter],
     );
@@ -252,9 +279,11 @@ export class ActivityRepository {
     return {
       growingCount: result?.growingCount ?? 0,
       leaksCount: result?.leaksCount ?? 0,
-    }
-
+      growingMinutes: result?.growingMinutes ?? 0,
+      leaksMinutes: result?.leaksMinutes ?? 0,
+    };
   }
+
   async getActivityPosition(
     activityDate: string,
     searchQuery = "",

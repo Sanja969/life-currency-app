@@ -283,10 +283,16 @@ export class ActivityService {
       filter,
     );
   }
+
   async getActivityCounts(
     searchQuery: string = "",
     filter: string = "all",
-  ): Promise<{ growingCount: number; leaksCount: number }> {
+  ): Promise<{
+    growingCount: number;
+    leaksCount: number;
+    growingMinutes: number;
+    leaksMinutes: number;
+  }> {
     return activityRepository.getActivityCounts(searchQuery, filter);
   }
 

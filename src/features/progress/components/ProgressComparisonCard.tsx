@@ -15,6 +15,17 @@ type ChangeRowProps = {
   suffix?: string;
 };
 
+const COLORS = {
+  surface: "#11141D",
+  border: "#252936",
+  text: "#F5F0E8",
+  muted: "#9295A3",
+  subtle: "#686C7A",
+  growing: "#8274E8",
+  leaks: "#D88455",
+  gold: "#D6AD65",
+};
+
 function ChangeRow({
   label,
   value,
@@ -23,10 +34,14 @@ function ChangeRow({
 }: ChangeRowProps) {
   if (value === null) {
     return (
-      <View className="flex-row items-center justify-between py-3">
-        <Text className="text-[13px] text-[#7A879F]">{label}</Text>
+      <View className="flex-row items-center justify-between py-4">
+        <Text className="text-[13px]" style={{ color: COLORS.muted }}>
+          {label}
+        </Text>
 
-        <Text className="text-[12px] text-[#56637D]">No previous data</Text>
+        <Text className="text-[12px]" style={{ color: COLORS.subtle }}>
+          No previous data
+        </Text>
       </View>
     );
   }
@@ -38,24 +53,30 @@ function ChangeRow({
         ? "arrow-down-outline"
         : "remove-outline";
 
-  let color = "#8290A8";
+  let color = COLORS.muted;
 
   if (value !== 0 && direction !== "neutral") {
     const improved = direction === "positive" ? value > 0 : value < 0;
 
-    color = improved ? "#718BFF" : "#E657A8";
+    color = improved ? COLORS.growing : COLORS.leaks;
   }
 
   const formattedValue = value > 0 ? `+${value}` : `${value}`;
 
   return (
-    <View className="flex-row items-center justify-between py-3">
-      <Text className="text-[13px] text-[#7A879F]">{label}</Text>
+    <View className="flex-row items-center justify-between py-4">
+      {/* LABEL */}
+
+      <Text className="text-[13px]" style={{ color: COLORS.muted }}>
+        {label}
+      </Text>
+
+      {/* CHANGE */}
 
       <View className="flex-row items-center">
-        <Ionicons name={icon} size={14} color={color} />
+        <Ionicons name={icon} size={15} color={color} />
 
-        <Text className="ml-1 text-[13px] font-semibold" style={{ color }}>
+        <Text className="ml-1.5 text-[13px] font-semibold" style={{ color }}>
           {formattedValue}
           {suffix}
         </Text>
@@ -72,25 +93,29 @@ export function ProgressComparisonCard({
     period === "7days" ? "previous 7 days" : "previous 30 days";
 
   return (
-    <View className="mt-7">
+    <View className="mt-8">
+      {/* SECTION HEADER */}
+
       <View className="mb-3">
-        <Text className="text-[11px] font-bold tracking-[1.4px] text-[#65728D]">
+        <Text className="text-[10px] font-bold tracking-[2px] text-[#9295A3]">
           CHANGE
         </Text>
 
-        <Text className="mt-1 text-[12px] text-[#56637D]">
+        <Text className="mt-1.5 text-[12px] text-[#686C7A]">
           Compared with the {periodLabel}
         </Text>
       </View>
 
-      <View className="overflow-hidden rounded-[26px] border border-[#192744] bg-[#07101F] px-5">
+      {/* COMPARISON CARD */}
+
+      <View className="overflow-hidden rounded-[24px] border border-[#252936] bg-[#11141D] px-5">
         <ChangeRow
           label="Time observed"
           value={comparison.totalMinutesChangePercent}
           direction="neutral"
         />
 
-        <View className="h-[1px] bg-[#17233B]" />
+        <View className="h-[1px] bg-[#252936]" />
 
         <ChangeRow
           label="Growing share"
@@ -99,7 +124,7 @@ export function ProgressComparisonCard({
           suffix=" pp"
         />
 
-        <View className="h-[1px] bg-[#17233B]" />
+        <View className="h-[1px] bg-[#252936]" />
 
         <ChangeRow
           label="Life Leak share"

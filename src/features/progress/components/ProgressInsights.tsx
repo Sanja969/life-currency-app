@@ -4,12 +4,25 @@ import { Text, View } from "react-native";
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
 import { formatDuration } from "@/utils/formatDuration";
 
-import { ProgressCategoryStat, ProgressPeriod } from "../hooks/useProgress";
+import {
+  ProgressCategoryStat,
+  ProgressPeriod,
+} from "../hooks/useProgress";
 
 type ProgressInsightsProps = {
   strongestInvestment: ProgressCategoryStat | null;
   biggestLeak: ProgressCategoryStat | null;
   period: ProgressPeriod;
+};
+
+const COLORS = {
+  surface: "#11141D",
+  border: "#252936",
+  text: "#F5F0E8",
+  muted: "#9295A3",
+  subtle: "#686C7A",
+  growing: "#8274E8",
+  leaks: "#D88455",
 };
 
 export function ProgressInsights({
@@ -21,10 +34,13 @@ export function ProgressInsights({
     return null;
   }
 
-  const periodLabel = period === "7days" ? "last 7 days" : "last 30 days";
+  const periodLabel =
+    period === "7days" ? "last 7 days" : "last 30 days";
 
   const strongestInvestmentMeta = strongestInvestment
-    ? getActivityCategoryMeta(strongestInvestment.category)
+    ? getActivityCategoryMeta(
+        strongestInvestment.category,
+      )
     : null;
 
   const biggestLeakMeta = biggestLeak
@@ -32,81 +48,105 @@ export function ProgressInsights({
     : null;
 
   return (
-    <View className="mt-7">
+    <View className="mt-8">
+      {/* SECTION HEADER */}
+
       <View className="mb-3">
-        <Text className="text-[11px] font-bold tracking-[1.4px] text-[#65728D]">
+        <Text className="text-[10px] font-bold tracking-[2px] text-[#9295A3]">
           CURRENT SIGNALS
         </Text>
 
-        <Text className="mt-1 text-[12px] text-[#56637D]">
+        <Text className="mt-1.5 text-[12px] text-[#686C7A]">
           What stands out in this period
         </Text>
       </View>
 
+      {/* SIGNAL CARDS */}
+
       <View className="gap-3">
-        {strongestInvestment && strongestInvestmentMeta ? (
-          <View className="rounded-[22px] border border-[#24345E] bg-[#0A1225] p-5">
+        {/* STRONGEST INVESTMENT */}
+
+        {strongestInvestment && strongestInvestmentMeta && (
+          <View className="rounded-[22px] border border-[#252936] bg-[#11141D] p-5">
             <View className="flex-row items-center">
-              <View className="h-10 w-10 items-center justify-center rounded-[13px] bg-[#152147]">
+              {/* ICON */}
+
+              <View className="h-11 w-11 items-center justify-center rounded-[14px] border border-[#383052] bg-[#211D35]">
                 <Ionicons
                   name="trending-up-outline"
-                  size={20}
-                  color="#718BFF"
+                  size={21}
+                  color={COLORS.growing}
                 />
               </View>
 
+              {/* CONTENT */}
+
               <View className="ml-3 flex-1">
-                <Text className="text-[10px] font-bold tracking-[1.1px] text-[#718BFF]">
+                <Text className="text-[10px] font-bold tracking-[1.2px] text-[#8274E8]">
                   STRONGEST INVESTMENT
                 </Text>
 
-                <Text className="mt-1 text-[17px] font-semibold text-[#E5E9F5]">
+                <Text className="mt-1.5 text-[16px] font-semibold text-[#F5F0E8]">
                   {strongestInvestmentMeta.label}
                 </Text>
               </View>
 
-              <Text className="text-[16px] font-semibold text-[#BFC9FF]">
-                {formatDuration(strongestInvestment.growingMinutes)}
+              {/* DURATION */}
+
+              <Text className="ml-2 text-[15px] font-semibold text-[#8274E8]">
+                {formatDuration(
+                  strongestInvestment.growingMinutes,
+                )}
               </Text>
             </View>
 
-            <Text className="ml-[52px] mt-3 text-[12px] leading-[18px] text-[#697792]">
+            <Text className="ml-[56px] mt-3 text-[12px] leading-[18px] text-[#9295A3]">
               Most Growing time in the {periodLabel}.
             </Text>
           </View>
-        ) : null}
+        )}
 
-        {biggestLeak && biggestLeakMeta ? (
-          <View className="rounded-[22px] border border-[#4A2343] bg-[#120B1B] p-5">
+        {/* BIGGEST LEAK */}
+
+        {biggestLeak && biggestLeakMeta && (
+          <View className="rounded-[22px] border border-[#252936] bg-[#11141D] p-5">
             <View className="flex-row items-center">
-              <View className="h-10 w-10 items-center justify-center rounded-[13px] bg-[#31142B]">
+              {/* ICON */}
+
+              <View className="h-11 w-11 items-center justify-center rounded-[14px] border border-[#493127] bg-[#302019]">
                 <Ionicons
                   name="trending-down-outline"
-                  size={20}
-                  color="#E657A8"
+                  size={21}
+                  color={COLORS.leaks}
                 />
               </View>
 
+              {/* CONTENT */}
+
               <View className="ml-3 flex-1">
-                <Text className="text-[10px] font-bold tracking-[1.1px] text-[#E657A8]">
+                <Text className="text-[10px] font-bold tracking-[1.2px] text-[#D88455]">
                   BIGGEST LEAK
                 </Text>
 
-                <Text className="mt-1 text-[17px] font-semibold text-[#F1DFEA]">
+                <Text className="mt-1.5 text-[16px] font-semibold text-[#F5F0E8]">
                   {biggestLeakMeta.label}
                 </Text>
               </View>
 
-              <Text className="text-[16px] font-semibold text-[#F4A9D2]">
-                {formatDuration(biggestLeak.leakMinutes)}
+              {/* DURATION */}
+
+              <Text className="ml-2 text-[15px] font-semibold text-[#D88455]">
+                {formatDuration(
+                  biggestLeak.leakMinutes,
+                )}
               </Text>
             </View>
 
-            <Text className="ml-[52px] mt-3 text-[12px] leading-[18px] text-[#80677A]">
+            <Text className="ml-[56px] mt-3 text-[12px] leading-[18px] text-[#9295A3]">
               Most Life Leak time in the {periodLabel}.
             </Text>
           </View>
-        ) : null}
+        )}
       </View>
     </View>
   );

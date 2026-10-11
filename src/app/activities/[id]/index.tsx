@@ -1,58 +1,163 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   View,
+  type LayoutChangeEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Circle, Path } from "react-native-svg";
 
+import { AppButton } from "@/components/ui/AppButton";
 import { DeleteActivityModal } from "@/features/activities/components/DeleteActivityModal";
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
 import { activityService } from "@/services/ActivityService";
 import { Activity, ActivityClassification } from "@/types/activity";
 
+const COLORS = {
+  background: "#080A10",
+  surface: "#11141D",
+  gold: "#D6AD65",
+  lightGold: "#F3D49B",
+  text: "#F5F0E7",
+  muted: "#9295A5",
+  growing: "#8274E8",
+  leak: "#D88455",
+  danger: "#E78A8A",
+};
+
 function normalizeParam(value: string | string[] | undefined) {
-  if (Array.isArray(value)) {
-    return value[0];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function formatDuration(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (hours === 0) return `${minutes} min`;
+  if (remainingMinutes === 0) return `${hours}h`;
+
+  return `${hours}h ${remainingMinutes}m`;
+}
+
+type AngularCardProps = {
+  children: ReactNode;
+  borderColor?: string;
+  backgroundColor?: string;
+  cut?: number;
+  style?: object;
+};
+
+function AngularCard({
+  children,
+  borderColor = "rgba(214,173,101,0.22)",
+  backgroundColor = COLORS.surface,
+  cut = 14,
+  style,
+}: AngularCardProps) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  function handleLayout(event: LayoutChangeEvent) {
+    const { width, height } = event.nativeEvent.layout;
+
+    setSize((previous) => {
+      if (
+        Math.abs(previous.width - width) < 0.5 &&
+        Math.abs(previous.height - height) < 0.5
+      ) {
+        return previous;
+      }
+
+      return { width, height };
+    });
   }
 
-  return value;
+  const path = `
+    M ${cut} 0
+    L ${size.width} 0
+    L ${size.width} ${size.height - cut}
+    L ${size.width - cut} ${size.height}
+    L 0 ${size.height}
+    L 0 ${cut}
+    Z
+  `;
+
+  return (
+    <View onLayout={handleLayout} style={style}>
+      {size.width > 0 && size.height > 0 && (
+        <Svg
+          pointerEvents="none"
+          width={size.width}
+          height={size.height}
+          style={StyleSheet.absoluteFill}
+        >
+          <Path
+            d={path}
+            fill={backgroundColor}
+            stroke={borderColor}
+            strokeWidth={1}
+          />
+        </Svg>
+      )}
+
+      {children}
+    </View>
+  );
+}
+
+type DetailRowProps = {
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  value: string;
+  accent: string;
+  showDivider?: boolean;
+};
+
+function DetailRow({
+  icon,
+  label,
+  value,
+  accent,
+  showDivider = true,
+}: DetailRowProps) {
+  return (
+    <>
+      <View style={styles.detailRow}>
+        <View style={styles.detailIcon}>
+          <Ionicons name={icon} size={19} color={accent} />
+        </View>
+
+        <View style={styles.detailText}>
+          <Text style={styles.detailLabel}>{label}</Text>
+          <Text style={styles.detailValue}>{value}</Text>
+        </View>
+      </View>
+
+      {showDivider && <View style={styles.divider} />}
+    </>
+  );
 }
 
 export default function ActivityDetailScreen() {
-  const params = useLocalSearchParams<{
-    id?: string | string[];
-  }>();
-
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = normalizeParam(params.id);
 
   const [activity, setActivity] = useState<Activity | null>(null);
-
   const [isLoading, setIsLoading] = useState(true);
-
   const [isDeleting, setIsDeleting] = useState(false);
-
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 
   const loadActivity = useCallback(async () => {
-    if (!id) {
-      setActivity(null);
-      setErrorMessage("Activity id is missing.");
-      setIsLoading(false);
-      return;
-    }
-
     const numericId = Number(id);
 
-    if (Number.isNaN(numericId)) {
+    if (!id || !Number.isSafeInteger(numericId) || numericId <= 0) {
       setActivity(null);
       setErrorMessage("Activity id is invalid.");
       setIsLoading(false);
@@ -74,7 +179,6 @@ export default function ActivityDetailScreen() {
       setActivity(foundActivity);
     } catch (error) {
       setActivity(null);
-
       setErrorMessage(
         error instanceof Error ? error.message : "Unable to load activity.",
       );
@@ -89,26 +193,20 @@ export default function ActivityDetailScreen() {
     }, [loadActivity]),
   );
 
-  const handleEdit = () => {
-    if (!activity) {
-      return;
-    }
+  function handleEdit() {
+    if (!activity) return;
 
     router.push(`/activities/${activity.id}/edit`);
-  };
+  }
 
-  const handleDelete = () => {
-    if (!activity || isDeleting) {
-      return;
-    }
+  function handleDelete() {
+    if (!activity || isDeleting) return;
 
     setIsDeleteModalVisible(true);
-  };
+  }
 
-  const deleteActivity = async () => {
-    if (!activity || isDeleting) {
-      return;
-    }
+  async function deleteActivity() {
+    if (!activity || isDeleting) return;
 
     try {
       setIsDeleting(true);
@@ -116,7 +214,6 @@ export default function ActivityDetailScreen() {
       await activityService.deleteActivity(activity.id);
 
       setIsDeleteModalVisible(false);
-
       router.replace("/activities");
     } catch (error) {
       setIsDeleting(false);
@@ -128,55 +225,50 @@ export default function ActivityDetailScreen() {
           : "Something went wrong while deleting this activity.",
       );
     }
-  };
+  }
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#030611]">
-        <ActivityIndicator size="large" color="#718BFF" />
-
-        <Text className="mt-4 text-[14px] text-[#7483A3]">
-          Loading activity...
-        </Text>
+      <View style={styles.centeredScreen}>
+        <ActivityIndicator size="large" color={COLORS.gold} />
+        <Text style={styles.loadingText}>Loading activity...</Text>
       </View>
     );
   }
 
   if (!activity || errorMessage) {
     return (
-      <View className="flex-1 bg-[#030611]">
+      <View style={styles.screen}>
         <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-          <View className="px-5 pt-2">
-            <Pressable
+          <View style={styles.header}>
+            <AppButton
+              variant="icon"
+              tone="secondary"
+              icon="chevron-back"
+              accessibilityLabel="Go back"
               onPress={() => router.back()}
-              hitSlop={12}
-              className="h-11 w-11 items-center justify-center rounded-full border border-[#1D2A48] bg-[#08101F]"
-            >
-              <Ionicons name="chevron-back" size={23} color="#D6DDF0" />
-            </Pressable>
+            />
           </View>
 
-          <View className="flex-1 items-center justify-center px-8">
-            <View className="h-16 w-16 items-center justify-center rounded-full border border-[#E657A8]/30 bg-[#E657A8]/10">
-              <Ionicons name="alert-circle-outline" size={30} color="#E657A8" />
-            </View>
+          <View style={styles.errorContainer}>
+            <Ionicons
+              name="alert-circle-outline"
+              size={36}
+              color={COLORS.danger}
+            />
 
-            <Text className="mt-5 text-center text-[20px] font-semibold text-white">
-              Activity unavailable
-            </Text>
+            <Text style={styles.errorTitle}>Activity unavailable</Text>
 
-            <Text className="mt-2 text-center text-[14px] leading-6 text-[#7F8CA8]">
+            <Text style={styles.errorDescription}>
               {errorMessage ?? "This activity could not be found."}
             </Text>
 
-            <Pressable
+            <AppButton
+              variant="secondary"
               onPress={() => router.replace("/activities")}
-              className="mt-6 rounded-[16px] border border-[#28375D] bg-[#0B1425] px-5 py-3"
             >
-              <Text className="text-[14px] font-semibold text-[#C8D1E6]">
-                Back to activities
-              </Text>
-            </Pressable>
+              Back to activities
+            </AppButton>
           </View>
         </SafeAreaView>
       </View>
@@ -184,38 +276,8 @@ export default function ActivityDetailScreen() {
   }
 
   const serves = activity.classification === ActivityClassification.Serves;
-
+  const accent = serves ? COLORS.growing : COLORS.leak;
   const categoryMeta = getActivityCategoryMeta(activity.category);
-
-  const palette = serves
-    ? {
-        primary: "#718BFF",
-        light: "#D8DEFF",
-
-        gradientStart: "rgba(36, 53, 133, 0.86)",
-        gradientMiddle: "rgba(16, 27, 69, 0.82)",
-        gradientEnd: "rgba(6, 12, 29, 0.98)",
-
-        border: "rgba(91, 117, 255, 0.72)",
-        glow: "#627AFF",
-
-        label: "GROWING",
-        message: "This activity is building your energy.",
-      }
-    : {
-        primary: "#E657A8",
-        light: "#FFD0EB",
-
-        gradientStart: "rgba(110, 24, 77, 0.86)",
-        gradientMiddle: "rgba(62, 17, 52, 0.82)",
-        gradientEnd: "rgba(13, 9, 27, 0.98)",
-
-        border: "rgba(230, 70, 164, 0.7)",
-        glow: "#E447A5",
-
-        label: "LIFE LEAK",
-        message: "This activity is taking energy from your day.",
-      };
 
   const formattedDate = activity.activityDate.toLocaleDateString([], {
     weekday: "long",
@@ -230,420 +292,189 @@ export default function ActivityDetailScreen() {
   });
 
   return (
-    <View className="flex-1 bg-[#030611]">
-      {/* BACKGROUND GLOWS */}
-
-      <View
-        pointerEvents="none"
-        className="absolute -right-28 top-[-40px] h-[300px] w-[300px] rounded-full"
-        style={{
-          backgroundColor: palette.glow,
-          opacity: 0.08,
-        }}
-      />
-
-      <View
-        pointerEvents="none"
-        className="absolute -left-40 top-[340px] h-[320px] w-[320px] rounded-full"
-        style={{
-          backgroundColor: palette.glow,
-          opacity: 0.035,
-        }}
-      />
-
+    <View style={styles.screen}>
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
         {/* HEADER */}
 
-        <View className="flex-row items-center justify-between px-5 pt-2">
-          <Pressable
+        <View style={styles.header}>
+          <AppButton
+            variant="icon"
+            tone="secondary"
+            icon="chevron-back"
+            accessibilityLabel="Go back"
             onPress={() => router.back()}
-            hitSlop={12}
-            className="h-11 w-11 items-center justify-center rounded-full border border-[#1D2A48] bg-[#08101F]"
-            style={({ pressed }) => ({
-              opacity: pressed ? 0.7 : 1,
-              transform: [
-                {
-                  scale: pressed ? 0.95 : 1,
-                },
-              ],
-            })}
-          >
-            <Ionicons name="chevron-back" size={23} color="#D6DDF0" />
-          </Pressable>
+          />
 
-          <Text className="text-[13px] font-semibold tracking-[0.4px] text-[#7785A5]">
-            ACTIVITY TRACE
-          </Text>
+          <Text style={styles.headerTitle}>LIFE TRACE</Text>
 
           <Pressable
             onPress={handleEdit}
-            hitSlop={12}
-            className="h-11 w-11 items-center justify-center rounded-full border border-[#26365D] bg-[#0A1325]"
-            style={({ pressed }) => ({
-              opacity: pressed ? 0.7 : 1,
-              transform: [
-                {
-                  scale: pressed ? 0.95 : 1,
-                },
-              ],
-            })}
+            accessibilityRole="button"
+            accessibilityLabel="Edit activity"
+            hitSlop={10}
+            style={({ pressed }) => [
+              styles.headerEdit,
+              { opacity: pressed ? 0.7 : 1 },
+            ]}
           >
-            <Ionicons name="pencil-outline" size={19} color={palette.primary} />
+            <Ionicons name="pencil-outline" size={19} color={COLORS.gold} />
           </Pressable>
         </View>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 24,
-            paddingBottom: 70,
-          }}
+          contentContainerStyle={styles.scrollContent}
         >
-          {/* TITLE */}
+          {/* ACTIVITY TITLE */}
 
-          <View>
-            <View className="mb-3 flex-row items-center">
+          <View style={styles.titleSection}>
+            <View style={styles.classificationRow}>
               <View
-                className="mr-2.5 h-[9px] w-[9px] rounded-full"
-                style={{
-                  backgroundColor: palette.primary,
-                  shadowColor: palette.primary,
-                  shadowOpacity: 1,
-                  shadowRadius: 10,
-                  shadowOffset: {
-                    width: 0,
-                    height: 0,
-                  },
-                }}
+                style={[styles.classificationDot, { backgroundColor: accent }]}
               />
 
-              <Text
-                className="text-[11px] font-bold tracking-[1.3px]"
-                style={{
-                  color: palette.primary,
-                }}
-              >
-                {palette.label}
+              <Text style={[styles.classificationText, { color: accent }]}>
+                {serves ? "GROWING" : "LIFE LEAK"}
               </Text>
             </View>
 
-            <Text className="text-[32px] font-bold leading-[38px] tracking-[-1px] text-white">
-              {activity.title}
-            </Text>
+            <Text style={styles.activityTitle}>{activity.title}</Text>
 
-            {activity.description ? (
-              <Text className="mt-3 text-[15px] leading-[23px] text-[#8D9AB5]">
-                {activity.description}
+            <View style={styles.categoryRow}>
+              <Ionicons
+                name={categoryMeta.icon}
+                size={16}
+                color={COLORS.gold}
+              />
+
+              <Text style={styles.categoryText}>
+                {categoryMeta.label.toUpperCase()}
               </Text>
-            ) : null}
+            </View>
           </View>
 
           {/* ENERGY CORE */}
 
-          <LinearGradient
-            colors={[
-              palette.gradientStart,
-              palette.gradientMiddle,
-              palette.gradientEnd,
-            ]}
-            start={{
-              x: 0,
-              y: 0,
-            }}
-            end={{
-              x: 1,
-              y: 1,
-            }}
-            style={{
-              marginTop: 28,
-              minHeight: 220,
-              borderRadius: 28,
-              borderWidth: 1,
-              borderColor: palette.border,
-
-              shadowColor: palette.glow,
-              shadowOpacity: 0.22,
-              shadowRadius: 24,
-              shadowOffset: {
-                width: 0,
-                height: 10,
-              },
-
-              overflow: "hidden",
-            }}
+          <AngularCard
+            style={styles.energyCard}
+            borderColor={`${accent}80`}
+            backgroundColor={serves ? "#171527" : "#241A16"}
+            cut={18}
           >
-            {/* ENERGY FIELD */}
+            <View style={styles.energyContent}>
+              <Svg width={108} height={108} viewBox="0 0 108 108">
+                <Circle
+                  cx={54}
+                  cy={54}
+                  r={46}
+                  fill="none"
+                  stroke={accent}
+                  strokeOpacity={0.2}
+                  strokeWidth={1}
+                />
 
-            <View
-              pointerEvents="none"
-              className="absolute -right-[90px] -top-[110px] h-[310px] w-[310px] rounded-full border"
-              style={{
-                borderColor: serves
-                  ? "rgba(113,139,255,0.18)"
-                  : "rgba(230,87,168,0.18)",
-              }}
-            />
+                <Circle
+                  cx={54}
+                  cy={54}
+                  r={35}
+                  fill="none"
+                  stroke={accent}
+                  strokeOpacity={0.5}
+                  strokeWidth={1}
+                />
 
-            <View
-              pointerEvents="none"
-              className="absolute -right-[45px] -top-[65px] h-[220px] w-[220px] rounded-full border"
-              style={{
-                borderColor: serves
-                  ? "rgba(113,139,255,0.12)"
-                  : "rgba(230,87,168,0.12)",
-              }}
-            />
+                <Circle
+                  cx={54}
+                  cy={54}
+                  r={23}
+                  fill={accent}
+                  fillOpacity={0.16}
+                />
 
-            {/* CORE */}
+                <Circle cx={54} cy={54} r={12} fill={accent} />
 
-            <View className="flex-1 items-center justify-center px-6 py-7">
-              <View
-                className="h-[88px] w-[88px] items-center justify-center rounded-full border"
-                style={{
-                  borderColor: serves
-                    ? "rgba(144,161,255,0.32)"
-                    : "rgba(240,107,185,0.32)",
+                <Circle cx={54} cy={54} r={4} fill={COLORS.text} />
+              </Svg>
 
-                  backgroundColor: serves
-                    ? "rgba(113,139,255,0.08)"
-                    : "rgba(230,87,168,0.08)",
-                }}
-              >
-                <View
-                  className="h-[52px] w-[52px] items-center justify-center rounded-full"
-                  style={{
-                    backgroundColor: palette.primary,
-                    shadowColor: palette.primary,
-                    shadowOpacity: 0.9,
-                    shadowRadius: 24,
-                    shadowOffset: {
-                      width: 0,
-                      height: 0,
-                    },
-                  }}
-                >
-                  <View
-                    className="h-[15px] w-[15px] rounded-full"
-                    style={{
-                      backgroundColor: palette.light,
-                    }}
-                  />
-                </View>
-              </View>
-
-              <Text
-                className="mt-5 text-[12px] font-bold tracking-[1.2px]"
-                style={{
-                  color: palette.primary,
-                }}
-              >
-                {palette.label}
+              <Text style={styles.energyDuration}>
+                {formatDuration(activity.durationMinutes)}
               </Text>
 
-              <Text className="mt-2 text-center text-[14px] leading-5 text-[#A6B0C7]">
-                {palette.message}
+              <Text style={[styles.energyLabel, { color: accent }]}>
+                {serves ? "INVESTED IN GROWTH" : "SPENT ON A LIFE LEAK"}
+              </Text>
+
+              <Text style={styles.energyDescription}>
+                {serves
+                  ? "Time dedicated to something that helps you grow."
+                  : "Time spent on something you've marked as draining."}
               </Text>
             </View>
-          </LinearGradient>
+          </AngularCard>
 
           {/* TRACE DETAILS */}
 
-          <Text className="mb-3 mt-7 text-[11px] font-bold tracking-[1.4px] text-[#65728D]">
-            TRACE DETAILS
-          </Text>
+          <Text style={styles.sectionEyebrow}>TRACE DETAILS</Text>
 
-          <View className="overflow-hidden rounded-[22px] border border-[#192744] bg-[#07101F]">
-            {/* LIFE AREA */}
-
-            <View className="flex-row items-center px-5 py-4">
-              <View className="h-10 w-10 items-center justify-center rounded-[13px] bg-[#101A30]">
-                <Ionicons
-                  name={categoryMeta.icon}
-                  size={20}
-                  color={palette.primary}
-                />
-              </View>
-
-              <View className="ml-4 flex-1">
-                <Text className="text-[12px] text-[#71809D]">Life area</Text>
-
-                <Text className="mt-0.5 text-[16px] font-semibold text-[#E4E8F2]">
-                  {categoryMeta.label}
-                </Text>
-              </View>
-            </View>
-
-            <View className="ml-[68px] h-[1px] bg-[#17233B]" />
-
-            {/* DURATION */}
-
-            <View className="flex-row items-center px-5 py-4">
-              <View className="h-10 w-10 items-center justify-center rounded-[13px] bg-[#101A30]">
-                <Ionicons
-                  name="hourglass-outline"
-                  size={20}
-                  color={palette.primary}
-                />
-              </View>
-
-              <View className="ml-4 flex-1">
-                <Text className="text-[12px] text-[#71809D]">Duration</Text>
-
-                <Text className="mt-0.5 text-[16px] font-semibold text-[#E4E8F2]">
-                  {activity.durationMinutes} minutes
-                </Text>
-              </View>
-            </View>
-
-            <View className="ml-[68px] h-[1px] bg-[#17233B]" />
-
-            {/* DATE */}
-
-            <View className="flex-row items-center px-5 py-4">
-              <View className="h-10 w-10 items-center justify-center rounded-[13px] bg-[#101A30]">
-                <Ionicons
-                  name="calendar-outline"
-                  size={20}
-                  color={palette.primary}
-                />
-              </View>
-
-              <View className="ml-4 flex-1">
-                <Text className="text-[12px] text-[#71809D]">Date</Text>
-
-                <Text className="mt-0.5 text-[15px] font-semibold capitalize text-[#E4E8F2]">
-                  {formattedDate}
-                </Text>
-              </View>
-            </View>
-
-            <View className="ml-[68px] h-[1px] bg-[#17233B]" />
-
-            {/* TIME */}
-
-            <View className="flex-row items-center px-5 py-4">
-              <View className="h-10 w-10 items-center justify-center rounded-[13px] bg-[#101A30]">
-                <Ionicons
-                  name="time-outline"
-                  size={20}
-                  color={palette.primary}
-                />
-              </View>
-
-              <View className="ml-4 flex-1">
-                <Text className="text-[12px] text-[#71809D]">Time</Text>
-
-                <Text className="mt-0.5 text-[16px] font-semibold text-[#E4E8F2]">
-                  {formattedTime}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* ENERGY INTERPRETATION */}
-
-          <View
-            className="mt-5 rounded-[20px] border p-4"
-            style={{
-              borderColor: serves
-                ? "rgba(113,139,255,0.22)"
-                : "rgba(230,87,168,0.22)",
-
-              backgroundColor: serves
-                ? "rgba(53,72,155,0.10)"
-                : "rgba(119,29,80,0.10)",
-            }}
-          >
-            <View className="flex-row items-start">
-              <Ionicons
-                name={serves ? "trending-up-outline" : "trending-down-outline"}
-                size={21}
-                color={palette.primary}
+          <AngularCard style={styles.detailsCard}>
+            <View style={styles.detailsContent}>
+              <DetailRow
+                icon="hourglass-outline"
+                label="Duration"
+                value={formatDuration(activity.durationMinutes)}
+                accent={accent}
               />
 
-              <View className="ml-3 flex-1">
-                <Text className="text-[14px] font-semibold text-[#E0E5F1]">
-                  {serves ? "Energy gained" : "Energy leaked"}
-                </Text>
+              <DetailRow
+                icon="calendar-outline"
+                label="Date"
+                value={formattedDate}
+                accent={accent}
+              />
 
-                <Text className="mt-1 text-[13px] leading-[20px] text-[#7F8DAA]">
-                  {serves
-                    ? `${activity.durationMinutes} minutes of your day were invested in something you've classified as helping you grow.`
-                    : `${activity.durationMinutes} minutes of your day went toward something you've classified as draining your energy.`}
-                </Text>
-              </View>
+              <DetailRow
+                icon="time-outline"
+                label="Time"
+                value={formattedTime}
+                accent={accent}
+                showDivider={false}
+              />
             </View>
-          </View>
+          </AngularCard>
+
+          {/* PERSONAL NOTE */}
+
+          {activity.description?.trim() ? (
+            <>
+              <Text style={styles.sectionEyebrow}>PERSONAL NOTE</Text>
+
+              <AngularCard style={styles.noteCard}>
+                <Text style={styles.noteText}>{activity.description}</Text>
+              </AngularCard>
+            </>
+          ) : null}
 
           {/* ACTIONS */}
 
-          <Text className="mb-3 mt-7 text-[11px] font-bold tracking-[1.4px] text-[#65728D]">
-            MANAGE TRACE
-          </Text>
+          <Text style={styles.sectionEyebrow}>MANAGE TRACE</Text>
 
-          <Pressable
-            onPress={handleEdit}
-            className="h-[56px] flex-row items-center justify-center rounded-[18px] border"
-            style={({ pressed }) => ({
-              borderColor: palette.border,
-
-              backgroundColor: serves
-                ? "rgba(72, 92, 199, 0.18)"
-                : "rgba(150, 42, 103, 0.18)",
-
-              opacity: pressed ? 0.8 : 1,
-
-              transform: [
-                {
-                  scale: pressed ? 0.985 : 1,
-                },
-              ],
-            })}
-          >
-            <Ionicons name="pencil-outline" size={19} color={palette.primary} />
-
-            <Text
-              className="ml-2.5 text-[15px] font-semibold"
-              style={{
-                color: palette.primary,
-              }}
-            >
-              Edit activity
-            </Text>
-          </Pressable>
+          <AppButton variant="primary" onPress={handleEdit}>
+            Edit activity
+          </AppButton>
 
           <Pressable
             disabled={isDeleting}
             onPress={handleDelete}
-            className="mt-3 h-[54px] flex-row items-center justify-center rounded-[18px] border border-[#772E50]/60 bg-[#351124]/30"
-            style={({ pressed }) => ({
-              opacity: isDeleting ? 0.5 : pressed ? 0.75 : 1,
-
-              transform: [
-                {
-                  scale: pressed ? 0.985 : 1,
-                },
-              ],
-            })}
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.deleteButton,
+              { opacity: isDeleting ? 0.5 : pressed ? 0.7 : 1 },
+            ]}
           >
-            {isDeleting ? (
-              <ActivityIndicator size="small" color="#EF6AAB" />
-            ) : (
-              <>
-                <Ionicons name="trash-outline" size={19} color="#EF6AAB" />
+            <Ionicons name="trash-outline" size={17} color={COLORS.danger} />
 
-                <Text className="ml-2.5 text-[15px] font-semibold text-[#EF7DB5]">
-                  Delete activity
-                </Text>
-              </>
-            )}
+            <Text style={styles.deleteText}>Delete activity</Text>
           </Pressable>
-
-          <Text className="mt-3 px-3 text-center text-[11px] leading-[17px] text-[#505D78]">
-            Deleting an activity permanently removes this trace from your
-            history.
-          </Text>
         </ScrollView>
       </SafeAreaView>
 
@@ -652,9 +483,7 @@ export default function ActivityDetailScreen() {
         activityTitle={activity.title}
         isDeleting={isDeleting}
         onCancel={() => {
-          if (!isDeleting) {
-            setIsDeleteModalVisible(false);
-          }
+          if (!isDeleting) setIsDeleteModalVisible(false);
         }}
         onDelete={() => {
           void deleteActivity();
@@ -663,3 +492,234 @@ export default function ActivityDetailScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+
+  centeredScreen: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.background,
+  },
+
+  loadingText: {
+    marginTop: 14,
+    color: COLORS.muted,
+    fontSize: 14,
+  },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+
+  headerTitle: {
+    color: COLORS.gold,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+  },
+
+  headerEdit: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(214,173,101,0.22)",
+    backgroundColor: COLORS.surface,
+  },
+
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 70,
+  },
+
+  errorContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 30,
+    gap: 14,
+  },
+
+  errorTitle: {
+    color: COLORS.text,
+    fontSize: 22,
+    fontWeight: "600",
+  },
+
+  errorDescription: {
+    color: COLORS.muted,
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: "center",
+  },
+
+  titleSection: {
+    gap: 12,
+    marginBottom: 26,
+  },
+
+  classificationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+
+  classificationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+
+  classificationText: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+  },
+
+  activityTitle: {
+    color: COLORS.text,
+    fontSize: 34,
+    lineHeight: 42,
+    fontWeight: "600",
+    letterSpacing: -1.1,
+  },
+
+  categoryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  categoryText: {
+    color: COLORS.gold,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+  },
+
+  energyCard: {
+    minHeight: 230,
+    justifyContent: "center",
+  },
+
+  energyContent: {
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+  },
+
+  energyDuration: {
+    color: COLORS.text,
+    fontSize: 29,
+    fontWeight: "600",
+    letterSpacing: -0.8,
+    marginTop: 8,
+  },
+
+  energyLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+    marginTop: 7,
+  },
+
+  energyDescription: {
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 19,
+    textAlign: "center",
+    marginTop: 10,
+  },
+
+  sectionEyebrow: {
+    color: COLORS.gold,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+    marginTop: 28,
+    marginBottom: 13,
+  },
+
+  detailsCard: {
+    width: "100%",
+  },
+
+  detailsContent: {
+    paddingHorizontal: 18,
+    paddingVertical: 4,
+  },
+
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    gap: 14,
+  },
+
+  detailIcon: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.035)",
+  },
+
+  detailText: {
+    flex: 1,
+    gap: 4,
+  },
+
+  detailLabel: {
+    color: COLORS.muted,
+    fontSize: 12,
+  },
+
+  detailValue: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
+  divider: {
+    height: 1,
+    marginLeft: 50,
+    backgroundColor: "rgba(214,173,101,0.1)",
+  },
+
+  noteCard: {
+    padding: 18,
+  },
+
+  noteText: {
+    color: COLORS.text,
+    fontSize: 14,
+    lineHeight: 23,
+  },
+
+  deleteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+    paddingVertical: 17,
+    marginTop: 12,
+  },
+
+  deleteText: {
+    color: COLORS.danger,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+});

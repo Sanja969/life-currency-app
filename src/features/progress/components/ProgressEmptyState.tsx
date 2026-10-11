@@ -5,82 +5,79 @@ import { Pressable, Text, View } from "react-native";
 export function ProgressEmptyState() {
   return (
     <View className="items-center px-3 pt-10">
-      {/* EMPTY QUANTUM FIELD */}
+      {/* EMPTY STATE VISUAL */}
+
       <View
-        className="h-[210px] w-[210px] items-center justify-center rounded-full border"
+        className="h-[200px] w-[200px] items-center justify-center rounded-full border"
         style={{
-          borderColor: "rgba(113, 139, 255, 0.10)",
-          backgroundColor: "rgba(113, 139, 255, 0.015)",
-          shadowColor: "#718BFF",
-          shadowOpacity: 0.12,
-          shadowRadius: 40,
-          shadowOffset: {
-            width: 0,
-            height: 0,
-          },
+          borderColor: "rgba(214, 173, 101, 0.10)",
+          backgroundColor: "rgba(214, 173, 101, 0.015)",
         }}
       >
+        {/* MIDDLE CIRCLE */}
+
         <View
-          className="h-[150px] w-[150px] items-center justify-center rounded-full border"
+          className="h-[145px] w-[145px] items-center justify-center rounded-full border"
           style={{
-            borderColor: "rgba(113, 139, 255, 0.15)",
+            borderColor: "rgba(214, 173, 101, 0.16)",
           }}
         >
+          {/* INNER CIRCLE */}
+
           <View
-            className="h-[86px] w-[86px] items-center justify-center rounded-full border"
+            className="h-[84px] w-[84px] items-center justify-center rounded-full border"
             style={{
-              borderColor: "rgba(113, 139, 255, 0.25)",
-              backgroundColor: "rgba(113, 139, 255, 0.04)",
+              borderColor: "rgba(214, 173, 101, 0.30)",
+              backgroundColor: "#24231F",
             }}
           >
-            <Ionicons name="analytics-outline" size={29} color="#8FA3FF" />
+            <Ionicons name="analytics-outline" size={30} color="#D6AD65" />
           </View>
         </View>
 
-        <View className="absolute left-[43px] top-[67px] h-[4px] w-[4px] rounded-full bg-[#718BFF] opacity-40" />
+        {/* SMALL DECORATIVE POINTS */}
 
-        <View className="absolute right-[42px] top-[95px] h-[3px] w-[3px] rounded-full bg-[#A4B2FF] opacity-40" />
+        <View className="absolute left-[40px] top-[64px] h-[4px] w-[4px] rounded-full bg-[#D6AD65] opacity-40" />
 
-        <View className="absolute bottom-[47px] left-[82px] h-[3px] w-[3px] rounded-full bg-[#718BFF] opacity-30" />
+        <View className="absolute right-[38px] top-[93px] h-[3px] w-[3px] rounded-full bg-[#D6AD65] opacity-30" />
+
+        <View className="absolute bottom-[43px] left-[80px] h-[3px] w-[3px] rounded-full bg-[#D6AD65] opacity-30" />
       </View>
 
-      {/* COPY */}
-      <Text className="mt-8 text-center text-[21px] font-bold text-[#F1F4FF]">
+      {/* TITLE */}
+
+      <Text className="mt-8 text-center text-[21px] font-bold text-[#F5F0E8]">
         Your patterns are still forming
       </Text>
 
-      <Text className="mt-3 max-w-[315px] text-center text-[14px] leading-[22px] text-[#7F8CA8]">
+      {/* DESCRIPTION */}
+
+      <Text className="mt-3 max-w-[315px] text-center text-[14px] leading-[22px] text-[#9295A3]">
         Trace activities over time and your patterns will begin to emerge here.
       </Text>
 
-      <Text className="mt-3 max-w-[315px] text-center text-[13px] leading-[20px] text-[#65728D]">
+      <Text className="mt-3 max-w-[315px] text-center text-[13px] leading-[20px] text-[#686C7A]">
         Your Growing time, Life Leaks, life areas and changes will become
         visible as your history grows.
       </Text>
 
-      {/* CTA */}
+      {/* CTA BUTTON */}
+
       <Pressable
         onPress={() => router.push("/activities/new")}
-        className="mt-8 h-[54px] flex-row items-center justify-center rounded-[18px] bg-[#718BFF] px-7"
+        className="mt-8 h-[54px] flex-row items-center justify-center rounded-[16px] bg-[#D6AD65] px-7"
         style={({ pressed }) => ({
-          opacity: pressed ? 0.78 : 1,
+          opacity: pressed ? 0.8 : 1,
           transform: [
             {
               scale: pressed ? 0.985 : 1,
             },
           ],
-          shadowColor: "#718BFF",
-          shadowOpacity: 0.22,
-          shadowRadius: 15,
-          shadowOffset: {
-            width: 0,
-            height: 6,
-          },
         })}
       >
-        <Ionicons name="add" size={19} color="#FFFFFF" />
+        <Ionicons name="add" size={20} color="#080A10" />
 
-        <Text className="ml-2 text-[14px] font-bold text-white">
+        <Text className="ml-2 text-[14px] font-bold text-[#080A10]">
           Trace an activity
         </Text>
       </Pressable>

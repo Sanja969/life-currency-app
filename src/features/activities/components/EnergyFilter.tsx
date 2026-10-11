@@ -43,10 +43,11 @@ export function EnergyFilter({
       >
         <Path
           d="M 10 0 L 100 0 L 100 28 L 90 38 L 0 38 L 0 10 Z"
-          fill={selected ? `${accent}14` : "#111219"}
+          fill={selected ? `${accent}14` : "#11141D"}
           stroke={selected ? accent : "#303039"}
           strokeWidth={selected ? 1.2 : 0.8}
           vectorEffect="non-scaling-stroke"
+          accessibilityLabel={`Filter: ${label}`}
         />
       </Svg>
 
@@ -92,7 +93,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 5,
+    paddingHorizontal: 8,
   },
 
   dot: {

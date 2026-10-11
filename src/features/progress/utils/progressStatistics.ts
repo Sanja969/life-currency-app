@@ -259,38 +259,34 @@ export function buildLast30DaysPeriods(
 ): PeriodProgressStat[] {
     const today = new Date();
 
-    const rangeStart = new Date(
+    const todayStart = new Date(
         today.getFullYear(),
         today.getMonth(),
-        today.getDate() - 29,
+        today.getDate(),
     );
+
+    const rangeStart = new Date(todayStart);
+    rangeStart.setDate(rangeStart.getDate() - 29);
 
     const periods: PeriodProgressStat[] = [];
 
     for (let index = 0; index < 5; index++) {
         const startDate = new Date(rangeStart);
+        startDate.setDate(startDate.getDate() + index * 7);
 
-        startDate.setDate(
-            rangeStart.getDate() + index * 7,
-        );
-
-        if (startDate > today) {
+        if (startDate > todayStart) {
             break;
         }
 
         const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 6);
 
-        endDate.setDate(startDate.getDate() + 6);
-
-        if (endDate > today) {
-            endDate.setTime(today.getTime());
+        if (endDate > todayStart) {
+            endDate.setTime(todayStart.getTime());
         }
 
         periods.push({
-            label:
-                index === 4
-                    ? "Now"
-                    : `W${index + 1}`,
+            label: index === 4 ? "Now" : `W${index + 1}`,
             startDate,
             endDate,
             growingMinutes: 0,
@@ -300,9 +296,7 @@ export function buildLast30DaysPeriods(
     }
 
     for (const activity of activities) {
-        const activityDate = new Date(
-            activity.activityDate,
-        );
+        const activityDate = new Date(activity.activityDate);
 
         const normalizedDate = new Date(
             activityDate.getFullYear(),
@@ -324,11 +318,9 @@ export function buildLast30DaysPeriods(
             activity.classification ===
             ActivityClassification.Serves
         ) {
-            period.growingMinutes +=
-                activity.durationMinutes;
+            period.growingMinutes += activity.durationMinutes;
         } else {
-            period.leakMinutes +=
-                activity.durationMinutes;
+            period.leakMinutes += activity.durationMinutes;
         }
     }
 

@@ -13,19 +13,27 @@ export function ProgressHeader({
 }: ProgressHeaderProps) {
   return (
     <View>
-      <Text className="text-[11px] font-bold tracking-[1.6px] text-[#65728D]">
+      {/* EYEBROW */}
+
+      <Text className="text-[10px] font-bold tracking-[2.4px] text-[#D6AD65]">
         LIFE PATTERNS
       </Text>
 
-      <Text className="mt-3 text-[34px] font-bold leading-[40px] tracking-[-1px] text-white">
+      {/* TITLE */}
+
+      <Text className="mt-3 text-[34px] font-bold leading-[40px] tracking-[-1px] text-[#F5F0E8]">
         Your progress
       </Text>
 
-      <Text className="mt-2 text-[14px] leading-[21px] text-[#7F8CA8]">
+      {/* DESCRIPTION */}
+
+      <Text className="mt-2 text-[14px] leading-[21px] text-[#9295A3]">
         See how your time and energy are shaping your life.
       </Text>
 
-      <View className="mt-6 flex-row rounded-[18px] border border-[#1B2947] bg-[#07101F] p-1">
+      {/* PERIOD SELECTOR */}
+
+      <View className="mt-6 flex-row rounded-[16px] border border-[#252936] bg-[#11141D] p-1">
         <PeriodButton
           label="7 Days"
           selected={period === "7days"}
@@ -48,21 +56,28 @@ type PeriodButtonProps = {
   onPress: () => void;
 };
 
-function PeriodButton({ label, selected, onPress }: PeriodButtonProps) {
+function PeriodButton({
+  label,
+  selected,
+  onPress,
+}: PeriodButtonProps) {
   return (
     <Pressable
       onPress={onPress}
-      className="flex-1 items-center justify-center rounded-[14px] py-3"
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      className="flex-1 items-center justify-center rounded-[12px] py-3"
       style={({ pressed }) => ({
-        backgroundColor: selected ? "rgba(82,103,221,0.22)" : "transparent",
-
-        opacity: pressed ? 0.72 : 1,
+        backgroundColor: selected ? "#24231F" : "transparent",
+        borderWidth: 1,
+        borderColor: selected ? "#665336" : "transparent",
+        opacity: pressed ? 0.75 : 1,
       })}
     >
       <Text
-        className="text-[14px] font-semibold"
+        className="text-[13px] font-semibold"
         style={{
-          color: selected ? "#DCE2FF" : "#697792",
+          color: selected ? "#D6AD65" : "#9295A3",
         }}
       >
         {label}

@@ -18,7 +18,7 @@ type ActivitiesHeaderProps = {
 
 const COLORS = {
   background: "#080A10",
-  surface: "#111219",
+  surface: "#11141D",
   gold: "#D6AD65",
   lightGold: "#F3D49B",
   growing: "#8274E8",
@@ -60,7 +60,7 @@ export function ActivitiesHeader({
         contentStyle={styles.balanceContent}
       >
         <View style={styles.balanceHeader}>
-          <Text style={styles.sectionLabel}>ACTIVITY DISTRIBUTION</Text>
+          <Text style={styles.sectionLabel}>TIME DISTRIBUTION</Text>
 
           <Ionicons name="analytics-outline" size={18} color={COLORS.gold} />
         </View>
@@ -87,7 +87,7 @@ export function ActivitiesHeader({
 
             <Text style={styles.statValue}>{growingPercent}%</Text>
 
-            <Text style={styles.statDescription}>of activities</Text>
+            <Text style={styles.statDescription}>of tracked time</Text>
           </View>
 
           {/* LIFE LEAKS */}
@@ -111,7 +111,7 @@ export function ActivitiesHeader({
 
             <Text style={styles.statValue}>{leaksPercent}%</Text>
 
-            <Text style={styles.statDescription}>of activities</Text>
+            <Text style={styles.statDescription}>of tracked time</Text>
           </View>
         </View>
 
@@ -147,7 +147,6 @@ export function ActivitiesHeader({
       </CosmicPanel>
 
       {/* SEARCH */}
-      {/* SEARCH */}
 
       <View style={styles.searchContainer}>
         {/* ANGULAR BACKGROUND */}
@@ -162,7 +161,7 @@ export function ActivitiesHeader({
         >
           <Path
             d="M 12 0 L 100 0 L 100 36 L 88 48 L 0 48 L 0 12 Z"
-            fill="#111219"
+            fill={COLORS.surface}
             stroke="rgba(214,173,101,0.24)"
             strokeWidth={1}
             vectorEffect="non-scaling-stroke"
@@ -189,6 +188,8 @@ export function ActivitiesHeader({
           selectionColor={COLORS.gold}
           returnKeyType="search"
           accessibilityLabel="Search activities"
+          autoCorrect={false}
+          autoCapitalize="none"
         />
 
         {searchQuery.length > 0 && (

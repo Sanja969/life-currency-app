@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
 
 import { activityService } from "@/services/ActivityService";
@@ -91,17 +91,25 @@ export function useProgress() {
     const [errorMessage, setErrorMessage] =
         useState<string | null>(null);
 
+    const hasLoadedRef = useRef(false);
+
     useFocusEffect(
         useCallback(() => {
             let active = true;
 
             async function load() {
                 try {
-                    setIsLoading(true);
+                    if (!hasLoadedRef.current) {
+                        setIsLoading(true);
+                    }
+
                     setErrorMessage(null);
 
+                    // End is exclusive: midnight tomorrow.
                     const end = getEndOfToday();
 
+                    // Fetch 60 calendar days:
+                    // 30 current + 30 previous.
                     const start = new Date(end);
                     start.setDate(start.getDate() - 60);
 
@@ -111,9 +119,10 @@ export function useProgress() {
                             end,
                         );
 
-                    if (active) {
-                        setActivities(result);
-                    }
+                    if (!active) return;
+
+                    setActivities(result);
+                    hasLoadedRef.current = true;
                 } catch (error) {
                     if (!active) return;
 
@@ -137,24 +146,24 @@ export function useProgress() {
         }, []),
     );
 
+    // CURRENT PERIOD
+
     const periodActivities = useMemo(() => {
         const start = getPeriodStart(period);
         const end = getEndOfToday();
 
-        return activities.filter((activity) => {
-
-            return (
+        return activities.filter(
+            (activity) =>
                 activity.activityDate >= start &&
-                activity.activityDate < end
-            );
-        });
+                activity.activityDate < end,
+        );
     }, [activities, period]);
+
+    // CURRENT STATISTICS
 
     const statistics = useMemo(() => {
         const result =
-            calculateProgressStatistics(
-                periodActivities,
-            );
+            calculateProgressStatistics(periodActivities);
 
         if (period === "7days") {
             return {
@@ -167,18 +176,20 @@ export function useProgress() {
         return result;
     }, [periodActivities, period]);
 
+    // PREVIOUS PERIOD
+
     const previousPeriodActivities = useMemo(() => {
         const { start, end } =
             getPreviousPeriodRange(period);
 
-        return activities.filter((activity) => {
-
-            return (
+        return activities.filter(
+            (activity) =>
                 activity.activityDate >= start &&
-                activity.activityDate < end
-            );
-        });
+                activity.activityDate < end,
+        );
     }, [activities, period]);
+
+    // PREVIOUS STATISTICS
 
     const previousStatistics = useMemo(
         () =>
@@ -188,6 +199,8 @@ export function useProgress() {
         [previousPeriodActivities],
     );
 
+    // COMPARISON
+
     const comparison = useMemo(
         () =>
             calculateProgressComparison(
@@ -196,6 +209,8 @@ export function useProgress() {
             ),
         [statistics, previousStatistics],
     );
+
+    // CATEGORY TRENDS
 
     const categoryTrends = useMemo(
         () =>

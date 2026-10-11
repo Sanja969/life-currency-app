@@ -48,14 +48,14 @@ export function Activities() {
 
   const isOpeningNewActivity = useRef(false);
 
-  const { growingCount, leaksCount } = counts;
+  const { growingMinutes, leaksMinutes } = counts;
 
-  const totalCount = growingCount + leaksCount;
+  const totalMinutes = growingMinutes + leaksMinutes;
 
   const growingPercent =
-    totalCount > 0 ? Math.round((growingCount / totalCount) * 100) : 0;
+    totalMinutes > 0 ? Math.round((growingMinutes / totalMinutes) * 100) : 0;
 
-  const leaksPercent = totalCount > 0 ? 100 - growingPercent : 0;
+  const leaksPercent = totalMinutes > 0 ? 100 - growingPercent : 0;
 
   const renderActivity = useCallback(
     ({ item, index }: { item: Activity; index: number }) => {
@@ -85,7 +85,7 @@ export function Activities() {
   );
 
   return (
-    <View className="flex-1 bg-[#030611]">
+    <View className="flex-1 bg-[#080A10]">
       <ActivitiesBackground />
 
       {/*
@@ -230,13 +230,13 @@ export function Activities() {
 
               backgroundColor:
                 arrival.classification === ActivityClassification.Serves
-                  ? "#718BFF"
-                  : "#E85BAA",
+                  ? "#8274E8"
+                  : "#D88455",
 
               shadowColor:
                 arrival.classification === ActivityClassification.Serves
-                  ? "#718BFF"
-                  : "#E85BAA",
+                  ? "#8274E8"
+                  : "#D88455",
 
               shadowOpacity: 1,
               shadowRadius: 18,
@@ -254,8 +254,8 @@ export function Activities() {
 
                 backgroundColor:
                   arrival.classification === ActivityClassification.Serves
-                    ? "#E8F3FF"
-                    : "#FFE8F7",
+                    ? "#E5DFFF"
+                    : "#FFE1CC",
               }}
             />
           </View>
