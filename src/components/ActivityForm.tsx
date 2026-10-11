@@ -259,19 +259,20 @@ export function ActivityForm({
 
   const [showNote, setShowNote] = useState(Boolean(initialValues?.description));
 
-  const { control, handleSubmit, setValue } = useForm<
-    ActivityFormInput,
-    undefined,
-    ActivityFormOutput
-  >({
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<ActivityFormInput, undefined, ActivityFormOutput>({
     resolver: zodResolver(activitySchema),
 
     defaultValues: {
       title: "",
       description: "",
       durationMinutes: 30,
-      classification: ActivityClassification.Serves,
-      category: ActivityCategory.Other,
+      classification: undefined,
+      category: undefined,
       activityDate: new Date(),
       ...initialValues,
     },
@@ -350,24 +351,50 @@ export function ActivityForm({
 
       {/* CLASSIFICATION */}
 
-      <FormSegmentedControl
-        control={control}
-        name="classification"
-        label="How did this time serve you?"
-        items={CLASSIFICATION_ITEMS}
-      />
+      <View style={{ gap: 8 }}>
+        <FormSegmentedControl
+          control={control}
+          name="classification"
+          label="How did this time serve you?"
+          items={CLASSIFICATION_ITEMS}
+        />
+
+        {errors.classification && (
+          <Text
+            style={{
+              color: "#FB7185",
+              fontSize: 12,
+            }}
+          >
+            {errors.classification.message}
+          </Text>
+        )}
+      </View>
 
       {/* CATEGORY */}
 
-      <CategorySelector
-        value={category}
-        onChange={(value) =>
-          setValue("category", value, {
-            shouldDirty: true,
-            shouldValidate: true,
-          })
-        }
-      />
+      <View style={{ gap: 8 }}>
+        <CategorySelector
+          value={category}
+          onChange={(value) =>
+            setValue("category", value, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
+        />
+
+        {errors.category && (
+          <Text
+            style={{
+              color: "#FB7185",
+              fontSize: 12,
+            }}
+          >
+            {errors.category.message}
+          </Text>
+        )}
+      </View>
 
       {/* DURATION */}
 

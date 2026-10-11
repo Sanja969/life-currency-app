@@ -1,18 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View, StyleSheet } from "react-native";
 
-import Svg, {
-  Defs,
-  LinearGradient as SvgGradient,
-  Path,
-  Stop,
-} from "react-native-svg";
-
 import {
-  ActivityCategory,
   ActivityCategoryStatistics,
   ActivityStatistics,
 } from "@/types/activity";
+
+import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
 
 import { formatDuration } from "@/utils/formatDuration";
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
@@ -30,17 +24,6 @@ const COLORS = {
   leaks: "#D88455",
   text: "#F5F0E7",
   muted: "#9295A5",
-};
-
-const CATEGORY_LABELS: Record<ActivityCategory, string> = {
-  [ActivityCategory.Work]: "Work",
-  [ActivityCategory.Learning]: "Learning",
-  [ActivityCategory.Health]: "Health",
-  [ActivityCategory.Relationships]: "Relationships",
-  [ActivityCategory.Rest]: "Rest",
-  [ActivityCategory.Entertainment]: "Entertainment",
-  [ActivityCategory.Mindfulness]: "Mindfulness",
-  [ActivityCategory.Other]: "Other",
 };
 
 type SignalTone = "neutral" | "growing" | "leaks";
@@ -65,12 +48,12 @@ function getSignal(
   }
 
   if (strongestInvestment && !biggestLeak) {
+    const category = getActivityCategoryMeta(strongestInvestment.category);
+
     return {
       icon: "trending-up-outline",
       title: "Strong investment today",
-      message: `${
-        CATEGORY_LABELS[strongestInvestment.category]
-      } is your strongest investment with ${formatDuration(
+      message: `${category.label} is your strongest investment with ${formatDuration(
         strongestInvestment.servesDurationMinutes,
       )} of Growing time.`,
       tone: "growing",
@@ -78,12 +61,12 @@ function getSignal(
   }
 
   if (!strongestInvestment && biggestLeak) {
+    const category = getActivityCategoryMeta(biggestLeak.category);
+
     return {
       icon: "trending-down-outline",
       title: "Main leak today",
-      message: `${
-        CATEGORY_LABELS[biggestLeak.category]
-      } is your biggest Life Leak with ${formatDuration(
+      message: `${category.label} is your biggest Life Leak with ${formatDuration(
         biggestLeak.doesNotServeDurationMinutes,
       )}.`,
       tone: "leaks",
@@ -96,24 +79,24 @@ function getSignal(
     strongestInvestment.servesDurationMinutes >=
       biggestLeak.doesNotServeDurationMinutes
   ) {
+    const category = getActivityCategoryMeta(strongestInvestment.category);
+
     return {
       icon: "sparkles-outline",
       title: "Your strongest signal",
-      message: `${
-        CATEGORY_LABELS[strongestInvestment.category]
-      } is leading your day with ${formatDuration(
+      message: `${category.label} is leading your day with ${formatDuration(
         strongestInvestment.servesDurationMinutes,
       )} of Growing time.`,
       tone: "growing",
     };
   }
 
+  const category = getActivityCategoryMeta(biggestLeak!.category);
+
   return {
     icon: "pulse-outline",
     title: "Watch this pattern",
-    message: `${
-      CATEGORY_LABELS[biggestLeak!.category]
-    } is your largest Life Leak today at ${formatDuration(
+    message: `${category.label} is your largest Life Leak today at ${formatDuration(
       biggestLeak!.doesNotServeDurationMinutes,
     )}.`,
     tone: "leaks",
@@ -142,7 +125,7 @@ export function TodaySignal({ statistics }: TodaySignalProps) {
         accent={accent}
         contentStyle={styles.content}
       >
-        <View style={styles.content}>
+        <View>
           <View style={styles.topRow}>
             <View style={styles.iconFrame}>
               <Ionicons name={signal.icon} size={18} color={accent} />

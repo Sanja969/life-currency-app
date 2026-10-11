@@ -11,6 +11,16 @@ export enum ActivityCategory {
   Rest = "rest",
   Entertainment = "entertainment",
   Mindfulness = "mindfulness",
+
+  Household = "household",
+  ChoresErrands = "chores_errands",
+  SocialMedia = "social_media",
+  Commuting = "commuting",
+  PersonalCare = "personal_care",
+  Shopping = "shopping",
+  Gaming = "gaming",
+  AdministrativeTasks = "administrative_tasks",
+
   Other = "other",
 }
 

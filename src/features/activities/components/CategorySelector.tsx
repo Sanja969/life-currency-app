@@ -5,7 +5,7 @@ import {
   StyleSheet,
   Text,
   View,
-  type LayoutChangeEvent,
+  useWindowDimensions,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
@@ -13,8 +13,17 @@ import { getActivityCategoryMeta } from "@/features/activities/utils/activityCat
 import { ActivityCategory } from "@/types/activity";
 
 type CategorySelectorProps = {
-  value: ActivityCategory;
+  value?: ActivityCategory;
   onChange: (value: ActivityCategory) => void;
+};
+
+const COLORS = {
+  gold: "#D6AD65",
+  lightGold: "#F3D49B",
+  text: "#F5F0E7",
+  muted: "#9295A5",
+  surface: "#11141D",
+  selectedSurface: "#211D18",
 };
 
 const CATEGORY_OPTIONS: ActivityCategory[] = [
@@ -25,57 +34,57 @@ const CATEGORY_OPTIONS: ActivityCategory[] = [
   ActivityCategory.Rest,
   ActivityCategory.Entertainment,
   ActivityCategory.Mindfulness,
+  ActivityCategory.Household,
+  ActivityCategory.ChoresErrands,
+  ActivityCategory.SocialMedia,
+  ActivityCategory.Commuting,
+  ActivityCategory.PersonalCare,
+  ActivityCategory.Shopping,
+  ActivityCategory.Gaming,
+  ActivityCategory.AdministrativeTasks,
   ActivityCategory.Other,
 ];
 
-const COLORS = {
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  text: "#F5F0E7",
-  muted: "#9295A5",
-  surface: "#11141D",
-  selectedSurface: "#211D17",
-};
+const INITIAL_VISIBLE_COUNT = 8;
 
-const CARD_HEIGHT = 70;
-const CORNER_CUT = 10;
+const CARD_HEIGHT = 62;
+const CUT = 9;
 
-type CategoryCardProps = {
+function CategoryCard({
+  category,
+  selected,
+  onPress,
+}: {
   category: ActivityCategory;
   selected: boolean;
   onPress: () => void;
-};
-
-function CategoryCard({ category, selected, onPress }: CategoryCardProps) {
-  const [width, setWidth] = useState(0);
-
+}) {
   const meta = getActivityCategoryMeta(category);
 
-  function handleLayout(event: LayoutChangeEvent) {
-    const nextWidth = event.nativeEvent.layout.width;
+  const [width, setWidth] = useState(0);
 
-    if (Math.abs(nextWidth - width) > 0.5) {
-      setWidth(nextWidth);
-    }
-  }
-
-  const shapePath = `
-    M ${CORNER_CUT} 0
+  const path = `
+    M ${CUT} 0
     L ${width} 0
-    L ${width} ${CARD_HEIGHT - CORNER_CUT}
-    L ${width - CORNER_CUT} ${CARD_HEIGHT}
+    L ${width} ${CARD_HEIGHT - CUT}
+    L ${width - CUT} ${CARD_HEIGHT}
     L 0 ${CARD_HEIGHT}
-    L 0 ${CORNER_CUT}
+    L 0 ${CUT}
     Z
   `;
 
   return (
     <Pressable
       onPress={onPress}
-      onLayout={handleLayout}
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
-      accessibilityLabel={meta.label}
+      onLayout={(event) => {
+        const nextWidth = event.nativeEvent.layout.width;
+
+        if (Math.abs(nextWidth - width) > 0.5) {
+          setWidth(nextWidth);
+        }
+      }}
       style={({ pressed }) => [
         styles.card,
         {
@@ -86,27 +95,41 @@ function CategoryCard({ category, selected, onPress }: CategoryCardProps) {
     >
       {width > 0 && (
         <Svg
-          pointerEvents="none"
           width={width}
           height={CARD_HEIGHT}
           style={StyleSheet.absoluteFill}
+          pointerEvents="none"
         >
           <Path
-            d={shapePath}
+            d={path}
             fill={selected ? COLORS.selectedSurface : COLORS.surface}
-            stroke={selected ? COLORS.gold : "rgba(214,173,101,0.18)"}
-            strokeWidth={selected ? 1.5 : 1}
+            stroke={selected ? COLORS.gold : "rgba(214,173,101,0.17)"}
+            strokeWidth={1}
           />
 
           {selected && (
-            <Path
-              d={`M ${CORNER_CUT} 0 L ${Math.min(
-                width - 4,
-                CORNER_CUT + 28,
-              )} 0`}
-              stroke={COLORS.lightGold}
-              strokeWidth={1.5}
-            />
+            <>
+              {/* TOP ACCENT */}
+
+              <Path
+                d={`M ${CUT} 0 L ${Math.min(width - 4, CUT + 30)} 0`}
+                stroke={COLORS.lightGold}
+                strokeWidth={1.5}
+              />
+
+              {/* BOTTOM ACCENT */}
+
+              <Path
+                d={`
+                  M ${width - CUT - 24} ${CARD_HEIGHT}
+                  L ${width - CUT} ${CARD_HEIGHT}
+                  L ${width} ${CARD_HEIGHT - CUT}
+                `}
+                stroke={COLORS.lightGold}
+                strokeWidth={1.5}
+                fill="none"
+              />
+            </>
           )}
         </Svg>
       )}
@@ -114,22 +137,10 @@ function CategoryCard({ category, selected, onPress }: CategoryCardProps) {
       <View style={styles.cardContent}>
         {/* ICON */}
 
-        <View
-          style={[
-            styles.iconContainer,
-            {
-              backgroundColor: selected
-                ? "rgba(214,173,101,0.13)"
-                : "rgba(255,255,255,0.035)",
-              borderColor: selected
-                ? "rgba(214,173,101,0.3)"
-                : "rgba(255,255,255,0.06)",
-            },
-          ]}
-        >
+        <View style={[styles.iconFrame, selected && styles.selectedIconFrame]}>
           <Ionicons
             name={meta.icon}
-            size={18}
+            size={16}
             color={selected ? COLORS.lightGold : COLORS.muted}
           />
         </View>
@@ -137,49 +148,79 @@ function CategoryCard({ category, selected, onPress }: CategoryCardProps) {
         {/* LABEL */}
 
         <Text
-          numberOfLines={1}
-          adjustsFontSizeToFit
+          numberOfLines={2}
           style={[
             styles.categoryLabel,
-            {
-              color: selected ? COLORS.text : COLORS.muted,
-            },
+            selected && styles.selectedCategoryLabel,
           ]}
         >
           {meta.label}
         </Text>
-
-        {/* SELECTED INDICATOR */}
-
-        {selected && <View style={styles.selectedIndicator} />}
       </View>
+
+      {/* SELECTED INDICATOR */}
+
+      {selected && <View style={styles.selectedIndicator} />}
     </Pressable>
   );
 }
 
 export function CategorySelector({ value, onChange }: CategorySelectorProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  const visibleCategories = expanded
+    ? CATEGORY_OPTIONS
+    : [
+        ...CATEGORY_OPTIONS.slice(0, INITIAL_VISIBLE_COUNT),
+        ...(value && CATEGORY_OPTIONS.indexOf(value) >= INITIAL_VISIBLE_COUNT
+          ? [value]
+          : []),
+      ];
+
   return (
     <View style={styles.container}>
       {/* HEADER */}
 
-      <View style={styles.header}>
-        <Text style={styles.label}>Life area</Text>
+      <View>
+        <Text style={styles.heading}>Life area</Text>
 
         <Text style={styles.subtitle}>Where did this time go?</Text>
       </View>
 
       {/* CATEGORY GRID */}
 
-      <View style={styles.grid} accessibilityRole="radiogroup">
-        {CATEGORY_OPTIONS.map((category) => (
-          <CategoryCard
-            key={category}
-            category={category}
-            selected={value === category}
-            onPress={() => onChange(category)}
-          />
+      <View style={styles.grid}>
+        {visibleCategories.map((category) => (
+          <View key={category} style={styles.gridItem}>
+            <CategoryCard
+              category={category}
+              selected={value === category}
+              onPress={() => onChange(category)}
+            />
+          </View>
         ))}
       </View>
+
+      {/* SHOW MORE / LESS */}
+
+      <Pressable
+        onPress={() => setExpanded((previous) => !previous)}
+        accessibilityRole="button"
+        style={({ pressed }) => [
+          styles.expandButton,
+          { opacity: pressed ? 0.7 : 1 },
+        ]}
+      >
+        <Text style={styles.expandText}>
+          {expanded ? "Show fewer categories" : "Show all categories"}
+        </Text>
+
+        <Ionicons
+          name={expanded ? "chevron-up" : "chevron-down"}
+          size={15}
+          color={COLORS.gold}
+        />
+      </Pressable>
     </View>
   );
 }
@@ -189,65 +230,90 @@ const styles = StyleSheet.create({
     gap: 14,
   },
 
-  header: {
-    gap: 5,
-  },
-
-  label: {
+  heading: {
     color: COLORS.text,
     fontSize: 13,
     fontWeight: "600",
-    letterSpacing: 0.2,
   },
 
   subtitle: {
     color: COLORS.muted,
     fontSize: 12,
-    lineHeight: 18,
+    marginTop: 5,
   },
 
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    rowGap: 12,
+    rowGap: 10,
+  },
+
+  gridItem: {
+    width: "48.5%",
   },
 
   card: {
-    width: "48.5%",
     height: CARD_HEIGHT,
+    width: "100%",
     justifyContent: "center",
+    position: "relative",
   },
 
   cardContent: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    gap: 10,
+    paddingHorizontal: 10,
+    gap: 9,
   },
 
-  iconContainer: {
-    width: 34,
-    height: 34,
+  iconFrame: {
+    width: 30,
+    height: 30,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
+    borderColor: "rgba(214,173,101,0.12)",
+    backgroundColor: "#171A24",
+  },
+
+  selectedIconFrame: {
+    borderColor: "rgba(214,173,101,0.38)",
+    backgroundColor: "rgba(214,173,101,0.12)",
   },
 
   categoryLabel: {
     flex: 1,
-    minWidth: 0,
-    fontSize: 12,
+    color: COLORS.muted,
+    fontSize: 11,
     fontWeight: "600",
-    letterSpacing: 0.1,
+  },
+
+  selectedCategoryLabel: {
+    color: COLORS.lightGold,
   },
 
   selectedIndicator: {
     position: "absolute",
-    top: -12,
-    right: 0,
-    width: 5,
-    height: 5,
+    top: 7,
+    right: 8,
+    width: 4,
+    height: 4,
     backgroundColor: COLORS.gold,
+  },
+
+  expandButton: {
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingVertical: 10,
+  },
+
+  expandText: {
+    color: COLORS.gold,
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.3,
   },
 });

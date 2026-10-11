@@ -12,10 +12,17 @@ export const activitySchema = z.object({
         .number()
         .positive("Duration must be greater than zero"),
 
-    classification: z.enum(ActivityClassification),
-    category: z.nativeEnum(ActivityCategory),
+    classification: z.enum(ActivityClassification, {
+        error: "Please select Growing or Life Leaks",
+    }),
 
-    activityDate: z.date({error: "Activity date is required"}),
+    category: z.enum(ActivityCategory, {
+        error: "Please select a life area",
+    }),
+
+    activityDate: z.date({
+        error: "Activity date is required",
+    }),
 });
 
 export type ActivityFormInput = z.input<typeof activitySchema>;
