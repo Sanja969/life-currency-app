@@ -30,6 +30,7 @@ import {
 const COLORS = {
   background: "#080A10",
   growing: "#8274E8",
+  restoring: "#58C7B5",
   leak: "#D88455",
 };
 
@@ -332,21 +333,39 @@ export default function CreateActivityScreen() {
    * PARTICLE COLORS
    */
 
-  const serves = particleType === ActivityClassification.Serves;
+  const PARTICLE_COLORS = {
+    [ActivityClassification.Serves]: {
+      core: "#EDE8FF",
+      particle: COLORS.growing,
+      glow: "rgba(130,116,232,0.22)",
+      ring: "rgba(165,153,255,0.75)",
+      inner: "rgba(130,116,232,0.24)",
+    },
 
-  const particleCoreColor = serves ? "#EDE8FF" : "#FFE9DA";
+    [ActivityClassification.Restores]: {
+      core: "#E0FFF8",
+      particle: COLORS.restoring,
+      glow: "rgba(88,199,181,0.22)",
+      ring: "rgba(120,230,210,0.75)",
+      inner: "rgba(88,199,181,0.24)",
+    },
 
-  const particleColor = serves ? COLORS.growing : COLORS.leak;
+    [ActivityClassification.DoesNotServe]: {
+      core: "#FFE9DA",
+      particle: COLORS.leak,
+      glow: "rgba(216,132,85,0.22)",
+      ring: "rgba(240,171,128,0.75)",
+      inner: "rgba(216,132,85,0.24)",
+    },
+  };
 
-  const glowColor = serves ? "rgba(130,116,232,0.22)" : "rgba(216,132,85,0.22)";
+  const particlePalette = PARTICLE_COLORS[particleType];
 
-  const ringColor = serves
-    ? "rgba(165,153,255,0.75)"
-    : "rgba(240,171,128,0.75)";
-
-  const particleInnerColor = serves
-    ? "rgba(130,116,232,0.24)"
-    : "rgba(216,132,85,0.24)";
+  const particleCoreColor = particlePalette.core;
+  const particleColor = particlePalette.particle;
+  const glowColor = particlePalette.glow;
+  const ringColor = particlePalette.ring;
+  const particleInnerColor = particlePalette.inner;
 
   return (
     <View style={styles.screen}>

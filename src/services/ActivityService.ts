@@ -68,16 +68,18 @@ export class ActivityService {
 
     return this.calculateStatistics(activities);
   }
+
   calculateStatistics(
     activities: Activity[],
   ): ActivityStatistics {
-    let totalActivities = 0;
     let totalDurationMinutes = 0;
 
     let servesCount = 0;
+    let restoresCount = 0;
     let doesNotServeCount = 0;
 
     let servesDurationMinutes = 0;
+    let restoresDurationMinutes = 0;
     let doesNotServeDurationMinutes = 0;
 
     let longestActivity: Activity | undefined;
@@ -88,66 +90,84 @@ export class ActivityService {
       {
         totalDurationMinutes: number;
         servesDurationMinutes: number;
+        restoresDurationMinutes: number;
         doesNotServeDurationMinutes: number;
       }
     >();
 
     for (const activity of activities) {
-      totalActivities++;
-      totalDurationMinutes += activity.durationMinutes;
+      const duration = activity.durationMinutes;
+
+      totalDurationMinutes += duration;
 
       const category = categoryMap.get(activity.category) ?? {
         totalDurationMinutes: 0,
         servesDurationMinutes: 0,
+        restoresDurationMinutes: 0,
         doesNotServeDurationMinutes: 0,
       };
 
-      category.totalDurationMinutes += activity.durationMinutes;
+      category.totalDurationMinutes += duration;
 
-      if (
-        activity.classification === ActivityClassification.Serves
-      ) {
-        servesCount++;
-        servesDurationMinutes += activity.durationMinutes;
+      switch (activity.classification) {
+        case ActivityClassification.Serves:
+          servesCount++;
+          servesDurationMinutes += duration;
+          category.servesDurationMinutes += duration;
+          break;
 
-        category.servesDurationMinutes += activity.durationMinutes;
-      } else {
-        doesNotServeCount++;
-        doesNotServeDurationMinutes += activity.durationMinutes;
+        case ActivityClassification.Restores:
+          restoresCount++;
+          restoresDurationMinutes += duration;
+          category.restoresDurationMinutes += duration;
+          break;
 
-        category.doesNotServeDurationMinutes +=
-          activity.durationMinutes;
+        case ActivityClassification.DoesNotServe:
+          doesNotServeCount++;
+          doesNotServeDurationMinutes += duration;
+          category.doesNotServeDurationMinutes += duration;
+          break;
       }
 
       categoryMap.set(activity.category, category);
 
       if (
         !longestActivity ||
-        activity.durationMinutes > longestActivity.durationMinutes
+        duration > longestActivity.durationMinutes
       ) {
         longestActivity = activity;
       }
 
       if (
         !shortestActivity ||
-        activity.durationMinutes < shortestActivity.durationMinutes
+        duration < shortestActivity.durationMinutes
       ) {
         shortestActivity = activity;
       }
     }
+
+    const totalActivities = activities.length;
 
     const averageDurationMinutes =
       totalActivities === 0
         ? 0
         : Math.round(totalDurationMinutes / totalActivities);
 
-    const servesPercentage =
+    const calculatePercentage = (minutes: number): number =>
       totalDurationMinutes === 0
         ? 0
-        : Math.round(
-          (servesDurationMinutes / totalDurationMinutes) * 100,
-        );
+        : Math.round((minutes / totalDurationMinutes) * 100);
 
+    const servesPercentage =
+      calculatePercentage(servesDurationMinutes);
+
+    const restoresPercentage =
+      calculatePercentage(restoresDurationMinutes);
+
+    const doesNotServePercentage =
+      calculatePercentage(doesNotServeDurationMinutes);
+
+    // Restoring is neutral in the existing net-time calculation.
     const netDurationMinutes =
       servesDurationMinutes - doesNotServeDurationMinutes;
 
@@ -155,59 +175,41 @@ export class ActivityService {
       Array.from(categoryMap.entries())
         .map(([category, statistics]) => ({
           category,
-
           ...statistics,
-
-          percentage:
-            totalDurationMinutes === 0
-              ? 0
-              : Math.round(
-                (statistics.totalDurationMinutes /
-                  totalDurationMinutes) *
-                100,
-              ),
+          percentage: calculatePercentage(
+            statistics.totalDurationMinutes,
+          ),
         }))
         .sort(
           (a, b) =>
             b.totalDurationMinutes - a.totalDurationMinutes,
         );
 
-    const strongestInvestment = categoryStatistics
-      .filter((category) => category.servesDurationMinutes > 0)
-      .reduce<ActivityCategoryStatistics | undefined>(
-        (strongest, category) => {
-          if (
-            !strongest ||
+    const strongestInvestment = categoryStatistics.reduce<
+      ActivityCategoryStatistics | undefined
+    >(
+      (strongest, category) =>
+        category.servesDurationMinutes > 0 &&
+          (!strongest ||
             category.servesDurationMinutes >
-            strongest.servesDurationMinutes
-          ) {
-            return category;
-          }
+            strongest.servesDurationMinutes)
+          ? category
+          : strongest,
+      undefined,
+    );
 
-          return strongest;
-        },
-        undefined,
-      );
-
-    const biggestLeak = categoryStatistics
-      .filter(
-        (category) =>
-          category.doesNotServeDurationMinutes > 0,
-      )
-      .reduce<ActivityCategoryStatistics | undefined>(
-        (biggest, category) => {
-          if (
-            !biggest ||
+    const biggestLeak = categoryStatistics.reduce<
+      ActivityCategoryStatistics | undefined
+    >(
+      (biggest, category) =>
+        category.doesNotServeDurationMinutes > 0 &&
+          (!biggest ||
             category.doesNotServeDurationMinutes >
-            biggest.doesNotServeDurationMinutes
-          ) {
-            return category;
-          }
-
-          return biggest;
-        },
-        undefined,
-      );
+            biggest.doesNotServeDurationMinutes)
+          ? category
+          : biggest,
+      undefined,
+    );
 
     return {
       totalActivities,
@@ -215,20 +217,25 @@ export class ActivityService {
       averageDurationMinutes,
 
       servesCount,
+      restoresCount,
       doesNotServeCount,
 
       servesDurationMinutes,
+      restoresDurationMinutes,
       doesNotServeDurationMinutes,
 
       netDurationMinutes,
+
       servesPercentage,
+      restoresPercentage,
+      doesNotServePercentage,
+
+      longestActivity,
+      shortestActivity,
 
       categoryStatistics,
       strongestInvestment,
       biggestLeak,
-
-      longestActivity,
-      shortestActivity,
     };
   }
 
@@ -289,8 +296,10 @@ export class ActivityService {
     filter: string = "all",
   ): Promise<{
     growingCount: number;
+    restoringCount: number;
     leaksCount: number;
     growingMinutes: number;
+    restoringMinutes: number;
     leaksMinutes: number;
   }> {
     return activityRepository.getActivityCounts(searchQuery, filter);

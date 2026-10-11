@@ -19,6 +19,97 @@ const ALL_CATEGORIES = `
   'other'
 `;
 
+const ACTIVITIES_SCHEMA_VERSION = 1;
+
+async function migrateActivities(): Promise<void> {
+  const database = await getDatabase();
+
+  const version = await database.getFirstAsync<{
+    user_version: number;
+  }>("PRAGMA user_version;");
+
+  if ((version?.user_version ?? 0) >= ACTIVITIES_SCHEMA_VERSION) {
+    return;
+  }
+
+  await database.withExclusiveTransactionAsync(async (tx) => {
+    await tx.execAsync(`
+      CREATE TABLE activities_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        title TEXT NOT NULL,
+        description TEXT,
+
+        duration_minutes INTEGER NOT NULL
+          CHECK (duration_minutes > 0),
+
+        classification TEXT NOT NULL
+          CHECK (
+            classification IN (
+              'serves',
+              'restores',
+              'does_not_serve'
+            )
+          ),
+
+        category TEXT NOT NULL DEFAULT 'other'
+          CHECK (category IN (${ALL_CATEGORIES})),
+
+        activity_date TEXT NOT NULL,
+
+        created_at TEXT NOT NULL
+          DEFAULT CURRENT_TIMESTAMP,
+
+        updated_at TEXT NOT NULL
+          DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await tx.execAsync(`
+      INSERT INTO activities_new (
+        id,
+        title,
+        description,
+        duration_minutes,
+        classification,
+        category,
+        activity_date,
+        created_at,
+        updated_at
+      )
+      SELECT
+        id,
+        title,
+        description,
+        duration_minutes,
+        classification,
+        category,
+        activity_date,
+        created_at,
+        updated_at
+      FROM activities;
+    `);
+
+    await tx.execAsync(`
+      DROP TABLE activities;
+
+      ALTER TABLE activities_new RENAME TO activities;
+
+      CREATE INDEX idx_activities_date
+        ON activities(activity_date);
+
+      CREATE INDEX idx_activities_category
+        ON activities(category);
+
+    `);
+    await tx.execAsync(`
+      PRAGMA user_version = 1;
+    `);
+  });
+
+  console.log("Activities database migration completed.");
+}
+
 export async function initializeDatabase(): Promise<void> {
   const database = await getDatabase();
 
@@ -115,6 +206,28 @@ export async function initializeDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_activities_category
       ON activities(category);
   `);
+
+  await migrateActivities();
+
+  const activitiesTable = await database.getFirstAsync<{
+    sql: string;
+  }>(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table'
+      AND name = 'activities';
+  `);
+
+  if (
+    !activitiesTable?.sql.includes("'restores'") ||
+    !activitiesTable.sql.includes("'social_media'")
+  ) {
+    throw new Error(
+      "Activities database migration verification failed.",
+    );
+  }
+
+  console.log("Activities database schema verified.");
 
   // ============================================
   // WEEKLY INTENTIONS

@@ -61,6 +61,10 @@ const CLASSIFICATION_ITEMS = [
     value: ActivityClassification.Serves,
   },
   {
+    label: "Restoring",
+    value: ActivityClassification.Restores,
+  },
+  {
     label: "Life Leaks",
     value: ActivityClassification.DoesNotServe,
   },
@@ -355,7 +359,7 @@ export function ActivityForm({
         <FormSegmentedControl
           control={control}
           name="classification"
-          label="How did this time serve you?"
+          label="What did this time give you?"
           items={CLASSIFICATION_ITEMS}
         />
 

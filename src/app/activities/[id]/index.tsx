@@ -28,8 +28,35 @@ const COLORS = {
   text: "#F5F0E7",
   muted: "#9295A5",
   growing: "#8274E8",
+  restoring: "#58C7B5",
   leak: "#D88455",
   danger: "#E78A8A",
+};
+
+const CLASSIFICATION_META = {
+  [ActivityClassification.Serves]: {
+    accent: COLORS.growing,
+    background: "#171527",
+    label: "GROWING",
+    energyLabel: "INVESTED IN GROWTH",
+    description: "Time dedicated to something that helps you grow.",
+  },
+
+  [ActivityClassification.Restores]: {
+    accent: COLORS.restoring,
+    background: "#142B2A",
+    label: "RESTORING",
+    energyLabel: "TIME SPENT RESTORING",
+    description: "Time dedicated to rest, recovery, and restoring your energy.",
+  },
+
+  [ActivityClassification.DoesNotServe]: {
+    accent: COLORS.leak,
+    background: "#241A16",
+    label: "LIFE LEAK",
+    energyLabel: "SPENT ON A LIFE LEAK",
+    description: "Time spent on something you've marked as draining.",
+  },
 };
 
 function normalizeParam(value: string | string[] | undefined) {
@@ -275,8 +302,9 @@ export default function ActivityDetailScreen() {
     );
   }
 
-  const serves = activity.classification === ActivityClassification.Serves;
-  const accent = serves ? COLORS.growing : COLORS.leak;
+  const classificationMeta = CLASSIFICATION_META[activity.classification];
+  const accent = classificationMeta.accent;
+
   const categoryMeta = getActivityCategoryMeta(activity.category);
 
   const formattedDate = activity.activityDate.toLocaleDateString([], {
@@ -334,7 +362,7 @@ export default function ActivityDetailScreen() {
               />
 
               <Text style={[styles.classificationText, { color: accent }]}>
-                {serves ? "GROWING" : "LIFE LEAK"}
+                {classificationMeta.label}
               </Text>
             </View>
 
@@ -358,7 +386,7 @@ export default function ActivityDetailScreen() {
           <AngularCard
             style={styles.energyCard}
             borderColor={`${accent}80`}
-            backgroundColor={serves ? "#171527" : "#241A16"}
+            backgroundColor={classificationMeta.background}
             cut={18}
           >
             <View style={styles.energyContent}>
@@ -399,15 +427,12 @@ export default function ActivityDetailScreen() {
               <Text style={styles.energyDuration}>
                 {formatDuration(activity.durationMinutes)}
               </Text>
-
               <Text style={[styles.energyLabel, { color: accent }]}>
-                {serves ? "INVESTED IN GROWTH" : "SPENT ON A LIFE LEAK"}
+                {classificationMeta.energyLabel}
               </Text>
 
               <Text style={styles.energyDescription}>
-                {serves
-                  ? "Time dedicated to something that helps you grow."
-                  : "Time spent on something you've marked as draining."}
+                {classificationMeta.description}
               </Text>
             </View>
           </AngularCard>

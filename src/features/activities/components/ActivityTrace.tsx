@@ -44,6 +44,24 @@ const GROWING_PALETTE = {
   fieldLine: "rgba(130,116,232,0.12)",
 };
 
+const RESTORING_PALETTE = {
+  core: "#58C7B5",
+  coreLight: "#E0FFF8",
+
+  gradientStart: "#142B2A",
+  gradientMiddle: "#121F20",
+  gradientEnd: "#101719",
+
+  border: "rgba(88,199,181,0.45)",
+  glow: "#58C7B5",
+
+  ringStrong: "rgba(88,199,181,0.45)",
+  ringSoft: "rgba(88,199,181,0.16)",
+
+  label: "#80DECF",
+  fieldLine: "rgba(88,199,181,0.12)",
+};
+
 const LEAK_PALETTE = {
   core: "#D88455",
   coreLight: "#FFE0CA",
@@ -62,6 +80,23 @@ const LEAK_PALETTE = {
   fieldLine: "rgba(216,132,85,0.12)",
 };
 
+const CLASSIFICATION_META = {
+  [ActivityClassification.Serves]: {
+    palette: GROWING_PALETTE,
+    label: "GROWING",
+  },
+
+  [ActivityClassification.Restores]: {
+    palette: RESTORING_PALETTE,
+    label: "RESTORING",
+  },
+
+  [ActivityClassification.DoesNotServe]: {
+    palette: LEAK_PALETTE,
+    label: "LIFE LEAK",
+  },
+};
+
 export function ActivityTraceComponent({
   activity,
   showDate,
@@ -70,9 +105,9 @@ export function ActivityTraceComponent({
   const cardScale = useSharedValue(1);
   const cardGlow = useSharedValue(0);
 
-  const serves = activity.classification === ActivityClassification.Serves;
+  const classificationMeta = CLASSIFICATION_META[activity.classification];
 
-  const palette = serves ? GROWING_PALETTE : LEAK_PALETTE;
+  const palette = classificationMeta.palette;
 
   const date = normalizeDate(activity.activityDate);
 
@@ -154,8 +189,6 @@ export function ActivityTraceComponent({
             justifyContent: "center",
           }}
         >
-
-
           {/* TINY FIELD PARTICLE */}
 
           <View
@@ -214,7 +247,7 @@ export function ActivityTraceComponent({
                     color: palette.label,
                   }}
                 >
-                  {serves ? "GROWING" : "LIFE LEAK"}
+                  {classificationMeta.label}
                 </Text>
 
                 <View className="mx-2 h-[3px] w-[3px] rounded-full bg-[#7A8399]" />

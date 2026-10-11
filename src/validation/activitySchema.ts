@@ -13,7 +13,7 @@ export const activitySchema = z.object({
         .positive("Duration must be greater than zero"),
 
     classification: z.enum(ActivityClassification, {
-        error: "Please select Growing or Life Leaks",
+        error: "Please select Growing, Restoring, or Life Leaks",
     }),
 
     category: z.enum(ActivityCategory, {

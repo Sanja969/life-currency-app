@@ -233,8 +233,10 @@ export class ActivityRepository {
     filter: string = "all",
   ): Promise<{
     growingCount: number;
+    restoringCount: number;
     leaksCount: number;
     growingMinutes: number;
+    restoringMinutes: number;
     leaksMinutes: number;
   }> {
     const database = await getDatabase();
@@ -243,14 +245,20 @@ export class ActivityRepository {
 
     const result = await database.getFirstAsync<{
       growingCount: number;
+      restoringCount: number;
       leaksCount: number;
       growingMinutes: number;
+      restoringMinutes: number;
       leaksMinutes: number;
     }>(
       `SELECT
          COUNT(CASE
            WHEN classification = 'serves' THEN 1
          END) AS growingCount,
+  
+         COUNT(CASE
+           WHEN classification = 'restores' THEN 1
+         END) AS restoringCount,
   
          COUNT(CASE
            WHEN classification = 'does_not_serve' THEN 1
@@ -261,6 +269,12 @@ export class ActivityRepository {
            THEN duration_minutes
            ELSE 0
          END), 0) AS growingMinutes,
+  
+         COALESCE(SUM(CASE
+           WHEN classification = 'restores'
+           THEN duration_minutes
+           ELSE 0
+         END), 0) AS restoringMinutes,
   
          COALESCE(SUM(CASE
            WHEN classification = 'does_not_serve'
@@ -282,8 +296,11 @@ export class ActivityRepository {
 
     return {
       growingCount: result?.growingCount ?? 0,
+      restoringCount: result?.restoringCount ?? 0,
       leaksCount: result?.leaksCount ?? 0,
+
       growingMinutes: result?.growingMinutes ?? 0,
+      restoringMinutes: result?.restoringMinutes ?? 0,
       leaksMinutes: result?.leaksMinutes ?? 0,
     };
   }
