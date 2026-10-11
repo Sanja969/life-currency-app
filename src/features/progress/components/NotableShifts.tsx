@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
 import { formatDuration } from "@/utils/formatDuration";
@@ -26,6 +26,7 @@ const COLORS = {
   text: "#F5F0E8",
   muted: "#9295A3",
   subtle: "#686C7A",
+  gold: "#D6AD65",
   growing: "#8274E8",
   leaks: "#D88455",
 };
@@ -107,35 +108,36 @@ export function NotableShifts({ trends, period }: NotableShiftsProps) {
     period === "7days" ? "previous 7 days" : "previous 30 days";
 
   return (
-    <View className="mt-8">
-      {/* SECTION HEADER */}
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <View style={styles.goldDot} />
 
-      <View className="mb-3">
-        <Text className="text-[10px] font-bold tracking-[2px] text-[#9295A3]">
-          NOTABLE SHIFTS
-        </Text>
+          <Text style={styles.sectionTitle}>NOTABLE SHIFTS</Text>
+        </View>
 
-        <Text className="mt-1.5 text-[12px] text-[#686C7A]">
+        <Text style={styles.sectionDescription}>
           Compared with the {periodLabel}
         </Text>
       </View>
 
-      {/* SHIFT CARDS */}
+      <View style={styles.list}>
+        {shifts.map((shift, index) => (
+          <View key={shift.key}>
+            <ShiftRow shift={shift} />
 
-      <View className="gap-3">
-        {shifts.map((shift) => (
-          <ShiftCard key={shift.key} shift={shift} />
+            {index < shifts.length - 1 && <View style={styles.divider} />}
+          </View>
         ))}
       </View>
     </View>
   );
 }
 
-function ShiftCard({ shift }: { shift: Shift }) {
+function ShiftRow({ shift }: { shift: Shift }) {
   const content = getShiftContent(shift);
 
   const positive = shift.type === "positive";
-
   const accent = positive ? COLORS.growing : COLORS.leaks;
 
   const iconName =
@@ -144,58 +146,139 @@ function ShiftCard({ shift }: { shift: Shift }) {
   const sign = shift.direction === "up" ? "+" : "−";
 
   return (
-    <View className="overflow-hidden rounded-[22px] border border-[#252936] bg-[#11141D]">
-      <View className="flex-row">
-        {/* ACCENT LINE */}
+    <View style={styles.shiftRow}>
+      <View style={[styles.accentLine, { backgroundColor: accent }]} />
 
-        <View
-          className="w-[3px]"
-          style={{
-            backgroundColor: accent,
-          }}
-        />
+      <View style={styles.shiftContent}>
+        <View style={styles.shiftTopRow}>
+          <View style={styles.shiftInfo}>
+            <Text style={[styles.eyebrow, { color: accent }]}>
+              {content.eyebrow}
+            </Text>
 
-        {/* CONTENT */}
-
-        <View className="flex-1 p-4">
-          <View className="flex-row items-center justify-between">
-            <View className="mr-3 flex-1">
-              <Text
-                className="text-[10px] font-bold tracking-[1.3px]"
-                style={{
-                  color: accent,
-                }}
-              >
-                {content.eyebrow}
-              </Text>
-
-              <Text className="mt-2 text-[16px] font-semibold text-[#F5F0E8]">
-                {shift.categoryLabel}
-              </Text>
-            </View>
-
-            {/* CHANGE VALUE */}
-
-            <View className="flex-row items-center">
-              <Ionicons name={iconName} size={16} color={accent} />
-
-              <Text
-                className="ml-1 text-[15px] font-semibold"
-                style={{
-                  color: accent,
-                }}
-              >
-                {sign}
-                {formatDuration(shift.changeMinutes)}
-              </Text>
-            </View>
+            <Text style={styles.categoryName}>{shift.categoryLabel}</Text>
           </View>
 
-          <Text className="mt-3 text-[12px] leading-[18px] text-[#9295A3]">
-            {content.message} than in the previous period
-          </Text>
+          <View style={styles.changeValueRow}>
+            <Ionicons name={iconName} size={16} color={accent} />
+
+            <Text style={[styles.changeValue, { color: accent }]}>
+              {sign}
+              {formatDuration(shift.changeMinutes)}
+            </Text>
+          </View>
         </View>
+
+        <Text style={styles.message}>
+          {content.message} than in the previous period
+        </Text>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: 32,
+  },
+
+  header: {
+    marginBottom: 15,
+  },
+
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+
+  goldDot: {
+    width: 6,
+    height: 6,
+    backgroundColor: COLORS.gold,
+  },
+
+  sectionTitle: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+  },
+
+  sectionDescription: {
+    color: COLORS.subtle,
+    fontSize: 12,
+    marginTop: 8,
+  },
+
+  list: {
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+
+  shiftRow: {
+    flexDirection: "row",
+    minHeight: 105,
+  },
+
+  accentLine: {
+    width: 2,
+  },
+
+  shiftContent: {
+    flex: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+  },
+
+  shiftTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+
+  shiftInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+  },
+
+  categoryName: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 8,
+  },
+
+  changeValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 0,
+  },
+
+  changeValue: {
+    fontSize: 15,
+    fontWeight: "600",
+    marginLeft: 5,
+  },
+
+  message: {
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 12,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginLeft: 20,
+  },
+});

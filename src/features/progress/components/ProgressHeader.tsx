@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 
 import { ProgressPeriod } from "../hooks/useProgress";
 
@@ -7,44 +8,48 @@ type ProgressHeaderProps = {
   onPeriodChange: (period: ProgressPeriod) => void;
 };
 
+const COLORS = {
+  gold: "#D6AD65",
+  lightGold: "#F3D49B",
+  text: "#F5F0E8",
+  muted: "#9295A3",
+  surface: "#11141D",
+  border: "#252936",
+};
+
 export function ProgressHeader({
   period,
   onPeriodChange,
 }: ProgressHeaderProps) {
   return (
     <View>
-      {/* EYEBROW */}
+      <View style={styles.eyebrowRow}>
+        <View style={styles.goldDot} />
+        <Text style={styles.eyebrow}>LIFE PATTERNS</Text>
+      </View>
 
-      <Text className="text-[10px] font-bold tracking-[2.4px] text-[#D6AD65]">
-        LIFE PATTERNS
-      </Text>
+      <Text style={styles.title}>Your progress</Text>
 
-      {/* TITLE */}
-
-      <Text className="mt-3 text-[34px] font-bold leading-[40px] tracking-[-1px] text-[#F5F0E8]">
-        Your progress
-      </Text>
-
-      {/* DESCRIPTION */}
-
-      <Text className="mt-2 text-[14px] leading-[21px] text-[#9295A3]">
+      <Text style={styles.subtitle}>
         See how your time and energy are shaping your life.
       </Text>
 
-      {/* PERIOD SELECTOR */}
+      <View style={styles.periodSection}>
+        <Text style={styles.periodLabel}>TIME FRAME</Text>
 
-      <View className="mt-6 flex-row rounded-[16px] border border-[#252936] bg-[#11141D] p-1">
-        <PeriodButton
-          label="7 Days"
-          selected={period === "7days"}
-          onPress={() => onPeriodChange("7days")}
-        />
+        <View style={styles.periodRow}>
+          <PeriodButton
+            label="7 Days"
+            selected={period === "7days"}
+            onPress={() => onPeriodChange("7days")}
+          />
 
-        <PeriodButton
-          label="30 Days"
-          selected={period === "30days"}
-          onPress={() => onPeriodChange("30days")}
-        />
+          <PeriodButton
+            label="30 Days"
+            selected={period === "30days"}
+            onPress={() => onPeriodChange("30days")}
+          />
+        </View>
       </View>
     </View>
   );
@@ -66,22 +71,116 @@ function PeriodButton({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      className="flex-1 items-center justify-center rounded-[12px] py-3"
-      style={({ pressed }) => ({
-        backgroundColor: selected ? "#24231F" : "transparent",
-        borderWidth: 1,
-        borderColor: selected ? "#665336" : "transparent",
-        opacity: pressed ? 0.75 : 1,
-      })}
+      style={({ pressed }) => [
+        styles.periodButton,
+        {
+          opacity: pressed ? 0.75 : 1,
+        },
+      ]}
     >
+      <Svg
+        pointerEvents="none"
+        width="100%"
+        height="100%"
+        viewBox="0 0 160 46"
+        preserveAspectRatio="none"
+        style={StyleSheet.absoluteFill}
+      >
+        <Path
+          d="M 10 0 L 160 0 L 160 36 L 150 46 L 0 46 L 0 10 Z"
+          fill={selected ? "#24231F" : COLORS.surface}
+          stroke={selected ? "#80683E" : COLORS.border}
+          strokeWidth={1}
+          vectorEffect="non-scaling-stroke"
+        />
+
+        {selected && (
+          <Path
+            d="M 10 0 L 48 0"
+            stroke={COLORS.gold}
+            strokeWidth={1.5}
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+      </Svg>
+
       <Text
-        className="text-[13px] font-semibold"
-        style={{
-          color: selected ? "#D6AD65" : "#9295A3",
-        }}
+        style={[
+          styles.periodButtonText,
+          {
+            color: selected ? COLORS.lightGold : COLORS.muted,
+          },
+        ]}
       >
         {label}
       </Text>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  eyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+
+  goldDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.gold,
+  },
+
+  eyebrow: {
+    color: COLORS.gold,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+  },
+
+  title: {
+    color: COLORS.text,
+    fontSize: 34,
+    lineHeight: 42,
+    fontWeight: "600",
+    letterSpacing: -1.1,
+    marginTop: 15,
+  },
+
+  subtitle: {
+    color: COLORS.muted,
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 8,
+  },
+
+  periodSection: {
+    marginTop: 30,
+  },
+
+  periodLabel: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+    marginBottom: 14,
+  },
+
+  periodRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  periodButton: {
+    flex: 1,
+    height: 46,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  periodButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+});

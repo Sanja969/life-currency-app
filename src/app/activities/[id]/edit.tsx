@@ -1,12 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
+import { AppButton } from "@/components/ui/AppButton";
 import {
   ActivityIndicator,
   Alert,
-  ImageBackground,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -14,8 +15,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActivityForm } from "../../../components/ActivityForm";
 import { activityService } from "../../../services/ActivityService";
-import { Activity, ActivityClassification } from "../../../types/activity";
+import { Activity } from "../../../types/activity";
 import { ActivityFormOutput } from "../../../validation/activitySchema";
+
+const COLORS = {
+  background: "#080A10",
+  surface: "#11141D",
+  border: "#252936",
+  gold: "#D6AD65",
+  text: "#F5F0E8",
+  muted: "#9295A3",
+  subtle: "#686C7A",
+  danger: "#D88455",
+};
 
 function normalizeParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
@@ -106,257 +118,274 @@ export default function EditActivityScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-[#02040D]">
-        <ImageBackground
-          source={require("../../../../assets/add.png")}
-          resizeMode="cover"
-          style={{
-            flex: 1,
-          }}
-          imageStyle={{
-            opacity: 0.48,
-          }}
-        >
-          <View
-            pointerEvents="none"
-            className="absolute inset-0"
-            style={{
-              backgroundColor: "rgba(2, 4, 13, 0.72)",
-            }}
-          />
+      <View style={styles.screen}>
+        <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.gold} />
 
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#718BFF" />
-
-            <Text className="mt-4 text-[14px] text-[#7483A3]">
-              Loading activity...
-            </Text>
+            <Text style={styles.loadingText}>Loading activity...</Text>
           </View>
-        </ImageBackground>
+        </SafeAreaView>
       </View>
     );
   }
 
   if (!activity || errorMessage) {
     return (
-      <View className="flex-1 bg-[#02040D]">
-        <ImageBackground
-          source={require("../../../../assets/add.png")}
-          resizeMode="cover"
-          style={{
-            flex: 1,
-          }}
-          imageStyle={{
-            opacity: 0.45,
-          }}
-        >
-          <View
-            pointerEvents="none"
-            className="absolute inset-0"
-            style={{
-              backgroundColor: "rgba(2, 4, 13, 0.76)",
-            }}
-          />
+      <View style={styles.screen}>
+        <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+          <View style={styles.topBar}>
+            <AppButton
+              variant="icon"
+              tone="secondary"
+              icon="chevron-back"
+              accessibilityLabel="Go back"
+              onPress={() => router.back()}
+            />
 
-          <SafeAreaView
-            style={{
-              flex: 1,
-            }}
-            edges={["top", "left", "right"]}
-          >
-            <View className="px-5 pt-2">
-              <Pressable
-                onPress={() => router.back()}
-                hitSlop={12}
-                className="h-11 w-11 items-center justify-center rounded-full border border-[#29395F] bg-[#0B142B]/90"
-                style={({ pressed }) => ({
+            <View style={styles.topBarLabel}>
+              <View style={styles.goldDot} />
+
+              <Text style={styles.headerTitle}>EDIT ACTIVITY</Text>
+            </View>
+
+            <View style={styles.backButtonPlaceholder} />
+          </View>
+
+          <View style={styles.errorContainer}>
+            <View style={styles.errorIcon}>
+              <Ionicons
+                name="alert-circle-outline"
+                size={30}
+                color={COLORS.danger}
+              />
+            </View>
+
+            <Text style={styles.errorTitle}>Activity unavailable</Text>
+
+            <Text style={styles.errorDescription}>
+              {errorMessage ?? "This activity could not be found."}
+            </Text>
+
+            <Pressable
+              onPress={() => router.replace("/activities")}
+              style={({ pressed }) => [
+                styles.errorButton,
+                {
                   opacity: pressed ? 0.7 : 1,
-                  transform: [
-                    {
-                      scale: pressed ? 0.95 : 1,
-                    },
-                  ],
-                })}
-              >
-                <Ionicons name="chevron-back" size={23} color="#FFFFFF" />
-              </Pressable>
-            </View>
+                },
+              ]}
+            >
+              <Ionicons
+                name="arrow-back-outline"
+                size={17}
+                color={COLORS.gold}
+              />
 
-            <View className="flex-1 items-center justify-center px-8">
-              <View className="h-16 w-16 items-center justify-center rounded-full border border-[#E657A8]/30 bg-[#E657A8]/10">
-                <Ionicons
-                  name="alert-circle-outline"
-                  size={30}
-                  color="#E657A8"
-                />
-              </View>
-
-              <Text className="mt-5 text-center text-[20px] font-semibold text-white">
-                Activity unavailable
-              </Text>
-
-              <Text className="mt-2 text-center text-[14px] leading-6 text-[#7F8CA8]">
-                {errorMessage ?? "This activity could not be found."}
-              </Text>
-
-              <Pressable
-                onPress={() => router.replace("/activities")}
-                className="mt-6 rounded-[16px] border border-[#28375D] bg-[#0B1425] px-5 py-3"
-              >
-                <Text className="text-[14px] font-semibold text-[#C8D1E6]">
-                  Back to activities
-                </Text>
-              </Pressable>
-            </View>
-          </SafeAreaView>
-        </ImageBackground>
+              <Text style={styles.errorButtonText}>Back to activities</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
       </View>
     );
   }
 
-  const serves = activity.classification === ActivityClassification.Serves;
-
-  const accentColor = serves ? "#718BFF" : "#E657A8";
-
-  const glowColor = serves
-    ? "rgba(91, 110, 255, 0.18)"
-    : "rgba(220, 70, 160, 0.18)";
-
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: "#02040D",
-      }}
-    >
-      <ImageBackground
-        source={require("../../../../assets/add.png")}
-        resizeMode="cover"
-        style={{
-          flex: 1,
-        }}
-        imageStyle={{
-          opacity: 0.55,
-        }}
-      >
-        {/* DARK OVERLAY */}
+    <View style={styles.screen}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        {/* TOP BAR */}
 
-        <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
-            backgroundColor: "rgba(2, 4, 13, 0.68)",
-          }}
-        />
+        <View style={styles.topBar}>
+          <AppButton
+            variant="icon"
+            tone="secondary"
+            icon="chevron-back"
+            accessibilityLabel="Go back"
+            onPress={() => router.back()}
+          />
 
-        {/* ACTIVITY ENERGY GLOW */}
+          <View style={styles.topBarLabel}>
+            <View style={styles.goldDot} />
 
-        <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: 80,
-            right: -120,
-            width: 300,
-            height: 300,
-            borderRadius: 150,
-            backgroundColor: glowColor,
-          }}
-        />
-
-        <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: 300,
-            left: -170,
-            width: 320,
-            height: 320,
-            borderRadius: 160,
-            backgroundColor: glowColor,
-            opacity: 0.45,
-          }}
-        />
-
-        <SafeAreaView
-          style={{
-            flex: 1,
-          }}
-          edges={["top", "left", "right"]}
-        >
-          {/* HEADER */}
-
-          <View className="flex-row items-center justify-between px-5 pb-1 pt-2">
-            <Pressable
-              onPress={() => router.back()}
-              hitSlop={12}
-              className="h-11 w-11 items-center justify-center rounded-full border border-[#29395F] bg-[#0B142B]/90"
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.7 : 1,
-                transform: [
-                  {
-                    scale: pressed ? 0.95 : 1,
-                  },
-                ],
-              })}
-            >
-              <Ionicons name="chevron-back" size={23} color="#FFFFFF" />
-            </Pressable>
-
-            <View className="flex-row items-center">
-              <View
-                className="mr-2 h-[6px] w-[6px] rounded-full"
-                style={{
-                  backgroundColor: accentColor,
-                  shadowColor: accentColor,
-                  shadowOpacity: 1,
-                  shadowRadius: 7,
-                  shadowOffset: {
-                    width: 0,
-                    height: 0,
-                  },
-                }}
-              />
-
-              <Text className="text-[11px] font-bold tracking-[1.2px] text-[#7F8BA7]">
-                EDIT TRACE
-              </Text>
-            </View>
-
-            {/* Keeps title centered */}
-
-            <View className="h-11 w-11" />
+            <Text style={styles.eyebrow}>EDIT ACTIVITY</Text>
           </View>
 
-          {/* FORM */}
+          <View style={styles.backButtonPlaceholder} />
+        </View>
 
-          <ScrollView
-            style={{
-              flex: 1,
-            }}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: 20,
-              paddingTop: 18,
-              paddingBottom: 70,
-            }}
-          >
-            <ActivityForm
-              mode="edit"
-              initialValues={activity}
-              activities={activities}
-              activityId={activity.id}
-              onSubmit={handleSubmit}
-            />
-          </ScrollView>
-        </SafeAreaView>
-      </ImageBackground>
+        {/* FORM */}
+
+        <ScrollView
+          style={styles.scrollView}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* PAGE HEADER */}
+
+          <View style={styles.pageHeader}>
+            <Text style={styles.pageTitle}>Edit your trace</Text>
+
+            <Text style={styles.pageDescription}>
+              Refine the details of how you spent your time.
+            </Text>
+          </View>
+
+          {/* ACTIVITY FORM */}
+
+          <ActivityForm
+            mode="edit"
+            initialValues={activity}
+            activities={activities}
+            activityId={activity.id}
+            onSubmit={handleSubmit}
+          />
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+
+  safeArea: {
+    flex: 1,
+  },
+
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 6,
+  },
+
+  headerTitle: {
+    color: COLORS.gold,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+  },
+
+  backButtonPlaceholder: {
+    width: 52,
+    height: 52,
+  },
+
+  topBarLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  goldDot: {
+    width: 6,
+    height: 6,
+    backgroundColor: COLORS.gold,
+  },
+
+  eyebrow: {
+    color: COLORS.muted,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+  },
+
+  scrollView: {
+    flex: 1,
+  },
+
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 100,
+  },
+
+  pageHeader: {
+    marginBottom: 26,
+  },
+
+  pageTitle: {
+    color: COLORS.text,
+    fontSize: 34,
+    lineHeight: 42,
+    fontWeight: "600",
+    letterSpacing: -1.1,
+  },
+
+  pageDescription: {
+    color: COLORS.muted,
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 8,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  loadingText: {
+    color: COLORS.muted,
+    fontSize: 14,
+    marginTop: 16,
+  },
+
+  errorContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+
+  errorIcon: {
+    width: 64,
+    height: 64,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#302019",
+    borderWidth: 1,
+    borderColor: "#493127",
+  },
+
+  errorTitle: {
+    color: COLORS.text,
+    fontSize: 20,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 20,
+  },
+
+  errorDescription: {
+    color: COLORS.muted,
+    fontSize: 14,
+    lineHeight: 23,
+    textAlign: "center",
+    marginTop: 10,
+  },
+
+  errorButton: {
+    marginTop: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+
+  errorButtonText: {
+    color: COLORS.gold,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+});

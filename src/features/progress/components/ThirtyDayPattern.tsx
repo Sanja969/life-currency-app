@@ -1,4 +1,4 @@
-import { Text, View } from "react-native";
+import { Text, View, StyleSheet } from "react-native";
 
 import { formatDuration } from "@/utils/formatDuration";
 import { PeriodProgressStat } from "../utils/progressStatistics";
@@ -13,6 +13,7 @@ const COLORS = {
   track: "#20242F",
   growing: "#8274E8",
   leaks: "#D88455",
+  gold: "#D6AD65",
   text: "#F5F0E8",
   muted: "#9295A3",
   subtle: "#686C7A",
@@ -55,29 +56,31 @@ export function ThirtyDayPattern({ periods }: ThirtyDayPatternProps) {
   );
 
   return (
-    <View className="mt-8">
+    <View style={styles.container}>
       {/* SECTION HEADER */}
 
-      <View className="mb-3">
-        <Text className="text-[10px] font-bold tracking-[2px] text-[#9295A3]">
-          30-DAY PATTERN
-        </Text>
+      <View style={styles.sectionHeader}>
+        <View style={styles.headerRow}>
+          <View style={styles.goldDot} />
 
-        <Text className="mt-1.5 text-[12px] text-[#686C7A]">
+          <Text style={styles.sectionTitle}>30-DAY PATTERN</Text>
+        </View>
+
+        <Text style={styles.sectionDescription}>
           How your tracked time changed across the last 30 days
         </Text>
       </View>
 
-      {/* CHART CARD */}
+      {/* CHART */}
 
-      <View className="rounded-[24px] border border-[#252936] bg-[#11141D] px-4 pb-5 pt-6">
+      <View style={styles.chartContainer}>
+        <View style={styles.chartTopAccent} />
+
         {totalMinutes === 0 ? (
-          <View className="items-center py-8">
-            <Text className="text-[14px] font-medium text-[#9295A3]">
-              No activity yet
-            </Text>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No activity yet</Text>
 
-            <Text className="mt-2 text-center text-[12px] leading-5 text-[#686C7A]">
+            <Text style={styles.emptyDescription}>
               Your 30-day pattern will form as you track your time.
             </Text>
           </View>
@@ -85,7 +88,7 @@ export function ThirtyDayPattern({ periods }: ThirtyDayPatternProps) {
           <>
             {/* BARS */}
 
-            <View className="h-[185px] flex-row items-end justify-between">
+            <View style={styles.barsRow}>
               {periods.map((period, index) => {
                 const totalHeight =
                   period.totalMinutes > 0
@@ -101,34 +104,24 @@ export function ThirtyDayPattern({ periods }: ThirtyDayPatternProps) {
                     : 0;
 
                 const growingHeight = totalHeight * growingRatio;
+
                 const leakHeight = totalHeight - growingHeight;
 
                 return (
                   <View
                     key={`${period.startDate.toISOString()}-${index}`}
-                    className="flex-1 items-center"
+                    style={styles.periodColumn}
                   >
-                    {/* TOTAL DURATION */}
-
-                    <Text
-                      numberOfLines={1}
-                      className="mb-3 text-[10px] font-medium text-[#9295A3]"
-                    >
+                    <Text numberOfLines={1} style={styles.durationLabel}>
                       {period.totalMinutes > 0
                         ? formatDuration(period.totalMinutes)
                         : ""}
                     </Text>
 
-                    {/* STACKED BAR */}
-
-                    <View
-                      className="w-[30px] justify-end overflow-hidden rounded-[10px] bg-[#20242F]"
-                      style={{ height: MAX_BAR_HEIGHT }}
-                    >
+                    <View style={styles.barTrack}>
                       {period.totalMinutes > 0 ? (
                         <View
-                          className="mt-auto overflow-hidden rounded-[10px]"
-                          style={{ height: totalHeight }}
+                          style={[styles.barStack, { height: totalHeight }]}
                         >
                           {leakHeight > 0 && (
                             <View
@@ -149,7 +142,7 @@ export function ThirtyDayPattern({ periods }: ThirtyDayPatternProps) {
                           )}
                         </View>
                       ) : (
-                        <View className="mt-auto h-[4px] rounded-full bg-[#343845]" />
+                        <View style={styles.emptyBar} />
                       )}
                     </View>
                   </View>
@@ -159,39 +152,41 @@ export function ThirtyDayPattern({ periods }: ThirtyDayPatternProps) {
 
             {/* DATE LABELS */}
 
-            <View className="mt-3 flex-row justify-between">
+            <View style={styles.dateRow}>
               {periods.map((period, index) => (
                 <View
                   key={`${period.startDate.toISOString()}-label-${index}`}
-                  className="flex-1 items-center px-0.5"
+                  style={styles.dateColumn}
                 >
-                  <Text
-                    numberOfLines={2}
-                    className="text-center text-[9px] leading-[12px] text-[#9295A3]"
-                  >
+                  <Text numberOfLines={2} style={styles.dateLabel}>
                     {getPeriodLabel(period.startDate, period.endDate)}
                   </Text>
                 </View>
               ))}
             </View>
 
-            {/* DIVIDER */}
-
-            <View className="mt-5 h-[1px] bg-[#252936]" />
-
             {/* LEGEND */}
 
-            <View className="mt-4 flex-row items-center justify-center">
-              <View className="mr-5 flex-row items-center">
-                <View className="mr-2 h-[7px] w-[7px] rounded-full bg-[#8274E8]" />
+            <View style={styles.divider} />
 
-                <Text className="text-[11px] text-[#9295A3]">Growing</Text>
+            <View style={styles.legend}>
+              <View style={styles.legendItem}>
+                <View
+                  style={[
+                    styles.legendDot,
+                    { backgroundColor: COLORS.growing },
+                  ]}
+                />
+
+                <Text style={styles.legendText}>Growing</Text>
               </View>
 
-              <View className="flex-row items-center">
-                <View className="mr-2 h-[7px] w-[7px] rounded-full bg-[#D88455]" />
+              <View style={styles.legendItem}>
+                <View
+                  style={[styles.legendDot, { backgroundColor: COLORS.leaks }]}
+                />
 
-                <Text className="text-[11px] text-[#9295A3]">Life Leaks</Text>
+                <Text style={styles.legendText}>Life Leaks</Text>
               </View>
             </View>
           </>
@@ -200,3 +195,166 @@ export function ThirtyDayPattern({ periods }: ThirtyDayPatternProps) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: 32,
+  },
+
+  sectionHeader: {
+    marginBottom: 15,
+  },
+
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+
+  goldDot: {
+    width: 6,
+    height: 6,
+    backgroundColor: COLORS.gold,
+  },
+
+  sectionTitle: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+  },
+
+  sectionDescription: {
+    color: COLORS.subtle,
+    fontSize: 12,
+    marginTop: 8,
+  },
+
+  chartContainer: {
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingHorizontal: 18,
+    paddingTop: 25,
+    paddingBottom: 20,
+    position: "relative",
+  },
+
+  chartTopAccent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: 55,
+    height: 1,
+    backgroundColor: COLORS.gold,
+    opacity: 0.65,
+  },
+
+  barsRow: {
+    height: 185,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+  },
+
+  periodColumn: {
+    flex: 1,
+    alignItems: "center",
+    minWidth: 0,
+  },
+
+  durationLabel: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "500",
+    marginBottom: 12,
+  },
+
+  barTrack: {
+    width: 30,
+    height: MAX_BAR_HEIGHT,
+    backgroundColor: COLORS.track,
+    justifyContent: "flex-end",
+    overflow: "hidden",
+  },
+
+  barStack: {
+    width: "100%",
+    marginTop: "auto",
+    overflow: "hidden",
+  },
+
+  emptyBar: {
+    height: 4,
+    backgroundColor: "#343845",
+    marginTop: "auto",
+  },
+
+  dateRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 14,
+  },
+
+  dateColumn: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 2,
+  },
+
+  dateLabel: {
+    color: COLORS.muted,
+    fontSize: 9,
+    lineHeight: 12,
+    textAlign: "center",
+  },
+
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 32,
+  },
+
+  emptyTitle: {
+    color: COLORS.muted,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+
+  emptyDescription: {
+    color: COLORS.subtle,
+    fontSize: 12,
+    lineHeight: 20,
+    textAlign: "center",
+    marginTop: 8,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginTop: 21,
+  },
+
+  legend: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 17,
+    gap: 24,
+  },
+
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  legendDot: {
+    width: 7,
+    height: 7,
+  },
+
+  legendText: {
+    color: COLORS.muted,
+    fontSize: 11,
+  },
+});

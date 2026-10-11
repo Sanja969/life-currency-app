@@ -1,13 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
 import { formatDuration } from "@/utils/formatDuration";
 
-import {
-  ProgressCategoryStat,
-  ProgressPeriod,
-} from "../hooks/useProgress";
+import { ProgressCategoryStat, ProgressPeriod } from "../hooks/useProgress";
 
 type ProgressInsightsProps = {
   strongestInvestment: ProgressCategoryStat | null;
@@ -21,6 +18,7 @@ const COLORS = {
   text: "#F5F0E8",
   muted: "#9295A3",
   subtle: "#686C7A",
+  gold: "#D6AD65",
   growing: "#8274E8",
   leaks: "#D88455",
 };
@@ -34,13 +32,10 @@ export function ProgressInsights({
     return null;
   }
 
-  const periodLabel =
-    period === "7days" ? "last 7 days" : "last 30 days";
+  const periodLabel = period === "7days" ? "last 7 days" : "last 30 days";
 
   const strongestInvestmentMeta = strongestInvestment
-    ? getActivityCategoryMeta(
-        strongestInvestment.category,
-      )
+    ? getActivityCategoryMeta(strongestInvestment.category)
     : null;
 
   const biggestLeakMeta = biggestLeak
@@ -48,106 +43,203 @@ export function ProgressInsights({
     : null;
 
   return (
-    <View className="mt-8">
+    <View style={styles.container}>
       {/* SECTION HEADER */}
 
-      <View className="mb-3">
-        <Text className="text-[10px] font-bold tracking-[2px] text-[#9295A3]">
-          CURRENT SIGNALS
-        </Text>
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <View style={styles.goldDot} />
 
-        <Text className="mt-1.5 text-[12px] text-[#686C7A]">
+          <Text style={styles.sectionTitle}>CURRENT SIGNALS</Text>
+        </View>
+
+        <Text style={styles.sectionDescription}>
           What stands out in this period
         </Text>
       </View>
 
-      {/* SIGNAL CARDS */}
+      {/* SIGNALS */}
 
-      <View className="gap-3">
-        {/* STRONGEST INVESTMENT */}
-
+      <View style={styles.signals}>
         {strongestInvestment && strongestInvestmentMeta && (
-          <View className="rounded-[22px] border border-[#252936] bg-[#11141D] p-5">
-            <View className="flex-row items-center">
-              {/* ICON */}
-
-              <View className="h-11 w-11 items-center justify-center rounded-[14px] border border-[#383052] bg-[#211D35]">
-                <Ionicons
-                  name="trending-up-outline"
-                  size={21}
-                  color={COLORS.growing}
-                />
-              </View>
-
-              {/* CONTENT */}
-
-              <View className="ml-3 flex-1">
-                <Text className="text-[10px] font-bold tracking-[1.2px] text-[#8274E8]">
-                  STRONGEST INVESTMENT
-                </Text>
-
-                <Text className="mt-1.5 text-[16px] font-semibold text-[#F5F0E8]">
-                  {strongestInvestmentMeta.label}
-                </Text>
-              </View>
-
-              {/* DURATION */}
-
-              <Text className="ml-2 text-[15px] font-semibold text-[#8274E8]">
-                {formatDuration(
-                  strongestInvestment.growingMinutes,
-                )}
-              </Text>
-            </View>
-
-            <Text className="ml-[56px] mt-3 text-[12px] leading-[18px] text-[#9295A3]">
-              Most Growing time in the {periodLabel}.
-            </Text>
-          </View>
+          <SignalCard
+            label="STRONGEST INVESTMENT"
+            category={strongestInvestmentMeta.label}
+            duration={formatDuration(strongestInvestment.growingMinutes)}
+            description={`Most Growing time in the ${periodLabel}.`}
+            icon="trending-up-outline"
+            accent={COLORS.growing}
+            iconBackground="#211D35"
+            iconBorder="#383052"
+          />
         )}
 
-        {/* BIGGEST LEAK */}
-
         {biggestLeak && biggestLeakMeta && (
-          <View className="rounded-[22px] border border-[#252936] bg-[#11141D] p-5">
-            <View className="flex-row items-center">
-              {/* ICON */}
-
-              <View className="h-11 w-11 items-center justify-center rounded-[14px] border border-[#493127] bg-[#302019]">
-                <Ionicons
-                  name="trending-down-outline"
-                  size={21}
-                  color={COLORS.leaks}
-                />
-              </View>
-
-              {/* CONTENT */}
-
-              <View className="ml-3 flex-1">
-                <Text className="text-[10px] font-bold tracking-[1.2px] text-[#D88455]">
-                  BIGGEST LEAK
-                </Text>
-
-                <Text className="mt-1.5 text-[16px] font-semibold text-[#F5F0E8]">
-                  {biggestLeakMeta.label}
-                </Text>
-              </View>
-
-              {/* DURATION */}
-
-              <Text className="ml-2 text-[15px] font-semibold text-[#D88455]">
-                {formatDuration(
-                  biggestLeak.leakMinutes,
-                )}
-              </Text>
-            </View>
-
-            <Text className="ml-[56px] mt-3 text-[12px] leading-[18px] text-[#9295A3]">
-              Most Life Leak time in the {periodLabel}.
-            </Text>
-          </View>
+          <SignalCard
+            label="BIGGEST LEAK"
+            category={biggestLeakMeta.label}
+            duration={formatDuration(biggestLeak.leakMinutes)}
+            description={`Most Life Leak time in the ${periodLabel}.`}
+            icon="trending-down-outline"
+            accent={COLORS.leaks}
+            iconBackground="#302019"
+            iconBorder="#493127"
+          />
         )}
       </View>
     </View>
   );
 }
+
+type SignalCardProps = {
+  label: string;
+  category: string;
+  duration: string;
+  description: string;
+  icon: "trending-up-outline" | "trending-down-outline";
+  accent: string;
+  iconBackground: string;
+  iconBorder: string;
+};
+
+function SignalCard({
+  label,
+  category,
+  duration,
+  description,
+  icon,
+  accent,
+  iconBackground,
+  iconBorder,
+}: SignalCardProps) {
+  return (
+    <View style={styles.signalCard}>
+      <View style={[styles.topAccent, { backgroundColor: accent }]} />
+
+      <View style={styles.signalHeader}>
+        <View
+          style={[
+            styles.iconContainer,
+            {
+              backgroundColor: iconBackground,
+              borderColor: iconBorder,
+            },
+          ]}
+        >
+          <Ionicons name={icon} size={21} color={accent} />
+        </View>
+
+        <View style={styles.signalInfo}>
+          <Text style={[styles.signalLabel, { color: accent }]}>{label}</Text>
+
+          <Text style={styles.categoryName}>{category}</Text>
+        </View>
+
+        <Text style={[styles.duration, { color: accent }]}>{duration}</Text>
+      </View>
+
+      <Text style={styles.description}>{description}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: 32,
+  },
+
+  header: {
+    marginBottom: 15,
+  },
+
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+
+  goldDot: {
+    width: 6,
+    height: 6,
+    backgroundColor: COLORS.gold,
+  },
+
+  sectionTitle: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+  },
+
+  sectionDescription: {
+    color: COLORS.subtle,
+    fontSize: 12,
+    marginTop: 8,
+  },
+
+  signals: {
+    gap: 12,
+  },
+
+  signalCard: {
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    padding: 18,
+    position: "relative",
+  },
+
+  topAccent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: 48,
+    height: 2,
+  },
+
+  signalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  iconContainer: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+
+  signalInfo: {
+    flex: 1,
+    marginLeft: 13,
+    minWidth: 0,
+  },
+
+  signalLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.1,
+  },
+
+  categoryName: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 7,
+  },
+
+  duration: {
+    fontSize: 15,
+    fontWeight: "600",
+    marginLeft: 10,
+  },
+
+  description: {
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 14,
+    marginLeft: 55,
+  },
+});

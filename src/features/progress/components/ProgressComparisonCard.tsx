@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { ProgressComparison, ProgressPeriod } from "../hooks/useProgress";
 
@@ -34,14 +34,9 @@ function ChangeRow({
 }: ChangeRowProps) {
   if (value === null) {
     return (
-      <View className="flex-row items-center justify-between py-4">
-        <Text className="text-[13px]" style={{ color: COLORS.muted }}>
-          {label}
-        </Text>
-
-        <Text className="text-[12px]" style={{ color: COLORS.subtle }}>
-          No previous data
-        </Text>
+      <View style={styles.changeRow}>
+        <Text style={styles.changeLabel}>{label}</Text>
+        <Text style={styles.noData}>No previous data</Text>
       </View>
     );
   }
@@ -64,19 +59,13 @@ function ChangeRow({
   const formattedValue = value > 0 ? `+${value}` : `${value}`;
 
   return (
-    <View className="flex-row items-center justify-between py-4">
-      {/* LABEL */}
+    <View style={styles.changeRow}>
+      <Text style={styles.changeLabel}>{label}</Text>
 
-      <Text className="text-[13px]" style={{ color: COLORS.muted }}>
-        {label}
-      </Text>
-
-      {/* CHANGE */}
-
-      <View className="flex-row items-center">
+      <View style={styles.changeValueRow}>
         <Ionicons name={icon} size={15} color={color} />
 
-        <Text className="ml-1.5 text-[13px] font-semibold" style={{ color }}>
+        <Text style={[styles.changeValue, { color }]}>
           {formattedValue}
           {suffix}
         </Text>
@@ -93,46 +82,115 @@ export function ProgressComparisonCard({
     period === "7days" ? "previous 7 days" : "previous 30 days";
 
   return (
-    <View className="mt-8">
-      {/* SECTION HEADER */}
+    <View style={styles.container}>
+      <Text style={styles.sectionLabel}>CHANGE</Text>
 
-      <View className="mb-3">
-        <Text className="text-[10px] font-bold tracking-[2px] text-[#9295A3]">
-          CHANGE
-        </Text>
+      <Text style={styles.sectionDescription}>
+        Compared with the {periodLabel}
+      </Text>
 
-        <Text className="mt-1.5 text-[12px] text-[#686C7A]">
-          Compared with the {periodLabel}
-        </Text>
-      </View>
+      <View style={styles.comparisonContainer}>
+        <View style={styles.leftAccent} />
 
-      {/* COMPARISON CARD */}
+        <View style={styles.comparisonContent}>
+          <ChangeRow
+            label="Time observed"
+            value={comparison.totalMinutesChangePercent}
+            direction="neutral"
+          />
 
-      <View className="overflow-hidden rounded-[24px] border border-[#252936] bg-[#11141D] px-5">
-        <ChangeRow
-          label="Time observed"
-          value={comparison.totalMinutesChangePercent}
-          direction="neutral"
-        />
+          <View style={styles.divider} />
 
-        <View className="h-[1px] bg-[#252936]" />
+          <ChangeRow
+            label="Growing share"
+            value={comparison.growingPercentagePointChange}
+            direction="positive"
+            suffix=" pp"
+          />
 
-        <ChangeRow
-          label="Growing share"
-          value={comparison.growingPercentagePointChange}
-          direction="positive"
-          suffix=" pp"
-        />
+          <View style={styles.divider} />
 
-        <View className="h-[1px] bg-[#252936]" />
-
-        <ChangeRow
-          label="Life Leak share"
-          value={comparison.leakPercentagePointChange}
-          direction="negative"
-          suffix=" pp"
-        />
+          <ChangeRow
+            label="Life Leak share"
+            value={comparison.leakPercentagePointChange}
+            direction="negative"
+            suffix=" pp"
+          />
+        </View>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: 30,
+  },
+
+  sectionLabel: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+  },
+
+  sectionDescription: {
+    color: COLORS.subtle,
+    fontSize: 12,
+    marginTop: 7,
+    marginBottom: 14,
+  },
+
+  comparisonContainer: {
+    flexDirection: "row",
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+
+  leftAccent: {
+    width: 2,
+    backgroundColor: COLORS.gold,
+    opacity: 0.8,
+  },
+
+  comparisonContent: {
+    flex: 1,
+    paddingHorizontal: 18,
+  },
+
+  changeRow: {
+    minHeight: 54,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+
+  changeLabel: {
+    color: COLORS.muted,
+    fontSize: 13,
+    flexShrink: 1,
+  },
+
+  changeValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  changeValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginLeft: 6,
+  },
+
+  noData: {
+    color: COLORS.subtle,
+    fontSize: 12,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+});

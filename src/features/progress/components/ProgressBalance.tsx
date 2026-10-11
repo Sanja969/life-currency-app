@@ -1,5 +1,7 @@
-import { Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { StyleSheet, Text, View } from "react-native";
 
+import { CosmicPanel } from "@/components/ui/CosmicPanel";
 import { formatDuration } from "@/utils/formatDuration";
 
 import { ProgressPeriod, ProgressStatistics } from "../hooks/useProgress";
@@ -9,110 +11,252 @@ type ProgressBalanceProps = {
   period: ProgressPeriod;
 };
 
+const COLORS = {
+  gold: "#D6AD65",
+  text: "#F5F0E8",
+  muted: "#9295A3",
+  growing: "#8274E8",
+  leaks: "#D88455",
+  border: "#252936",
+};
+
 export function ProgressBalance({ statistics, period }: ProgressBalanceProps) {
   const hasData = statistics.totalMinutes > 0;
 
   return (
-    <View className="mt-8">
-      {/* SECTION LABEL */}
+    <View style={styles.container}>
+      <Text style={styles.sectionLabel}>LIFE BALANCE</Text>
 
-      <Text className="mb-3 text-[10px] font-bold tracking-[2px] text-[#9295A3]">
-        LIFE BALANCE
-      </Text>
+      <CosmicPanel
+        variant="default"
+        accent={COLORS.gold}
+        contentStyle={styles.panelContent}
+      >
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardLabel}>TIME OBSERVED</Text>
 
-      {/* MAIN CARD */}
-
-      <View className="overflow-hidden rounded-[24px] border border-[#252936] bg-[#11141D]">
-        {/* TOTAL TIME */}
-
-        <View className="px-5 pb-5 pt-5">
-          <Text className="text-[10px] font-bold tracking-[1.8px] text-[#9295A3]">
-            TIME OBSERVED
-          </Text>
-
-          <Text className="mt-3 text-[34px] font-bold tracking-[-1px] text-[#F5F0E8]">
-            {formatDuration(statistics.totalMinutes)}
-          </Text>
-
-          <Text className="mt-1 text-[12px] text-[#9295A3]">
-            {period === "7days"
-              ? "over the last 7 days"
-              : "over the last 30 days"}
-          </Text>
+          <Ionicons name="hourglass-outline" size={19} color={COLORS.gold} />
         </View>
 
-        {/* DIVIDER */}
+        <Text style={styles.totalTime}>
+          {formatDuration(statistics.totalMinutes)}
+        </Text>
 
-        <View className="mx-5 h-[1px] bg-[#252936]" />
+        <Text style={styles.periodDescription}>
+          {period === "7days"
+            ? "over the last 7 days"
+            : "over the last 30 days"}
+        </Text>
 
-        {/* DISTRIBUTION */}
+        <View style={styles.divider} />
 
-        <View className="px-5 pb-5 pt-5">
-          <View className="flex-row justify-between">
-            {/* GROWING */}
+        <Text style={styles.energyHeading}>YOUR ENERGY BALANCE</Text>
 
-            <View>
-              <View className="flex-row items-center">
-                <View className="mr-2 h-[7px] w-[7px] rounded-full bg-[#8274E8]" />
+        <View style={styles.energyRow}>
+          <View style={styles.energyColumn}>
+            <View style={styles.energyLabelRow}>
+              <View
+                style={[styles.energyDot, { backgroundColor: COLORS.growing }]}
+              />
 
-                <Text className="text-[10px] font-bold tracking-[1.3px] text-[#8274E8]">
-                  GROWING
-                </Text>
-              </View>
-
-              <Text className="mt-3 text-[21px] font-semibold text-[#F5F0E8]">
-                {formatDuration(statistics.growingMinutes)}
-              </Text>
-
-              <Text className="mt-1 text-[12px] text-[#9295A3]">
-                {statistics.growingPercent}% of tracked time
+              <Text style={[styles.energyLabel, { color: COLORS.growing }]}>
+                GROWING
               </Text>
             </View>
 
-            {/* LIFE LEAKS */}
+            <Text style={styles.energyTime}>
+              {formatDuration(statistics.growingMinutes)}
+            </Text>
 
-            <View className="items-end">
-              <View className="flex-row items-center">
-                <Text className="text-[10px] font-bold tracking-[1.3px] text-[#D88455]">
-                  LIFE LEAKS
-                </Text>
-
-                <View className="ml-2 h-[7px] w-[7px] rounded-full bg-[#D88455]" />
-              </View>
-
-              <Text className="mt-3 text-[21px] font-semibold text-[#F5F0E8]">
-                {formatDuration(statistics.leakMinutes)}
-              </Text>
-
-              <Text className="mt-1 text-[12px] text-[#9295A3]">
-                {statistics.leakPercent}% of tracked time
-              </Text>
-            </View>
+            <Text style={styles.energyPercent}>
+              {statistics.growingPercent}% of tracked time
+            </Text>
           </View>
 
-          {/* BALANCE BAR */}
+          <View style={styles.energyColumnRight}>
+            <View style={styles.energyLabelRow}>
+              <Text style={[styles.energyLabel, { color: COLORS.leaks }]}>
+                LIFE LEAKS
+              </Text>
 
-          <View className="mt-6 h-[6px] flex-row overflow-hidden rounded-full bg-[#252936]">
-            {hasData && (
-              <>
-                <View
-                  className="h-full bg-[#8274E8]"
-                  style={{
-                    width: `${statistics.growingPercent}%`,
-                  }}
-                />
+              <View
+                style={[styles.energyDot, { backgroundColor: COLORS.leaks }]}
+              />
+            </View>
 
-                <View
-                  className="h-full bg-[#D88455]"
-                  style={{
-                    width: `${statistics.leakPercent}%`,
-                  }}
-                />
-              </>
-            )}
+            <Text style={styles.energyTime}>
+              {formatDuration(statistics.leakMinutes)}
+            </Text>
+
+            <Text style={styles.energyPercent}>
+              {statistics.leakPercent}% of tracked time
+            </Text>
           </View>
         </View>
-      </View>
+
+        <View style={styles.balanceTrack}>
+          {hasData && (
+            <>
+              <View
+                style={{
+                  width: `${statistics.growingPercent}%`,
+                  height: "100%",
+                  backgroundColor: COLORS.growing,
+                }}
+              />
+
+              <View
+                style={{
+                  width: `${statistics.leakPercent}%`,
+                  height: "100%",
+                  backgroundColor: COLORS.leaks,
+                }}
+              />
+            </>
+          )}
+        </View>
+
+        <View style={styles.balanceFooter}>
+          <Text style={styles.balanceFooterText}>Growth</Text>
+          <Text style={styles.balanceFooterText}>Life leaks</Text>
+        </View>
+      </CosmicPanel>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: 30,
+  },
+
+  sectionLabel: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+    marginBottom: 13,
+  },
+
+  panelContent: {
+    padding: 0,
+  },
+
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 25,
+  },
+
+  cardLabel: {
+    color: COLORS.gold,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+  },
+
+  totalTime: {
+    color: COLORS.text,
+    fontSize: 39,
+    fontWeight: "600",
+    letterSpacing: -1.2,
+    marginTop: 13,
+    paddingHorizontal: 24,
+  },
+
+  periodDescription: {
+    color: COLORS.muted,
+    fontSize: 12,
+    marginTop: 5,
+    paddingHorizontal: 24,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: "rgba(214,173,101,0.12)",
+    marginTop: 24,
+  },
+
+  energyHeading: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.6,
+    marginTop: 21,
+    marginBottom: 22,
+    paddingHorizontal: 24,
+  },
+
+  energyRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingHorizontal: 24,
+  },
+
+  energyColumn: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  energyColumnRight: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: "flex-end",
+  },
+
+  energyLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+
+  energyDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+
+  energyLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+
+  energyTime: {
+    color: COLORS.text,
+    fontSize: 20,
+    fontWeight: "600",
+    marginTop: 11,
+  },
+
+  energyPercent: {
+    color: COLORS.muted,
+    fontSize: 11,
+    marginTop: 5,
+  },
+
+  balanceTrack: {
+    height: 5,
+    flexDirection: "row",
+    overflow: "hidden",
+    backgroundColor: "#20212C",
+    marginTop: 23,
+    marginHorizontal: 24,
+  },
+
+  balanceFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+    marginHorizontal: 24,
+    marginBottom: 26,
+  },
+
+  balanceFooterText: {
+    color: COLORS.muted,
+    fontSize: 10,
+  },
+});

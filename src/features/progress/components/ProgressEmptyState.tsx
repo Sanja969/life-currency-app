@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
+import { AppButton } from "@/components/ui/AppButton";
 
 export function ProgressEmptyState() {
   return (
@@ -63,24 +64,16 @@ export function ProgressEmptyState() {
 
       {/* CTA BUTTON */}
 
-      <Pressable
-        onPress={() => router.push("/activities/new")}
-        className="mt-8 h-[54px] flex-row items-center justify-center rounded-[16px] bg-[#D6AD65] px-7"
-        style={({ pressed }) => ({
-          opacity: pressed ? 0.8 : 1,
-          transform: [
-            {
-              scale: pressed ? 0.985 : 1,
-            },
-          ],
-        })}
-      >
-        <Ionicons name="add" size={20} color="#080A10" />
-
-        <Text className="ml-2 text-[14px] font-bold text-[#080A10]">
+      <View style={{ marginTop: 32 }}>
+        <AppButton
+          variant="primary"
+          leadingIcon="add"
+          onPress={() => router.push("/activities/new")}
+          accessibilityLabel="Trace an activity"
+        >
           Trace an activity
-        </Text>
-      </Pressable>
+        </AppButton>
+      </View>
     </View>
   );
 }

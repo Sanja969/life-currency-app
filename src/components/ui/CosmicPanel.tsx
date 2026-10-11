@@ -56,12 +56,7 @@ function getPanelPath(
   height: number,
   variant: CosmicPanelVariant,
 ) {
-  const {
-    topLeft,
-    topRight,
-    bottomRight,
-    bottomLeft,
-  } = SHAPES[variant];
+  const { topLeft, topRight, bottomRight, bottomLeft } = SHAPES[variant];
 
   return `
     M ${topLeft} 0
@@ -94,37 +89,36 @@ export function CosmicPanel({
 
   const { width, height } = size;
 
-  const Container = onPress ? Pressable : View;
-
   return (
-    <Container
+    <Pressable
       onLayout={(event) => {
         const { width: nextWidth, height: nextHeight } =
           event.nativeEvent.layout;
 
-        if (
-          nextWidth !== width ||
-          nextHeight !== height
-        ) {
+        if (nextWidth !== width || nextHeight !== height) {
           setSize({
             width: nextWidth,
             height: nextHeight,
           });
         }
       }}
-      {...(onPress ? { onPress } : {})}
-      style={({ pressed }: any) => [
-        styles.container,
-        style,
-        onPress && {
-          opacity: pressed ? 0.82 : 1,
-          transform: [
-            {
-              scale: pressed ? 0.985 : 1,
-            },
-          ],
-        },
-      ]}
+      onPress={onPress}
+      style={
+        onPress
+          ? ({ pressed }: { pressed: boolean }) => [
+              styles.container,
+              style,
+              {
+                opacity: pressed ? 0.82 : 1,
+                transform: [
+                  {
+                    scale: pressed ? 0.985 : 1,
+                  },
+                ],
+              },
+            ]
+          : [styles.container, style]
+      }
     >
       {width > 0 && height > 0 && (
         <Svg
@@ -134,13 +128,7 @@ export function CosmicPanel({
           style={StyleSheet.absoluteFill}
         >
           <Defs>
-            <SvgGradient
-              id={gradientId}
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="100%"
-            >
+            <SvgGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
               <Stop offset="0" stopColor="#191A22" />
               <Stop offset="0.55" stopColor="#111219" />
               <Stop offset="1" stopColor="#090B10" />
@@ -185,10 +173,8 @@ export function CosmicPanel({
         </Svg>
       )}
 
-      <View style={[styles.content, contentStyle]}>
-        {children}
-      </View>
-    </Container>
+      <View style={[styles.content, contentStyle]}>{children}</View>
+    </Pressable>
   );
 }
 

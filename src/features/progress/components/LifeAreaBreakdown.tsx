@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { formatDuration } from "@/utils/formatDuration";
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
@@ -23,132 +23,287 @@ const COLORS = {
 };
 
 export function LifeAreaBreakdown({ categories }: LifeAreaBreakdownProps) {
-  if (categories.length === 0) {
-    return (
-      <View className="mt-8">
-        <Text className="text-[10px] font-bold tracking-[2px] text-[#9295A3]">
-          TIME BY LIFE AREA
-        </Text>
-
-        <View className="mt-3 items-center rounded-[24px] border border-[#252936] bg-[#11141D] px-6 py-8">
-          <View className="h-12 w-12 items-center justify-center rounded-[15px] bg-[#24231F]">
-            <Ionicons name="analytics-outline" size={23} color={COLORS.gold} />
-          </View>
-
-          <Text className="mt-4 text-[14px] font-semibold text-[#F5F0E8]">
-            No life areas observed yet
-          </Text>
-
-          <Text className="mt-2 text-center text-[12px] leading-[19px] text-[#9295A3]">
-            Activities from this period will appear here.
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
   return (
-    <View className="mt-8">
+    <View style={styles.container}>
       {/* SECTION HEADER */}
 
-      <View className="mb-3">
-        <Text className="text-[10px] font-bold tracking-[2px] text-[#9295A3]">
-          TIME BY LIFE AREA
-        </Text>
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <View style={styles.goldDot} />
 
-        <Text className="mt-1.5 text-[12px] text-[#686C7A]">
+          <Text style={styles.sectionTitle}>TIME BY LIFE AREA</Text>
+        </View>
+
+        <Text style={styles.sectionDescription}>
           Where your observed time is flowing
         </Text>
       </View>
 
-      {/* CATEGORY CARD */}
+      {/* EMPTY STATE */}
 
-      <View className="overflow-hidden rounded-[24px] border border-[#252936] bg-[#11141D]">
-        {categories.map((item, index) => {
-          const meta = getActivityCategoryMeta(item.category);
+      {categories.length === 0 ? (
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIcon}>
+            <Ionicons name="analytics-outline" size={23} color={COLORS.gold} />
+          </View>
 
-          const growingPercent =
-            item.totalMinutes > 0
-              ? Math.round((item.growingMinutes / item.totalMinutes) * 100)
-              : 0;
+          <Text style={styles.emptyTitle}>No life areas observed yet</Text>
 
-          const leakPercent = item.totalMinutes > 0 ? 100 - growingPercent : 0;
+          <Text style={styles.emptyDescription}>
+            Activities from this period will appear here.
+          </Text>
+        </View>
+      ) : (
+        /* CATEGORY LIST */
 
-          return (
-            <View key={item.category}>
-              <View className="px-5 py-5">
-                {/* CATEGORY HEADER */}
+        <View style={styles.list}>
+          {categories.map((item, index) => {
+            const meta = getActivityCategoryMeta(item.category);
 
-                <View className="flex-row items-center">
-                  {/* ICON */}
+            const growingPercent =
+              item.totalMinutes > 0
+                ? Math.round((item.growingMinutes / item.totalMinutes) * 100)
+                : 0;
 
-                  <View className="h-11 w-11 items-center justify-center rounded-[14px] border border-[#383125] bg-[#24231F]">
-                    <Ionicons name={meta.icon} size={20} color={COLORS.gold} />
+            const leakPercent =
+              item.totalMinutes > 0 ? 100 - growingPercent : 0;
+
+            return (
+              <View key={item.category}>
+                <View style={styles.categoryItem}>
+                  {/* CATEGORY HEADER */}
+
+                  <View style={styles.categoryHeader}>
+                    {/* ICON */}
+
+                    <View style={styles.iconContainer}>
+                      <Ionicons
+                        name={meta.icon}
+                        size={20}
+                        color={COLORS.gold}
+                      />
+                    </View>
+
+                    {/* NAME + PERCENTAGE */}
+
+                    <View style={styles.categoryInfo}>
+                      <Text style={styles.categoryName} numberOfLines={1}>
+                        {meta.label}
+                      </Text>
+
+                      <Text style={styles.categoryPercentage}>
+                        {item.percentage}% of tracked time
+                      </Text>
+                    </View>
+
+                    {/* TOTAL DURATION */}
+
+                    <Text style={styles.totalDuration}>
+                      {formatDuration(item.totalMinutes)}
+                    </Text>
                   </View>
 
-                  {/* CATEGORY NAME */}
+                  {/* DISTRIBUTION BAR */}
 
-                  <View className="ml-3 flex-1">
-                    <Text className="text-[15px] font-semibold text-[#F5F0E8]">
-                      {meta.label}
-                    </Text>
+                  <View style={styles.distributionBar}>
+                    {item.totalMinutes > 0 && (
+                      <>
+                        <View
+                          style={{
+                            height: "100%",
+                            width: `${growingPercent}%`,
+                            backgroundColor: COLORS.growing,
+                          }}
+                        />
 
-                    <Text className="mt-1 text-[12px] text-[#9295A3]">
-                      {item.percentage}% of tracked time
-                    </Text>
+                        <View
+                          style={{
+                            height: "100%",
+                            width: `${leakPercent}%`,
+                            backgroundColor: COLORS.leaks,
+                          }}
+                        />
+                      </>
+                    )}
                   </View>
 
-                  {/* TOTAL DURATION */}
+                  {/* DURATION DETAILS */}
 
-                  <Text className="ml-2 text-[15px] font-semibold text-[#F5F0E8]">
-                    {formatDuration(item.totalMinutes)}
-                  </Text>
+                  <View style={styles.durationDetails}>
+                    <Text style={styles.growingDuration}>
+                      Growing {formatDuration(item.growingMinutes)}
+                    </Text>
+
+                    <Text style={styles.leakDuration}>
+                      Leaks {formatDuration(item.leakMinutes)}
+                    </Text>
+                  </View>
                 </View>
 
-                {/* DISTRIBUTION BAR */}
+                {/* DIVIDER */}
 
-                <View className="ml-[56px] mt-4 h-[6px] flex-row overflow-hidden rounded-full bg-[#20242F]">
-                  {item.totalMinutes > 0 && (
-                    <>
-                      <View
-                        className="h-full bg-[#8274E8]"
-                        style={{
-                          width: `${growingPercent}%`,
-                        }}
-                      />
-
-                      <View
-                        className="h-full bg-[#D88455]"
-                        style={{
-                          width: `${leakPercent}%`,
-                        }}
-                      />
-                    </>
-                  )}
-                </View>
-
-                {/* DURATION DETAILS */}
-
-                <View className="ml-[56px] mt-3 flex-row flex-wrap justify-between">
-                  <Text className="mr-2 text-[11px] text-[#8274E8]">
-                    Growing {formatDuration(item.growingMinutes)}
-                  </Text>
-
-                  <Text className="text-[11px] text-[#D88455]">
-                    Leaks {formatDuration(item.leakMinutes)}
-                  </Text>
-                </View>
+                {index < categories.length - 1 && (
+                  <View style={styles.divider} />
+                )}
               </View>
-
-              {/* DIVIDER */}
-
-              {index < categories.length - 1 && (
-                <View className="ml-[76px] h-[1px] bg-[#252936]" />
-              )}
-            </View>
-          );
-        })}
-      </View>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: 32,
+  },
+
+  header: {
+    marginBottom: 16,
+  },
+
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+
+  goldDot: {
+    width: 6,
+    height: 6,
+    backgroundColor: COLORS.gold,
+  },
+
+  sectionTitle: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+  },
+
+  sectionDescription: {
+    color: COLORS.subtle,
+    fontSize: 12,
+    marginTop: 8,
+  },
+
+  list: {
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingHorizontal: 18,
+  },
+
+  categoryItem: {
+    paddingVertical: 20,
+  },
+
+  categoryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  iconContainer: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#24231F",
+    borderWidth: 1,
+    borderColor: "#383125",
+  },
+
+  categoryInfo: {
+    flex: 1,
+    marginLeft: 13,
+    minWidth: 0,
+  },
+
+  categoryName: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
+  categoryPercentage: {
+    color: COLORS.muted,
+    fontSize: 12,
+    marginTop: 5,
+  },
+
+  totalDuration: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: "600",
+    marginLeft: 10,
+  },
+
+  distributionBar: {
+    height: 5,
+    flexDirection: "row",
+    backgroundColor: COLORS.track,
+    overflow: "hidden",
+    marginTop: 17,
+    marginLeft: 55,
+  },
+
+  durationDetails: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 11,
+    marginLeft: 55,
+  },
+
+  growingDuration: {
+    color: COLORS.growing,
+    fontSize: 11,
+  },
+
+  leakDuration: {
+    color: COLORS.leaks,
+    fontSize: 11,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginLeft: 55,
+  },
+
+  emptyState: {
+    alignItems: "center",
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+  },
+
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#24231F",
+    borderWidth: 1,
+    borderColor: "#383125",
+  },
+
+  emptyTitle: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 16,
+  },
+
+  emptyDescription: {
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 19,
+    textAlign: "center",
+    marginTop: 8,
+  },
+});

@@ -135,14 +135,14 @@ export default function RootLayout() {
           <Stack.Screen
             name="activities/[id]/index"
             options={{
-              title: "Activity Details",
+              headerShown: false,
             }}
           />
 
           <Stack.Screen
             name="activities/[id]/edit"
             options={{
-              title: "Edit Activity",
+              headerShown: false,
             }}
           />
         </Stack>

@@ -12,7 +12,12 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 
-export type LifeCurrencyTab = "today" | "activities" | "progress" | "settings";
+export type LifeCurrencyTab =
+  | "today"
+  | "activities"
+  | "progress"
+  | "settings"
+  | "plan";
 
 type Props = {
   name: LifeCurrencyTab;
@@ -146,6 +151,71 @@ export function LifeCurrencyTabIcon({ name, focused, size = 30 }: Props) {
               fill="none"
               stroke={secondary}
               strokeWidth="0.8"
+              opacity={focused ? 0.55 : 0.2}
+            />
+          </G>
+        )}
+
+        {/* PLAN — INTENTION CALENDAR */}
+        {name === "plan" && (
+          <G>
+            {/* Calendar frame */}
+            <Rect
+              x="5.5"
+              y="7"
+              width="21"
+              height="20"
+              rx="4"
+              fill="none"
+              stroke={color}
+              strokeWidth="1.5"
+            />
+
+            {/* Calendar binding */}
+            <Line
+              x1="11"
+              y1="4.5"
+              x2="11"
+              y2="10"
+              stroke={secondary}
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+
+            <Line
+              x1="21"
+              y1="4.5"
+              x2="21"
+              y2="10"
+              stroke={secondary}
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+
+            {/* Calendar divider */}
+            <Path
+              d="M5.5 13 H26.5"
+              stroke={color}
+              strokeWidth="1.2"
+              opacity="0.65"
+            />
+
+            {/* Intention star */}
+            <Path
+              d="M16 15.5 L17.4 19.1 L21 20.5 L17.4 21.9 L16 25.5 L14.6 21.9 L11 20.5 L14.6 19.1 Z"
+              fill={focused ? "url(#tabGold)" : MUTED}
+              opacity={focused ? 1 : 0.8}
+            />
+
+            {/* Subtle orbital accent */}
+            <Circle
+              cx="16"
+              cy="20.5"
+              r="7.2"
+              fill="none"
+              stroke={secondary}
+              strokeWidth="0.7"
+              strokeDasharray="2 3"
               opacity={focused ? 0.55 : 0.2}
             />
           </G>

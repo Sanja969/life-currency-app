@@ -31,11 +31,12 @@ const COLORS = {
 };
 
 const TAB_NAMES: Record<string, LifeCurrencyTab> = {
-  index: "today",
-  activities: "activities",
-  progress: "progress",
-  settings: "settings",
-};
+    index: "today",
+    activities: "activities",
+    plan: "plan",
+    progress: "progress",
+    settings: "settings",
+  };
 
 type FloatingTabBarProps = Parameters<
   NonNullable<ComponentProps<typeof Tabs>["tabBar"]>

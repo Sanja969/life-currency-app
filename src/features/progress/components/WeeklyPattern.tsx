@@ -1,4 +1,4 @@
-import { Text, View } from "react-native";
+import { Text, View, StyleSheet } from "react-native";
 
 import { DailyProgressStat } from "../hooks/useProgress";
 
@@ -15,6 +15,7 @@ const COLORS = {
   gold: "#D6AD65",
   text: "#F5F0E8",
   muted: "#9295A3",
+  subtle: "#686C7A",
 };
 
 const MAX_BAR_HEIGHT = 118;
@@ -36,28 +37,29 @@ export function WeeklyPattern({ days }: WeeklyPatternProps) {
   );
 
   return (
-    <View className="mt-8">
+    <View style={styles.container}>
       {/* SECTION HEADER */}
 
-      <View className="mb-3">
-        <Text className="text-[10px] font-bold tracking-[2px] text-[#9295A3]">
-          7-DAY PATTERN
-        </Text>
+      <View style={styles.sectionHeader}>
+        <View style={styles.headerRow}>
+          <View style={styles.goldDot} />
 
-        <Text className="mt-1.5 text-[12px] text-[#686C7A]">
+          <Text style={styles.sectionTitle}>
+            7-DAY PATTERN
+          </Text>
+        </View>
+
+        <Text style={styles.sectionDescription}>
           How your observed time changed each day
         </Text>
       </View>
 
-      {/* CHART CARD */}
+      {/* CHART */}
 
-      <View className="rounded-[24px] border border-[#252936] bg-[#11141D] px-4 pb-5 pt-6">
-        {/* BARS */}
+      <View style={styles.chartContainer}>
+        <View style={styles.chartTopAccent} />
 
-        <View
-          className="flex-row items-end justify-between"
-          style={{ height: 155 }}
-        >
+        <View style={styles.barsRow}>
           {days.map((day) => {
             const totalHeight =
               day.totalMinutes > 0
@@ -78,25 +80,27 @@ export function WeeklyPattern({ days }: WeeklyPatternProps) {
 
             const isToday = isSameDay(day.date, today);
 
-            const dayLabel = day.date.toLocaleDateString("en-US", {
-              weekday: "short",
-            });
+            const dayLabel = day.date.toLocaleDateString(
+              "en-US",
+              {
+                weekday: "short",
+              },
+            );
 
             return (
               <View
                 key={day.date.toISOString()}
-                className="flex-1 items-center"
+                style={styles.dayColumn}
               >
-                {/* BAR TRACK */}
+                {/* BAR */}
 
-                <View
-                  className="w-[18px] justify-end overflow-hidden rounded-full bg-[#20242F]"
-                  style={{ height: MAX_BAR_HEIGHT }}
-                >
+                <View style={styles.barTrack}>
                   {day.totalMinutes > 0 ? (
                     <View
-                      className="mt-auto overflow-hidden rounded-full"
-                      style={{ height: totalHeight }}
+                      style={[
+                        styles.barStack,
+                        { height: totalHeight },
+                      ]}
                     >
                       {leakHeight > 0 && (
                         <View
@@ -117,54 +121,69 @@ export function WeeklyPattern({ days }: WeeklyPatternProps) {
                       )}
                     </View>
                   ) : (
-                    <View className="mt-auto h-[4px] rounded-full bg-[#343845]" />
+                    <View style={styles.emptyBar} />
                   )}
                 </View>
 
                 {/* DAY LABEL */}
 
                 <Text
-                  className="mt-3 text-[11px] font-semibold"
-                  style={{
-                    color: isToday
-                      ? COLORS.gold
-                      : COLORS.muted,
-                  }}
+                  style={[
+                    styles.dayLabel,
+                    {
+                      color: isToday
+                        ? COLORS.gold
+                        : COLORS.muted,
+                    },
+                  ]}
                 >
                   {dayLabel}
                 </Text>
 
                 {/* TODAY INDICATOR */}
 
-                {isToday ? (
-                  <View className="mt-1 h-[3px] w-[3px] rounded-full bg-[#D6AD65]" />
-                ) : (
-                  <View className="mt-1 h-[3px]" />
-                )}
+                <View
+                  style={[
+                    styles.todayIndicator,
+                    {
+                      backgroundColor: isToday
+                        ? COLORS.gold
+                        : "transparent",
+                    },
+                  ]}
+                />
               </View>
             );
           })}
         </View>
 
-        {/* DIVIDER */}
-
-        <View className="mt-4 h-[1px] bg-[#252936]" />
-
         {/* LEGEND */}
 
-        <View className="mt-4 flex-row items-center justify-center">
-          <View className="mr-5 flex-row items-center">
-            <View className="mr-2 h-[7px] w-[7px] rounded-full bg-[#8274E8]" />
+        <View style={styles.divider} />
 
-            <Text className="text-[11px] text-[#9295A3]">
+        <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <View
+              style={[
+                styles.legendDot,
+                { backgroundColor: COLORS.growing },
+              ]}
+            />
+
+            <Text style={styles.legendText}>
               Growing
             </Text>
           </View>
 
-          <View className="flex-row items-center">
-            <View className="mr-2 h-[7px] w-[7px] rounded-full bg-[#D88455]" />
+          <View style={styles.legendItem}>
+            <View
+              style={[
+                styles.legendDot,
+                { backgroundColor: COLORS.leaks },
+              ]}
+            />
 
-            <Text className="text-[11px] text-[#9295A3]">
+            <Text style={styles.legendText}>
               Life Leaks
             </Text>
           </View>
@@ -173,3 +192,132 @@ export function WeeklyPattern({ days }: WeeklyPatternProps) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: 32,
+  },
+
+  sectionHeader: {
+    marginBottom: 15,
+  },
+
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+
+  goldDot: {
+    width: 6,
+    height: 6,
+    backgroundColor: COLORS.gold,
+  },
+
+  sectionTitle: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+  },
+
+  sectionDescription: {
+    color: COLORS.subtle,
+    fontSize: 12,
+    marginTop: 8,
+  },
+
+  chartContainer: {
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingHorizontal: 18,
+    paddingTop: 28,
+    paddingBottom: 20,
+    position: "relative",
+  },
+
+  chartTopAccent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: 55,
+    height: 1,
+    backgroundColor: COLORS.gold,
+    opacity: 0.65,
+  },
+
+  barsRow: {
+    height: 155,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+  },
+
+  dayColumn: {
+    flex: 1,
+    alignItems: "center",
+  },
+
+  barTrack: {
+    width: 18,
+    height: MAX_BAR_HEIGHT,
+    backgroundColor: COLORS.track,
+    justifyContent: "flex-end",
+    overflow: "hidden",
+  },
+
+  barStack: {
+    width: "100%",
+    marginTop: "auto",
+    overflow: "hidden",
+  },
+
+  emptyBar: {
+    height: 4,
+    backgroundColor: "#343845",
+    marginTop: "auto",
+  },
+
+  dayLabel: {
+    marginTop: 13,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+
+  todayIndicator: {
+    marginTop: 5,
+    width: 3,
+    height: 3,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginTop: 18,
+  },
+
+  legend: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 17,
+    gap: 24,
+  },
+
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  legendDot: {
+    width: 7,
+    height: 7,
+  },
+
+  legendText: {
+    color: COLORS.muted,
+    fontSize: 11,
+  },
+});

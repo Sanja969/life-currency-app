@@ -56,41 +56,55 @@ function SettingsRow({
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint={description}
-      className="flex-row items-center px-4 py-[17px]"
       style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 18,
+        paddingVertical: 19,
         opacity: pressed ? 0.65 : 1,
       })}
     >
-      {/* ICON */}
-
       <View
-        className="h-11 w-11 items-center justify-center rounded-[14px] border"
         style={{
+          width: 42,
+          height: 42,
+          alignItems: "center",
+          justifyContent: "center",
           backgroundColor: iconBackground,
+          borderWidth: 1,
           borderColor: iconBorder,
         }}
       >
         <MaterialCommunityIcons name={icon} size={21} color={accent} />
       </View>
 
-      {/* CONTENT */}
-
-      <View className="ml-3.5 flex-1">
+      <View
+        style={{
+          marginLeft: 14,
+          flex: 1,
+        }}
+      >
         <Text
-          className="text-[14px] font-semibold"
           style={{
             color: destructive ? COLORS.danger : COLORS.text,
+            fontSize: 14,
+            fontWeight: "600",
           }}
         >
           {title}
         </Text>
 
-        <Text className="mt-1 text-[12px] leading-[18px] text-[#9295A3]">
+        <Text
+          style={{
+            color: COLORS.muted,
+            fontSize: 12,
+            lineHeight: 18,
+            marginTop: 5,
+          }}
+        >
           {description}
         </Text>
       </View>
-
-      {/* CHEVRON */}
 
       <MaterialCommunityIcons
         name="chevron-right"
@@ -102,14 +116,49 @@ function SettingsRow({
 }
 
 function SettingsDivider() {
-  return <View className="ml-[72px] h-px bg-[#252936]" />;
-}
+  return (
+    <View
+      style={{
+        height: 1,
 
+        marginLeft: 74,
+
+        backgroundColor: COLORS.border,
+      }}
+    />
+  );
+}
 function SettingsSectionHeader({ title }: { title: string }) {
   return (
-    <Text className="mb-3 mt-8 text-[10px] font-bold tracking-[2px] text-[#9295A3]">
-      {title}
-    </Text>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 32,
+        marginBottom: 15,
+        gap: 9,
+      }}
+    >
+      <View
+        style={{
+          width: 6,
+          height: 6,
+          backgroundColor:
+            title === "DANGER ZONE" ? COLORS.danger : COLORS.gold,
+        }}
+      />
+
+      <Text
+        style={{
+          color: title === "DANGER ZONE" ? COLORS.danger : COLORS.muted,
+          fontSize: 10,
+          fontWeight: "700",
+          letterSpacing: 1.8,
+        }}
+      >
+        {title}
+      </Text>
+    </View>
   );
 }
 
@@ -298,15 +347,55 @@ export default function SettingsScreen() {
           {/* HEADER */}
 
           <View>
-            <Text className="text-[10px] font-bold tracking-[2px] text-[#D6AD65]">
-              LIFE CURRENCY
-            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 9,
+              }}
+            >
+              <View
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: COLORS.gold,
+                }}
+              />
 
-            <Text className="mt-2 text-[30px] font-bold text-[#F5F0E8]">
+              <Text
+                style={{
+                  color: COLORS.gold,
+                  fontSize: 10,
+                  fontWeight: "700",
+                  letterSpacing: 1.8,
+                }}
+              >
+                LIFE CURRENCY
+              </Text>
+            </View>
+
+            <Text
+              style={{
+                color: COLORS.text,
+                fontSize: 34,
+                lineHeight: 42,
+                fontWeight: "600",
+                letterSpacing: -1.1,
+                marginTop: 15,
+              }}
+            >
               Settings
             </Text>
 
-            <Text className="mt-2 text-[14px] leading-[21px] text-[#9295A3]">
+            <Text
+              style={{
+                color: COLORS.muted,
+                fontSize: 14,
+                lineHeight: 22,
+                marginTop: 8,
+              }}
+            >
               Manage your data and preferences.
             </Text>
           </View>
@@ -315,7 +404,13 @@ export default function SettingsScreen() {
 
           <SettingsSectionHeader title="DATA & PRIVACY" />
 
-          <View className="overflow-hidden rounded-[24px] border border-[#252936] bg-[#11141D]">
+          <View
+            style={{
+              backgroundColor: COLORS.surface,
+              borderBottomWidth: 1,
+              borderBottomColor: COLORS.border,
+            }}
+          >
             <SettingsRow
               icon="export-variant"
               title="Export data"
@@ -361,7 +456,13 @@ export default function SettingsScreen() {
 
           <SettingsSectionHeader title="DANGER ZONE" />
 
-          <View className="overflow-hidden rounded-[24px] border border-[#252936] bg-[#11141D]">
+          <View
+            style={{
+              backgroundColor: COLORS.surface,
+              borderBottomWidth: 1,
+              borderBottomColor: COLORS.border,
+            }}
+          >
             <SettingsRow
               icon="delete-outline"
               title="Delete all activity data"
@@ -375,19 +476,43 @@ export default function SettingsScreen() {
 
           <SettingsSectionHeader title="ABOUT" />
 
-          <View className="rounded-[24px] border border-[#252936] bg-[#11141D] p-4">
-            <View className="flex-row items-center">
-              {/* APP ICON */}
+          <View
+            style={{
+              backgroundColor: COLORS.surface,
+              borderBottomWidth: 1,
+              borderBottomColor: COLORS.border,
+              padding: 18,
+            }}
+          >
+            <View
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: 48,
+                height: 2,
+                backgroundColor: COLORS.gold,
+              }}
+            />
 
-              <View className="h-11 w-11 items-center justify-center rounded-[14px] border border-[#403728] bg-[#24231F]">
+            <View className="flex-row items-center">
+              <View
+                style={{
+                  width: 42,
+                  height: 42,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: COLORS.goldBackground,
+                  borderWidth: 1,
+                  borderColor: COLORS.goldBorder,
+                }}
+              >
                 <MaterialCommunityIcons
                   name="orbit"
                   size={23}
                   color={COLORS.gold}
                 />
               </View>
-
-              {/* APP INFO */}
 
               <View className="ml-3.5 flex-1">
                 <Text className="text-[15px] font-semibold text-[#F5F0E8]">
@@ -399,9 +524,15 @@ export default function SettingsScreen() {
                 </Text>
               </View>
 
-              {/* VERSION INDICATOR */}
-
-              <View className="rounded-full border border-[#403728] bg-[#24231F] px-3 py-1.5">
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: COLORS.goldBorder,
+                  backgroundColor: COLORS.goldBackground,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                }}
+              >
                 <Text className="text-[10px] font-semibold text-[#D6AD65]">
                   v1
                 </Text>

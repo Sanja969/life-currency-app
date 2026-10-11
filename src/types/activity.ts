@@ -1,5 +1,6 @@
 export enum ActivityClassification {
   Serves = "serves",
+  Restores = "restores",
   DoesNotServe = "does_not_serve",
 }
 
@@ -26,9 +27,13 @@ export enum ActivityCategory {
 
 export type ActivityCategoryStatistics = {
   category: ActivityCategory;
+
   totalDurationMinutes: number;
+
   servesDurationMinutes: number;
+  restoresDurationMinutes: number;
   doesNotServeDurationMinutes: number;
+
   percentage: number;
 };
 
@@ -59,17 +64,22 @@ export type ActivityStatistics = {
   averageDurationMinutes: number;
 
   servesCount: number;
+  restoresCount: number;
   doesNotServeCount: number;
 
   servesDurationMinutes: number;
+  restoresDurationMinutes: number;
   doesNotServeDurationMinutes: number;
 
   netDurationMinutes: number;
 
   servesPercentage: number;
+  restoresPercentage: number;
+  doesNotServePercentage: number;
 
   longestActivity?: Activity;
   shortestActivity?: Activity;
+
   categoryStatistics: ActivityCategoryStatistics[];
 
   strongestInvestment?: ActivityCategoryStatistics;
