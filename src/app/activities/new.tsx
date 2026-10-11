@@ -1,18 +1,9 @@
 import { useEffect, useState } from "react";
 
-import {
-  Alert,
-  ImageBackground,
-  Keyboard,
-  Pressable,
-  ScrollView,
-  View,
-} from "react-native";
+import { Alert, Keyboard, ScrollView, StyleSheet, View } from "react-native";
 
-import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { setPendingActivityArrival } from "../../lib/activityArrival";
 
 import Animated, {
   Easing,
@@ -26,7 +17,9 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { ActivityForm } from "../../components/ActivityForm";
+import { AppButton } from "../../components/ui/AppButton";
 import { activityService } from "../../services/ActivityService";
+import { setPendingActivityArrival } from "../../lib/activityArrival";
 
 import {
   Activity,
@@ -34,11 +27,15 @@ import {
   ActivityInput,
 } from "../../types/activity";
 
+const COLORS = {
+  background: "#080A10",
+  growing: "#8274E8",
+  leak: "#D88455",
+};
+
 export default function CreateActivityScreen() {
   const router = useRouter();
-  const { source } = useLocalSearchParams<{
-    source?: string;
-  }>();
+
   const [activities, setActivities] = useState<Activity[]>([]);
 
   const [particleType, setParticleType] = useState<ActivityClassification>(
@@ -46,17 +43,21 @@ export default function CreateActivityScreen() {
   );
 
   /*
-   * MASTER PROGRESS
+   * MASTER ANIMATION PROGRESS
    *
    * 0    = hidden
-   * 0.15 = birth
+   * 0.15 = particle birth
    * 0.35 = energy build-up
    * 0.60 = quantum wave
    * 1    = particle released into field
    */
-  const progress = useSharedValue(0);
 
+  const progress = useSharedValue(0);
   const overlayOpacity = useSharedValue(0);
+
+  /*
+   * LOAD ACTIVITIES
+   */
 
   useEffect(() => {
     async function loadActivities() {
@@ -73,20 +74,17 @@ export default function CreateActivityScreen() {
   }, []);
 
   /*
-   * --------------------------------------------------
    * ANIMATED STYLES
-   * --------------------------------------------------
    */
 
-  const fieldStyle = useAnimatedStyle(() => {
-    return {
-      opacity: overlayOpacity.value,
-    };
-  });
+  const fieldStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
 
   /*
    * CENTRAL PARTICLE
    */
+
   const particleStyle = useAnimatedStyle(() => {
     const scale = interpolate(
       progress.value,
@@ -104,21 +102,14 @@ export default function CreateActivityScreen() {
 
     return {
       opacity,
-
-      transform: [
-        {
-          translateY,
-        },
-        {
-          scale,
-        },
-      ],
+      transform: [{ translateY }, { scale }],
     };
   });
 
   /*
    * INNER QUANTUM WAVE
    */
+
   const innerRingStyle = useAnimatedStyle(() => {
     const scale = interpolate(
       progress.value,
@@ -134,18 +125,14 @@ export default function CreateActivityScreen() {
 
     return {
       opacity,
-
-      transform: [
-        {
-          scale,
-        },
-      ],
+      transform: [{ scale }],
     };
   });
 
   /*
    * OUTER QUANTUM WAVE
    */
+
   const outerRingStyle = useAnimatedStyle(() => {
     const scale = interpolate(
       progress.value,
@@ -161,18 +148,14 @@ export default function CreateActivityScreen() {
 
     return {
       opacity,
-
-      transform: [
-        {
-          scale,
-        },
-      ],
+      transform: [{ scale }],
     };
   });
 
   /*
-   * LARGE GLOW BEHIND PARTICLE
+   * PARTICLE GLOW
    */
+
   const glowStyle = useAnimatedStyle(() => {
     const scale = interpolate(
       progress.value,
@@ -188,18 +171,14 @@ export default function CreateActivityScreen() {
 
     return {
       opacity,
-
-      transform: [
-        {
-          scale,
-        },
-      ],
+      transform: [{ scale }],
     };
   });
 
   /*
-   * LITTLE PARTICLES / QUANTUM DUST
+   * QUANTUM DUST
    */
+
   const dustStyle = useAnimatedStyle(() => {
     const scale = interpolate(
       progress.value,
@@ -215,18 +194,14 @@ export default function CreateActivityScreen() {
 
     return {
       opacity,
-
-      transform: [
-        {
-          scale,
-        },
-      ],
+      transform: [{ scale }],
     };
   });
 
   /*
    * VERTICAL ENERGY TRAIL
    */
+
   const trailStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       progress.value,
@@ -238,19 +213,12 @@ export default function CreateActivityScreen() {
 
     return {
       opacity,
-
-      transform: [
-        {
-          scaleY,
-        },
-      ],
+      transform: [{ scaleY }],
     };
   });
 
   /*
-   * --------------------------------------------------
    * ANIMATION
-   * --------------------------------------------------
    */
 
   function finishCreation() {
@@ -269,6 +237,7 @@ export default function CreateActivityScreen() {
       /*
        * PARTICLE BIRTH
        */
+
       withTiming(0.18, {
         duration: 280,
         easing: Easing.out(Easing.cubic),
@@ -277,6 +246,7 @@ export default function CreateActivityScreen() {
       /*
        * ENERGY BUILDS
        */
+
       withTiming(0.38, {
         duration: 330,
         easing: Easing.out(Easing.cubic),
@@ -285,14 +255,16 @@ export default function CreateActivityScreen() {
       /*
        * QUANTUM WAVE EXPANDS
        */
+
       withTiming(0.64, {
         duration: 500,
         easing: Easing.out(Easing.cubic),
       }),
 
       /*
-       * SMALL MOMENT OF SUSPENSION
+       * SUSPENSION
        */
+
       withDelay(
         100,
         withTiming(0.68, {
@@ -303,6 +275,7 @@ export default function CreateActivityScreen() {
       /*
        * PARTICLE RELEASE
        */
+
       withTiming(
         1,
         {
@@ -319,9 +292,7 @@ export default function CreateActivityScreen() {
   }
 
   /*
-   * --------------------------------------------------
-   * CREATE
-   * --------------------------------------------------
+   * CREATE ACTIVITY
    */
 
   async function handleCreate(data: ActivityInput): Promise<void> {
@@ -336,6 +307,7 @@ export default function CreateActivityScreen() {
         activityDate: data.activityDate.toISOString(),
         classification: data.classification,
       });
+
       requestAnimationFrame(() => {
         playCreationAnimation();
       });
@@ -357,179 +329,82 @@ export default function CreateActivityScreen() {
   }
 
   /*
-   * --------------------------------------------------
-   * COLOURS
-   * --------------------------------------------------
+   * PARTICLE COLORS
    */
 
   const serves = particleType === ActivityClassification.Serves;
 
-  const particleCoreColor = serves ? "#E8F3FF" : "#FFE8F7";
+  const particleCoreColor = serves ? "#EDE8FF" : "#FFE9DA";
 
-  const particleColor = serves ? "#718BFF" : "#E85BAA";
+  const particleColor = serves ? COLORS.growing : COLORS.leak;
 
-  const glowColor = serves
-    ? "rgba(91, 110, 255, 0.22)"
-    : "rgba(220, 70, 160, 0.22)";
+  const glowColor = serves ? "rgba(130,116,232,0.22)" : "rgba(216,132,85,0.22)";
 
   const ringColor = serves
-    ? "rgba(151, 170, 255, 0.75)"
-    : "rgba(238, 135, 201, 0.75)";
+    ? "rgba(165,153,255,0.75)"
+    : "rgba(240,171,128,0.75)";
+
+  const particleInnerColor = serves
+    ? "rgba(130,116,232,0.24)"
+    : "rgba(216,132,85,0.24)";
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: "#02040D",
-      }}
-    >
-      {/* ================================================= */}
-      {/* NORMAL SCREEN                                     */}
-      {/* ================================================= */}
+    <View style={styles.screen}>
+      {/* ============================================= */}
+      {/* NORMAL SCREEN                                 */}
+      {/* ============================================= */}
 
-      <ImageBackground
-        source={require("../../../assets/add.png")}
-        resizeMode="cover"
-        style={{
-          flex: 1,
-        }}
-        imageStyle={{
-          opacity: 0.62,
-        }}
-      >
-        <View
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
-            backgroundColor: "rgba(2, 4, 13, 0.62)",
-          }}
-        />
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        {/* BACK BUTTON */}
 
-        <SafeAreaView
-          style={{
-            flex: 1,
-          }}
-          edges={["top", "left", "right"]}
+        <View style={styles.header}>
+          <AppButton
+            variant="icon"
+            tone="secondary"
+            icon="chevron-back"
+            accessibilityLabel="Go back"
+            onPress={() => router.back()}
+          />
+        </View>
+
+        {/* ACTIVITY FORM */}
+
+        <ScrollView
+          style={styles.scrollView}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
         >
-          {/* BACK */}
+          <ActivityForm
+            mode="create"
+            activities={activities}
+            onSubmit={handleCreate}
+          />
+        </ScrollView>
+      </SafeAreaView>
 
-          <View
-            style={{
-              paddingHorizontal: 20,
-              paddingTop: 8,
-              paddingBottom: 4,
-            }}
-          >
-            <Pressable
-              onPress={() => router.back()}
-              hitSlop={12}
-              style={{
-                width: 44,
-                height: 44,
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 22,
-                borderWidth: 1,
-                borderColor: "#29395F",
-                backgroundColor: "rgba(11,20,43,0.9)",
-              }}
-            >
-              <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-            </Pressable>
-          </View>
-
-          {/* FORM */}
-
-          <ScrollView
-            style={{
-              flex: 1,
-            }}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: 20,
-              paddingTop: 16,
-              paddingBottom: 60,
-            }}
-          >
-            <ActivityForm
-              mode="create"
-              activities={activities}
-              onSubmit={handleCreate}
-            />
-          </ScrollView>
-        </SafeAreaView>
-      </ImageBackground>
-
-      {/* ================================================= */}
-      {/* QUANTUM CREATION OVERLAY                          */}
-      {/* ================================================= */}
+      {/* ============================================= */}
+      {/* QUANTUM CREATION OVERLAY                      */}
+      {/* ============================================= */}
 
       <Animated.View
         pointerEvents="none"
-        style={[
-          {
-            position: "absolute",
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
-
-            zIndex: 10000,
-            elevation: 10000,
-          },
-          fieldStyle,
-        ]}
+        style={[styles.animationOverlay, fieldStyle]}
       >
-        {/* DARKEN WORLD WHILE PARTICLE FORMS */}
+        {/* DARKEN BACKGROUND DURING ANIMATION */}
 
-        <View
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
+        <View style={styles.animationBackdrop} />
 
-            backgroundColor: "rgba(1, 3, 12, 0.45)",
-          }}
-        />
+        {/* PARTICLE ORIGIN */}
 
-        {/* PARTICLE BIRTH POSITION */}
-
-        <View
-          style={{
-            position: "absolute",
-
-            top: "46%",
-            left: "50%",
-
-            width: 0,
-            height: 0,
-
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {/* LARGE ENERGY GLOW */}
+        <View style={styles.particleOrigin}>
+          {/* LARGE GLOW */}
 
           <Animated.View
             style={[
+              styles.largeGlow,
               {
-                position: "absolute",
-
-                width: 180,
-                height: 180,
-
-                marginLeft: -90,
-                marginTop: -90,
-
-                borderRadius: 90,
-
                 backgroundColor: glowColor,
               },
               glowStyle,
@@ -540,18 +415,8 @@ export default function CreateActivityScreen() {
 
           <Animated.View
             style={[
+              styles.outerRing,
               {
-                position: "absolute",
-
-                width: 90,
-                height: 90,
-
-                marginLeft: -45,
-                marginTop: -45,
-
-                borderRadius: 45,
-
-                borderWidth: 1,
                 borderColor: ringColor,
               },
               outerRingStyle,
@@ -562,42 +427,21 @@ export default function CreateActivityScreen() {
 
           <Animated.View
             style={[
+              styles.innerRing,
               {
-                position: "absolute",
-
-                width: 70,
-                height: 70,
-
-                marginLeft: -35,
-                marginTop: -35,
-
-                borderRadius: 35,
-
-                borderWidth: 1.5,
                 borderColor: ringColor,
               },
               innerRingStyle,
             ]}
           />
 
-          {/* VERTICAL ENERGY TRAIL */}
+          {/* ENERGY TRAIL */}
 
           <Animated.View
             style={[
+              styles.energyTrail,
               {
-                position: "absolute",
-
-                width: 3,
-                height: 260,
-
-                left: -1.5,
-                top: -260,
-
-                borderRadius: 2,
-
                 backgroundColor: particleColor,
-
-                transformOrigin: "bottom",
               },
               trailStyle,
             ]}
@@ -605,167 +449,121 @@ export default function CreateActivityScreen() {
 
           {/* QUANTUM DUST */}
 
-          <Animated.View
-            style={[
-              {
-                position: "absolute",
-                width: 1,
-                height: 1,
-              },
-              dustStyle,
-            ]}
-          >
+          <Animated.View style={[styles.quantumDust, dustStyle]}>
             <View
-              style={{
-                position: "absolute",
-                left: -90,
-                top: -45,
-                width: 5,
-                height: 5,
-                borderRadius: 3,
-                backgroundColor: "#B8C7FF",
-              }}
+              style={[
+                styles.dustParticle,
+                {
+                  left: -90,
+                  top: -45,
+                  width: 5,
+                  height: 5,
+                  backgroundColor: particleCoreColor,
+                },
+              ]}
             />
 
             <View
-              style={{
-                position: "absolute",
-                left: 68,
-                top: -58,
-                width: 4,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: particleColor,
-              }}
+              style={[
+                styles.dustParticle,
+                {
+                  left: 68,
+                  top: -58,
+                  width: 4,
+                  height: 4,
+                  backgroundColor: particleColor,
+                },
+              ]}
             />
 
             <View
-              style={{
-                position: "absolute",
-                left: -62,
-                top: 56,
-                width: 4,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: "#FFFFFF",
-              }}
+              style={[
+                styles.dustParticle,
+                {
+                  left: -62,
+                  top: 56,
+                  width: 4,
+                  height: 4,
+                  backgroundColor: "#FFFFFF",
+                },
+              ]}
             />
 
             <View
-              style={{
-                position: "absolute",
-                left: 92,
-                top: 28,
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: particleColor,
-              }}
+              style={[
+                styles.dustParticle,
+                {
+                  left: 92,
+                  top: 28,
+                  width: 6,
+                  height: 6,
+                  backgroundColor: particleColor,
+                },
+              ]}
             />
 
             <View
-              style={{
-                position: "absolute",
-                left: 30,
-                top: 82,
-                width: 3,
-                height: 3,
-                borderRadius: 2,
-                backgroundColor: "#FFFFFF",
-              }}
+              style={[
+                styles.dustParticle,
+                {
+                  left: 30,
+                  top: 82,
+                  width: 3,
+                  height: 3,
+                  backgroundColor: "#FFFFFF",
+                },
+              ]}
             />
 
             <View
-              style={{
-                position: "absolute",
-                left: -105,
-                top: 10,
-                width: 3,
-                height: 3,
-                borderRadius: 2,
-                backgroundColor: particleColor,
-              }}
+              style={[
+                styles.dustParticle,
+                {
+                  left: -105,
+                  top: 10,
+                  width: 3,
+                  height: 3,
+                  backgroundColor: particleColor,
+                },
+              ]}
             />
           </Animated.View>
 
-          {/* ============================================= */}
-          {/* NEW PARTICLE                                  */}
-          {/* ============================================= */}
+          {/* NEW PARTICLE */}
 
           <Animated.View
             style={[
+              styles.particleGlow,
               {
-                position: "absolute",
-
-                width: 84,
-                height: 84,
-
-                marginLeft: -42,
-                marginTop: -42,
-
-                alignItems: "center",
-                justifyContent: "center",
-
-                borderRadius: 42,
-
                 backgroundColor: glowColor,
               },
               particleStyle,
             ]}
           >
             <View
-              style={{
-                width: 58,
-                height: 58,
-
-                borderRadius: 29,
-
-                alignItems: "center",
-                justifyContent: "center",
-
-                backgroundColor: serves
-                  ? "rgba(91,110,255,0.24)"
-                  : "rgba(220,70,160,0.24)",
-              }}
+              style={[
+                styles.particleInner,
+                {
+                  backgroundColor: particleInnerColor,
+                },
+              ]}
             >
               <View
-                style={{
-                  width: 36,
-                  height: 36,
-
-                  borderRadius: 18,
-
-                  alignItems: "center",
-                  justifyContent: "center",
-
-                  backgroundColor: particleColor,
-
-                  shadowColor: particleColor,
-                  shadowOpacity: 1,
-                  shadowRadius: 18,
-                  shadowOffset: {
-                    width: 0,
-                    height: 0,
+                style={[
+                  styles.particleCore,
+                  {
+                    backgroundColor: particleColor,
+                    shadowColor: particleColor,
                   },
-                }}
+                ]}
               >
                 <View
-                  style={{
-                    width: 14,
-                    height: 14,
-
-                    borderRadius: 7,
-
-                    backgroundColor: particleCoreColor,
-
-                    shadowColor: "#FFFFFF",
-                    shadowOpacity: 1,
-                    shadowRadius: 12,
-                    shadowOffset: {
-                      width: 0,
-                      height: 0,
+                  style={[
+                    styles.particleCenter,
+                    {
+                      backgroundColor: particleCoreColor,
                     },
-                  }}
+                  ]}
                 />
               </View>
             </View>
@@ -775,3 +573,163 @@ export default function CreateActivityScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  /*
+   * SCREEN
+   */
+
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+
+  safeArea: {
+    flex: 1,
+  },
+
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+
+  scrollView: {
+    flex: 1,
+  },
+
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 60,
+  },
+
+  /*
+   * ANIMATION OVERLAY
+   */
+
+  animationOverlay: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 10000,
+    elevation: 10000,
+  },
+
+  animationBackdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(1,3,12,0.45)",
+  },
+
+  particleOrigin: {
+    position: "absolute",
+    top: "46%",
+    left: "50%",
+    width: 0,
+    height: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  /*
+   * QUANTUM EFFECTS
+   */
+
+  largeGlow: {
+    position: "absolute",
+    width: 180,
+    height: 180,
+    marginLeft: -90,
+    marginTop: -90,
+    borderRadius: 90,
+  },
+
+  outerRing: {
+    position: "absolute",
+    width: 90,
+    height: 90,
+    marginLeft: -45,
+    marginTop: -45,
+    borderRadius: 45,
+    borderWidth: 1,
+  },
+
+  innerRing: {
+    position: "absolute",
+    width: 70,
+    height: 70,
+    marginLeft: -35,
+    marginTop: -35,
+    borderRadius: 35,
+    borderWidth: 1.5,
+  },
+
+  energyTrail: {
+    position: "absolute",
+    width: 3,
+    height: 260,
+    left: -1.5,
+    top: -260,
+    borderRadius: 2,
+    transformOrigin: "bottom",
+  },
+
+  quantumDust: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+  },
+
+  dustParticle: {
+    position: "absolute",
+    borderRadius: 3,
+  },
+
+  /*
+   * CENTRAL PARTICLE
+   */
+
+  particleGlow: {
+    position: "absolute",
+    width: 84,
+    height: 84,
+    marginLeft: -42,
+    marginTop: -42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 42,
+  },
+
+  particleInner: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  particleCore: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOpacity: 1,
+    shadowRadius: 18,
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+  },
+
+  particleCenter: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    shadowColor: "#FFFFFF",
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+  },
+});

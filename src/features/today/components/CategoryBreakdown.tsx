@@ -1,13 +1,22 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { ActivityCategoryStatistics } from "@/types/activity";
-
 import { formatDuration } from "@/utils/formatDuration";
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
+import { CosmicPanel } from "@/components/ui/CosmicPanel";
 
 type CategoryBreakdownProps = {
   categories: ActivityCategoryStatistics[];
+};
+
+const COLORS = {
+  surface: "#11131B",
+  gold: "#D6AD65",
+  growing: "#8274E8",
+  leaks: "#D88455",
+  text: "#F5F0E7",
+  muted: "#9295A5",
 };
 
 export function CategoryBreakdown({ categories }: CategoryBreakdownProps) {
@@ -16,18 +25,26 @@ export function CategoryBreakdown({ categories }: CategoryBreakdownProps) {
   }
 
   return (
-    <View className="mt-7">
-      <View className="mb-4">
-        <Text className="text-[11px] font-bold tracking-[1.4px] text-[#65728D]">
-          WHERE YOUR LIFE WENT
-        </Text>
+    <View style={styles.container}>
+      {/* SECTION HEADER */}
 
-        <Text className="mt-1 text-[12px] text-[#56637D]">
-          Your time across life areas
-        </Text>
+      <View style={styles.header}>
+        <Text style={styles.sectionTitle}>WHERE YOUR LIFE WENT</Text>
+
+        <Text style={styles.sectionSubtitle}>Your time across life areas</Text>
       </View>
 
-      <View className="overflow-hidden rounded-[22px] border border-[#192744] bg-[#07101F]">
+      {/* ANALYTICS PANEL */}
+
+      <CosmicPanel
+        variant="default"
+        accent="#D6AD65"
+        contentStyle={{
+          paddingHorizontal: 0,
+
+          paddingVertical: 0,
+        }}
+      >
         {categories.map((item, index) => {
           const meta = getActivityCategoryMeta(item.category);
 
@@ -40,69 +57,239 @@ export function CategoryBreakdown({ categories }: CategoryBreakdownProps) {
 
           return (
             <View key={item.category}>
-              <View className="px-4 py-4">
-                <View className="flex-row items-center">
-                  <View className="h-10 w-10 items-center justify-center rounded-[13px] bg-[#101A30]">
-                    <Ionicons name={meta.icon} size={19} color="#8295FF" />
+              <View style={styles.categoryRow}>
+                {/* CATEGORY HEADER */}
+
+                <View style={styles.rowHeader}>
+                  <View style={styles.iconOuter}>
+                    <View style={styles.iconInner}>
+                      <Ionicons
+                        name={meta.icon}
+                        size={19}
+                        color={COLORS.gold}
+                      />
+                    </View>
                   </View>
 
-                  <View className="ml-3 flex-1">
-                    <Text className="text-[15px] font-semibold text-[#E4E8F2]">
-                      {meta.label}
-                    </Text>
+                  <View style={styles.categoryInfo}>
+                    <Text style={styles.categoryName}>{meta.label}</Text>
 
-                    <Text className="mt-0.5 text-[12px] text-[#6F7D99]">
+                    <Text style={styles.categoryPercentage}>
                       {item.percentage}% of tracked time
                     </Text>
                   </View>
 
-                  <Text className="text-[15px] font-semibold text-[#C9D1E3]">
+                  <Text style={styles.duration}>
                     {formatDuration(item.totalDurationMinutes)}
                   </Text>
                 </View>
 
-                {/* CATEGORY BAR */}
+                {/* ENERGY DISTRIBUTION */}
 
-                <View className="ml-[52px] mt-3 h-[6px] flex-row overflow-hidden rounded-full bg-[#111A2C]">
-                  {item.totalDurationMinutes > 0 ? (
-                    <>
+                <View style={styles.energySection}>
+                  <View style={styles.energyTrack}>
+                    {item.totalDurationMinutes > 0 && (
+                      <>
+                        <View
+                          style={[
+                            styles.energySegment,
+                            {
+                              width: `${growingRatio * 100}%`,
+                              backgroundColor: COLORS.growing,
+                            },
+                          ]}
+                        />
+
+                        <View
+                          style={[
+                            styles.energySegment,
+                            {
+                              width: `${leakRatio * 100}%`,
+                              backgroundColor: COLORS.leaks,
+                            },
+                          ]}
+                        />
+                      </>
+                    )}
+                  </View>
+
+                  {/* LEGEND */}
+
+                  <View style={styles.legend}>
+                    <View style={styles.legendItem}>
                       <View
-                        className="h-full bg-[#718BFF]"
-                        style={{
-                          width: `${growingRatio * 100}%`,
-                        }}
+                        style={[
+                          styles.legendDot,
+                          { backgroundColor: COLORS.growing },
+                        ]}
                       />
 
+                      <Text style={styles.growingText}>
+                        Growing {formatDuration(item.servesDurationMinutes)}
+                      </Text>
+                    </View>
+
+                    <View style={styles.legendItem}>
                       <View
-                        className="h-full bg-[#E657A8]"
-                        style={{
-                          width: `${leakRatio * 100}%`,
-                        }}
+                        style={[
+                          styles.legendDot,
+                          { backgroundColor: COLORS.leaks },
+                        ]}
                       />
-                    </>
-                  ) : null}
-                </View>
 
-                {/* SPLIT */}
-
-                <View className="ml-[52px] mt-2 flex-row justify-between">
-                  <Text className="text-[11px] text-[#718BFF]">
-                    Growing {formatDuration(item.servesDurationMinutes)}
-                  </Text>
-
-                  <Text className="text-[11px] text-[#E657A8]">
-                    Leak {formatDuration(item.doesNotServeDurationMinutes)}
-                  </Text>
+                      <Text style={styles.leaksText}>
+                        Leak {formatDuration(item.doesNotServeDurationMinutes)}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
               </View>
 
-              {index < categories.length - 1 ? (
-                <View className="ml-[68px] h-[1px] bg-[#17233B]" />
-              ) : null}
+              {/* DIVIDER */}
+
+              {index < categories.length - 1 && <View style={styles.divider} />}
             </View>
           );
         })}
-      </View>
+      </CosmicPanel>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: 28,
+  },
+
+  header: {
+    marginBottom: 14,
+  },
+
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+    color: COLORS.gold,
+  },
+
+  sectionSubtitle: {
+    marginTop: 5,
+    fontSize: 12,
+    color: COLORS.muted,
+  },
+
+  panel: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: "rgba(214,173,101,0.13)",
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+
+  categoryRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 17,
+  },
+
+  rowHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  iconOuter: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: "rgba(214,173,101,0.20)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  iconInner: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(214,173,101,0.07)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  categoryInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+
+  categoryName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+
+  categoryPercentage: {
+    marginTop: 4,
+    fontSize: 11,
+    color: COLORS.muted,
+  },
+
+  duration: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.text,
+    marginLeft: 8,
+  },
+
+  energySection: {
+    marginLeft: 54,
+    marginTop: 12,
+  },
+
+  energyTrack: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#24232D",
+    overflow: "hidden",
+    flexDirection: "row",
+  },
+
+  energySegment: {
+    height: "100%",
+  },
+
+  legend: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
+  },
+
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+
+  legendDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+  },
+
+  growingText: {
+    fontSize: 10,
+    color: COLORS.growing,
+  },
+
+  leaksText: {
+    fontSize: 10,
+    color: COLORS.leaks,
+  },
+
+  divider: {
+    height: 1,
+    marginLeft: 70,
+    backgroundColor: "rgba(214,173,101,0.09)",
+  },
+});

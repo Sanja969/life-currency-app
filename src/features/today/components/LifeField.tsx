@@ -1,7 +1,8 @@
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { ActivityStatistics } from "@/types/activity";
 import { formatDuration } from "@/utils/formatDuration";
+import { CosmicPanel } from "@/components/ui/CosmicPanel";
 
 type LifeFieldProps = {
   statistics: ActivityStatistics;
@@ -13,6 +14,17 @@ type Particle = {
   size: number;
   growing: boolean;
   opacity: number;
+};
+
+const COLORS = {
+  background: "#080A10",
+  surface: "#0D1018",
+  gold: "#D6AD65",
+  lightGold: "#F3D49B",
+  growing: "#8274E8",
+  leak: "#D88455",
+  text: "#F5F0E7",
+  muted: "#9295A5",
 };
 
 const PARTICLE_POSITIONS = [
@@ -41,8 +53,6 @@ function buildParticles(
     return [];
   }
 
-  // Field becomes denser as more of the day is tracked.
-  // 30 min ~= 3 particles, 5h+ ~= full field.
   const count = Math.min(
     PARTICLE_POSITIONS.length,
     Math.max(3, Math.ceil(totalMinutes / 25)),
@@ -69,96 +79,79 @@ export function LifeField({ statistics }: LifeFieldProps) {
     growingPercent,
   );
 
-  return (
-    <View className="mt-6">
-      <View className="mb-3 flex-row items-end justify-between">
-        <View>
-          <Text className="text-[11px] font-bold tracking-[1.4px] text-[#65728D]">
-            LIFE FIELD
-          </Text>
+  const dominantColor = growingPercent >= 50 ? COLORS.growing : COLORS.leak;
 
-          <Text className="mt-1 text-[12px] text-[#56637D]">
-            Your observed energy today
-          </Text>
+  return (
+    <View style={styles.container}>
+      {/* HEADER */}
+      <View style={styles.header}>
+        <View>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>LIFE FIELD</Text>
+
+            <Text style={styles.sparkle}>✦</Text>
+          </View>
+
+          <Text style={styles.subtitle}>Your observed energy today</Text>
         </View>
 
-        {hasData ? (
-          <Text className="text-[12px] font-medium text-[#7D8AA6]">
+        {hasData && (
+          <Text style={styles.duration}>
             {formatDuration(statistics.totalDurationMinutes)}
           </Text>
-        ) : null}
+        )}
       </View>
 
-      <View
-        className="relative overflow-hidden rounded-[28px] border border-[#192744] bg-[#050B18]"
-        style={{
-          height: 285,
-        }}
+      {/* FIELD */}
+      <CosmicPanel
+        variant="default"
+        accent={COLORS.gold}
+        contentStyle={styles.field}
       >
-        {/* FIELD GLOWS */}
-
+        {/* AMBIENT GLOWS */}
         <View
           pointerEvents="none"
-          className="absolute rounded-full"
-          style={{
-            width: 230,
-            height: 230,
-            left: -75,
-            top: 20,
-            backgroundColor: "#536DFF",
-            opacity: hasData ? 0.035 + growingPercent * 0.0005 : 0.025,
-          }}
+          style={[
+            styles.ambientGlow,
+            {
+              left: -85,
+              top: 15,
+              backgroundColor: COLORS.growing,
+              opacity: hasData ? 0.04 + growingPercent * 0.0006 : 0.025,
+            },
+          ]}
         />
 
         <View
           pointerEvents="none"
-          className="absolute rounded-full"
-          style={{
-            width: 210,
-            height: 210,
-            right: -75,
-            top: 55,
-            backgroundColor: "#E657A8",
-            opacity: hasData ? 0.035 + (100 - growingPercent) * 0.0005 : 0.02,
-          }}
+          style={[
+            styles.ambientGlow,
+            {
+              right: -85,
+              top: 45,
+              backgroundColor: COLORS.leak,
+              opacity: hasData ? 0.04 + (100 - growingPercent) * 0.0006 : 0.025,
+            },
+          ]}
         />
 
-        {/* ORBITS */}
+        {/* GOLD ORBITS */}
+        <View pointerEvents="none" style={[styles.orbit, styles.orbitOuter]} />
 
-        <View
-          pointerEvents="none"
-          className="absolute rounded-full border"
-          style={{
-            width: 210,
-            height: 210,
-            left: "50%",
-            top: "50%",
-            marginLeft: -105,
-            marginTop: -105,
-            borderColor: "rgba(113,139,255,0.10)",
-          }}
-        />
+        <View pointerEvents="none" style={[styles.orbit, styles.orbitMiddle]} />
 
-        <View
-          pointerEvents="none"
-          className="absolute rounded-full border"
-          style={{
-            width: 140,
-            height: 140,
-            left: "50%",
-            top: "50%",
-            marginLeft: -70,
-            marginTop: -70,
-            borderColor: "rgba(230,87,168,0.08)",
-          }}
-        />
+        <View pointerEvents="none" style={[styles.orbit, styles.orbitInner]} />
+
+        {/* ORBIT ACCENTS */}
+        <View pointerEvents="none" style={styles.orbitAccentTop} />
+
+        <View pointerEvents="none" style={styles.orbitAccentBottom} />
 
         {hasData ? (
           <>
             {/* PARTICLES */}
-
             {particles.map((particle, index) => {
-              const color = particle.growing ? "#718BFF" : "#E657A8";
+              const color = particle.growing ? COLORS.growing : COLORS.leak;
 
               return (
                 <View
@@ -166,25 +159,18 @@ export function LifeField({ statistics }: LifeFieldProps) {
                   pointerEvents="none"
                   style={{
                     position: "absolute",
-
                     left: `${particle.x}%`,
                     top: `${particle.y}%`,
-
                     width: particle.size,
                     height: particle.size,
-
                     marginLeft: -particle.size / 2,
                     marginTop: -particle.size / 2,
-
                     borderRadius: particle.size / 2,
-
                     backgroundColor: color,
-
                     opacity: particle.opacity,
-
                     shadowColor: color,
-                    shadowOpacity: 1,
-                    shadowRadius: 10,
+                    shadowOpacity: 0.9,
+                    shadowRadius: 11,
                     shadowOffset: {
                       width: 0,
                       height: 0,
@@ -194,84 +180,305 @@ export function LifeField({ statistics }: LifeFieldProps) {
               );
             })}
 
-            {/* CENTRAL CORE */}
-
-            <View
-              pointerEvents="none"
-              className="absolute items-center justify-center"
-              style={{
-                width: 100,
-                height: 100,
-
-                left: "50%",
-                top: "50%",
-
-                marginLeft: -50,
-                marginTop: -50,
-              }}
-            >
-              <View
-                className="h-[88px] w-[88px] items-center justify-center rounded-full border"
-                style={{
-                  borderColor:
-                    growingPercent >= 50
-                      ? "rgba(113,139,255,0.20)"
-                      : "rgba(230,87,168,0.20)",
-                }}
-              >
+            {/* CENTRAL ENERGY CORE */}
+            <View pointerEvents="none" style={styles.coreContainer}>
+              <View style={styles.coreOuter}>
                 <View
-                  className="h-[54px] w-[54px] items-center justify-center rounded-full"
-                  style={{
-                    backgroundColor:
-                      growingPercent >= 50
-                        ? "rgba(113,139,255,0.16)"
-                        : "rgba(230,87,168,0.16)",
-                  }}
+                  style={[
+                    styles.coreMiddle,
+                    {
+                      borderColor: `${dominantColor}55`,
+                    },
+                  ]}
                 >
                   <View
-                    className="h-[22px] w-[22px] rounded-full"
-                    style={{
-                      backgroundColor:
-                        growingPercent >= 50 ? "#718BFF" : "#E657A8",
-
-                      shadowColor: growingPercent >= 50 ? "#718BFF" : "#E657A8",
-
-                      shadowOpacity: 1,
-                      shadowRadius: 18,
-                      shadowOffset: {
-                        width: 0,
-                        height: 0,
+                    style={[
+                      styles.coreInner,
+                      {
+                        backgroundColor: `${dominantColor}22`,
                       },
-                    }}
-                  />
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.coreLight,
+                        {
+                          backgroundColor: dominantColor,
+                          shadowColor: dominantColor,
+                        },
+                      ]}
+                    />
+                  </View>
                 </View>
               </View>
             </View>
 
             {/* FIELD LABEL */}
+            <View style={styles.fieldFooter}>
+              <Text style={styles.fieldLabel}>{growingPercent}% GROWING</Text>
 
-            <View className="absolute bottom-5 left-0 right-0 items-center">
-              <Text className="text-[11px] font-bold tracking-[1.2px] text-[#687694]">
-                {growingPercent}% GROWING
-              </Text>
+              <View style={styles.fieldFooterLine} />
+
+              <Text style={styles.fieldHint}>YOUR ENERGY IN MOTION</Text>
             </View>
           </>
         ) : (
-          <View className="flex-1 items-center justify-center px-8">
-            <View className="h-[76px] w-[76px] items-center justify-center rounded-full border border-[#25304A]">
-              <View className="h-[10px] w-[10px] rounded-full bg-[#48536C]" />
+          <View style={styles.emptyState}>
+            <View style={styles.emptyCoreOuter}>
+              <View style={styles.emptyCoreInner} />
             </View>
 
-            <Text className="mt-5 text-[16px] font-semibold text-[#B5BED1]">
-              Your field is quiet
-            </Text>
+            <Text style={styles.emptyTitle}>Your field is quiet</Text>
 
-            <Text className="mt-2 text-center text-[13px] leading-5 text-[#606D87]">
+            <Text style={styles.emptyDescription}>
               Trace your first activity and watch your Life Field take shape.
             </Text>
           </View>
         )}
-      </View>
+      </CosmicPanel>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: 24,
+    width: "100%",
+  },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginBottom: 15,
+  },
+
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+
+  title: {
+    color: COLORS.gold,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.7,
+  },
+
+  sparkle: {
+    color: COLORS.gold,
+    fontSize: 13,
+    opacity: 0.75,
+  },
+
+  subtitle: {
+    color: COLORS.muted,
+    fontSize: 12,
+    marginTop: 6,
+  },
+
+  duration: {
+    color: COLORS.lightGold,
+    fontSize: 12,
+    fontWeight: "500",
+  },
+
+  field: {
+    height: 300,
+    padding: 0,
+    position: "relative",
+    overflow: "hidden",
+  },
+
+  ambientGlow: {
+    position: "absolute",
+    width: 230,
+    height: 230,
+    borderRadius: 115,
+  },
+
+  orbit: {
+    position: "absolute",
+    borderWidth: 1,
+    borderRadius: 999,
+    borderColor: "rgba(214,173,101,0.12)",
+    left: "50%",
+    top: "50%",
+  },
+
+  orbitOuter: {
+    width: 250,
+    height: 250,
+    marginLeft: -125,
+    marginTop: -125,
+    borderColor: "rgba(214,173,101,0.10)",
+  },
+
+  orbitMiddle: {
+    width: 190,
+    height: 190,
+    marginLeft: -95,
+    marginTop: -95,
+    borderColor: "rgba(214,173,101,0.15)",
+  },
+
+  orbitInner: {
+    width: 125,
+    height: 125,
+    marginLeft: -62.5,
+    marginTop: -62.5,
+    borderColor: "rgba(214,173,101,0.11)",
+  },
+
+  orbitAccentTop: {
+    position: "absolute",
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: COLORS.gold,
+    left: "50%",
+    top: 25,
+    marginLeft: -3.5,
+    opacity: 0.65,
+    shadowColor: COLORS.gold,
+    shadowOpacity: 0.7,
+    shadowRadius: 9,
+    shadowOffset: { width: 0, height: 0 },
+  },
+
+  orbitAccentBottom: {
+    position: "absolute",
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: COLORS.lightGold,
+    left: "50%",
+    bottom: 25,
+    marginLeft: -2.5,
+    opacity: 0.5,
+  },
+
+  coreContainer: {
+    position: "absolute",
+    width: 130,
+    height: 130,
+    left: "50%",
+    top: "50%",
+    marginLeft: -65,
+    marginTop: -65,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  coreOuter: {
+    width: 116,
+    height: 116,
+    borderRadius: 58,
+    borderWidth: 1,
+    borderColor: "rgba(214,173,101,0.22)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  coreMiddle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  coreInner: {
+    width: 59,
+    height: 59,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  coreLight: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 0 },
+  },
+
+  fieldFooter: {
+    position: "absolute",
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+
+  fieldLabel: {
+    color: COLORS.lightGold,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+  },
+
+  fieldFooterLine: {
+    width: 24,
+    height: 1,
+    backgroundColor: COLORS.gold,
+    opacity: 0.45,
+    marginTop: 8,
+  },
+
+  fieldHint: {
+    color: COLORS.muted,
+    fontSize: 9,
+    letterSpacing: 1.4,
+    marginTop: 8,
+  },
+
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 35,
+  },
+
+  emptyCoreOuter: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    borderWidth: 1,
+    borderColor: "rgba(214,173,101,0.24)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  emptyCoreInner: {
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: COLORS.gold,
+    opacity: 0.55,
+    shadowColor: COLORS.gold,
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+  },
+
+  emptyTitle: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 22,
+  },
+
+  emptyDescription: {
+    color: COLORS.muted,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: "center",
+    marginTop: 9,
+    maxWidth: 260,
+  },
+});

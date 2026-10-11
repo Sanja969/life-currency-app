@@ -11,20 +11,40 @@ import { TodayActivitySummary } from "./components/TodayActivitySummary";
 
 import { useToday } from "./hooks/useToday";
 
+const COLORS = {
+  background: "#080A10",
+  gold: "#D6AD65",
+};
+
 export function Today() {
   const { statistics, isLoading, errorMessage } = useToday();
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" color="#718BFF" />
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: COLORS.background,
+        }}
+      >
+        <ActivityIndicator size="large" color={COLORS.gold} />
       </View>
     );
   }
 
   if (errorMessage || !statistics) {
     return (
-      <View className="flex-1 items-center justify-center">
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: COLORS.background,
+          paddingHorizontal: 24,
+        }}
+      >
         <AppText>{errorMessage ?? "Unable to load data."}</AppText>
       </View>
     );
@@ -39,9 +59,11 @@ export function Today() {
       <Section>
         <LifeField statistics={statistics} />
       </Section>
+
       <Section>
         <CategoryBreakdown categories={statistics.categoryStatistics} />
       </Section>
+
       <Section>
         <TodaySignal statistics={statistics} />
       </Section>

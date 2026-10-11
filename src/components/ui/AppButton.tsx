@@ -1,27 +1,41 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import type { ComponentProps, ReactNode } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
   View,
+  type LayoutChangeEvent,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import Svg, { Path } from "react-native-svg";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
 type AppButtonProps = {
-  children: ReactNode;
+  children?: ReactNode;
   onPress?: () => void;
   disabled?: boolean;
   loading?: boolean;
-  cosmic?: boolean;
-  variant?: "default" | "cosmic" | "goldGlass" | "onboarding";
+  accessibilityLabel?: string;
+  variant?: "primary" | "secondary" | "icon";
+  tone?: "primary" | "secondary";
   icon?: IconName;
+  leadingIcon?: IconName;
+  trailingIcon?: IconName;
+
   style?: StyleProp<ViewStyle>;
+};
+
+const COLORS = {
+  gold: "#D6AD65",
+  lightGold: "#F3D49B",
+  dark: "#080A10",
+  surface: "#17150F",
+  text: "#F5F0E7",
 };
 
 export function AppButton({
@@ -29,220 +43,156 @@ export function AppButton({
   onPress,
   disabled = false,
   loading = false,
-  cosmic = false,
-  variant,
-  icon = "arrow-forward",
+  variant = "primary",
+  accessibilityLabel,
+  tone = "primary",
+  icon = "add",
+  leadingIcon,
+  trailingIcon,
   style,
 }: AppButtonProps) {
-  const selectedVariant = variant ?? (cosmic ? "cosmic" : "default");
+  const [width, setWidth] = useState(0);
+
   const isDisabled = disabled || loading;
+  const isIcon = variant === "icon";
+  const isPrimary =
+    variant === "primary" || (variant === "icon" && tone === "primary");
 
-  // DEFAULT — existing form button
-  if (selectedVariant === "default") {
-    return (
-      <Pressable
-        onPress={onPress}
-        disabled={isDisabled}
-        accessibilityRole="button"
-        style={style}
-        className={[
-          "min-h-[54px] items-center justify-center rounded-2xl bg-indigo-600",
-          isDisabled ? "opacity-40" : "",
-        ].join(" ")}
-      >
-        {loading ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <Text className="text-base font-semibold text-white">
-            {children}
-          </Text>
-        )}
-      </Pressable>
-    );
-  }
+  const height = isIcon ? 52 : variant === "secondary" ? 48 : 54;
+  const cut = isIcon ? 12 : 10;
 
-  // COSMIC — existing gradient button
-  if (selectedVariant === "cosmic") {
-    return (
-      <Pressable
-        onPress={onPress}
-        disabled={isDisabled}
-        accessibilityRole="button"
-        style={style}
-        className={[
-          "overflow-hidden rounded-[22px]",
-          isDisabled ? "opacity-40" : "",
-        ].join(" ")}
-      >
-        <LinearGradient
-          colors={["#1455B8", "#4233B3", "#6B2F92"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.cosmicGradient}
-        >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <>
-              <View className="mr-3 h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-white/10">
-                <Ionicons name="add" size={22} color="#FFFFFF" />
-              </View>
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const nextWidth = event.nativeEvent.layout.width;
 
-              <Text className="text-lg font-semibold text-white">
-                {children}
-              </Text>
+    if (Math.abs(nextWidth - width) > 0.5) {
+      setWidth(nextWidth);
+    }
+  };
 
-              <Ionicons
-                name="arrow-forward"
-                size={20}
-                color="#FFFFFF"
-                style={{ marginLeft: 12 }}
-              />
-            </>
-          )}
-        </LinearGradient>
-      </Pressable>
-    );
-  }
+  const shapePath = `
+    M ${cut} 0
+    L ${width} 0
+    L ${width} ${height - cut}
+    L ${width - cut} ${height}
+    L 0 ${height}
+    L 0 ${cut}
+    Z
+  `;
 
-  // ONBOARDING — circular champagne-gold button
-  if (selectedVariant === "onboarding") {
-    return (
-      <Pressable
-        onPress={onPress}
-        disabled={isDisabled}
-        accessibilityRole="button"
-        accessibilityLabel={
-          icon === "checkmark" ? "Finish onboarding" : "Next step"
-        }
-        accessibilityState={{
-          disabled: isDisabled,
-          busy: loading,
-        }}
-        style={({ pressed }) => [
-          styles.onboardingButton,
-          style,
-          {
-            opacity: isDisabled ? 0.45 : pressed ? 0.8 : 1,
-          },
-        ]}
-      >
-        <LinearGradient
-          colors={["#FFF0C9", "#E8C58A", "#C99B58"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.onboardingGradient}
-        >
-          {loading ? (
-            <ActivityIndicator color="#080A10" />
-          ) : (
-            <Ionicons name={icon} size={24} color="#17120B" />
-          )}
-        </LinearGradient>
-      </Pressable>
-    );
-  }
+  const foreground = isPrimary ? COLORS.dark : COLORS.lightGold;
 
-  // GOLD GLASS — premium Life Currency action button
   return (
     <Pressable
       onPress={onPress}
+      onLayout={handleLayout}
       disabled={isDisabled}
       accessibilityRole="button"
+      accessibilityLabel={
+        accessibilityLabel ??
+        (typeof children === "string"
+          ? children
+          : isIcon
+            ? "Add activity"
+            : undefined)
+      }
       accessibilityState={{
         disabled: isDisabled,
         busy: loading,
       }}
       style={({ pressed }) => [
-        styles.goldGlassButton,
-        style,
+        styles.container,
         {
-          opacity: isDisabled ? 0.4 : pressed ? 0.75 : 1,
+          height,
+          width: isIcon ? 52 : undefined,
+          alignSelf: isIcon ? "flex-start" : "stretch",
+          opacity: isDisabled ? 0.4 : pressed ? 0.8 : 1,
+          transform: [{ scale: pressed ? 0.97 : 1 }],
         },
+        style,
       ]}
     >
-      <LinearGradient
-        colors={[
-          "rgba(214,173,101,0.20)",
-          "rgba(214,173,101,0.08)",
-          "rgba(214,173,101,0.02)",
-        ]}
-        locations={[0, 0.55, 1]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.goldGlassGradient}
-      >
-        {loading ? (
-          <ActivityIndicator color="#F3D49B" />
-        ) : (
-          <>
-            <Text style={styles.goldGlassText}>{children}</Text>
-            <Ionicons name={icon} size={19} color="#F3D49B" />
-          </>
-        )}
-      </LinearGradient>
+      {width > 0 && (
+        <Svg
+          pointerEvents="none"
+          width={width}
+          height={height}
+          style={StyleSheet.absoluteFill}
+        >
+          <Path
+            d={shapePath}
+            fill={isPrimary ? COLORS.gold : COLORS.surface}
+            stroke={isPrimary ? COLORS.lightGold : "rgba(214,173,101,0.48)"}
+            strokeWidth={1}
+          />
+
+          <Path
+            d={`M ${cut} 0 L ${Math.min(width - 4, cut + 25)} 0`}
+            stroke={isPrimary ? "#FFF0C8" : COLORS.gold}
+            strokeWidth={1.4}
+          />
+        </Svg>
+      )}
+
+      {loading ? (
+        <ActivityIndicator color={foreground} />
+      ) : isIcon ? (
+        <Ionicons name={icon} size={27} color={foreground} />
+      ) : (
+        <View style={styles.content}>
+          {leadingIcon && (
+            <View style={styles.leadingIconContainer}>
+              <Ionicons name={leadingIcon} size={18} color={foreground} />
+            </View>
+          )}
+
+          <Text
+            style={[
+              styles.label,
+              {
+                color: foreground,
+                fontSize: variant === "secondary" ? 13 : 15,
+              },
+            ]}
+          >
+            {children}
+          </Text>
+
+          {trailingIcon && (
+            <Ionicons name={trailingIcon} size={16} color={foreground} />
+          )}
+        </View>
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  cosmicGradient: {
-    minHeight: 60,
+  container: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  content: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "#858BFF",
+    gap: 11,
+    paddingHorizontal: 16,
   },
 
-  // ONBOARDING
-  onboardingButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,230,180,0.65)",
-
-    shadowColor: "#D6AD65",
-    shadowOpacity: 0.25,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-  },
-
-  onboardingGradient: {
-    flex: 1,
+  leadingIconContainer: {
+    width: 26,
+    height: 26,
     alignItems: "center",
     justifyContent: "center",
-  },
-
-  // GOLD GLASS
-  goldGlassButton: {
-    minHeight: 58,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 15,
-    borderBottomRightRadius: 28,
-    borderBottomLeftRadius: 15,
     borderWidth: 1,
-    borderColor: "rgba(214,173,101,0.48)",
-    overflow: "hidden",
+    borderColor: "rgba(214,173,101,0.25)",
+    backgroundColor: "rgba(214,173,101,0.10)",
+    // Intentionally square — no rounded corners.
   },
 
-  goldGlassGradient: {
-    minHeight: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 18,
-    gap: 12,
-  },
-
-  goldGlassText: {
-    color: "#F3D49B",
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: 0.3,
+  label: {
+    fontWeight: "600",
+    letterSpacing: 0.2,
   },
 });

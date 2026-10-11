@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 
 type EnergyFilterProps = {
   label: string;
@@ -7,58 +8,103 @@ type EnergyFilterProps = {
   color?: string;
 };
 
+const COLORS = {
+  gold: "#D6AD65",
+  muted: "#9295A5",
+};
+
 export function EnergyFilter({
   label,
   selected,
   onPress,
   color,
 }: EnergyFilterProps) {
-  const activeColor = color ?? "#8B9BFF";
+  const accent = color ?? COLORS.gold;
 
   return (
     <Pressable
       onPress={onPress}
-      className={`h-[34px] flex-1 flex-row items-center justify-center rounded-[10px] ${
-        selected ? "bg-[#11182D]" : "bg-transparent"
-      }`}
-      style={
-        selected
-          ? {
-              shadowColor: activeColor,
-              shadowOpacity: 0.15,
-              shadowRadius: 8,
-              shadowOffset: {
-                width: 0,
-                height: 0,
-              },
-            }
-          : undefined
-      }
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      style={({ pressed }) => [
+        styles.container,
+        { opacity: pressed ? 0.75 : 1 },
+      ]}
     >
-      {color ? (
-        <View
-          className="mr-1.5 h-[5px] w-[5px] rounded-full"
-          style={{
-            backgroundColor: selected ? activeColor : "#455168",
-            shadowColor: activeColor,
-            shadowOpacity: selected ? 0.8 : 0,
-            shadowRadius: 4,
-            shadowOffset: {
-              width: 0,
-              height: 0,
-            },
-          }}
-        />
-      ) : null}
+      {/* ANGULAR BACKGROUND */}
 
-      <Text
-        className="text-[11px] font-semibold"
-        style={{
-          color: selected ? (color ?? "#D3D9FF") : "#59657D",
-        }}
+      <Svg
+        style={StyleSheet.absoluteFill}
+        width="100%"
+        height="100%"
+        viewBox="0 0 100 38"
+        preserveAspectRatio="none"
+        pointerEvents="none"
       >
-        {label}
-      </Text>
+        <Path
+          d="M 10 0 L 100 0 L 100 28 L 90 38 L 0 38 L 0 10 Z"
+          fill={selected ? `${accent}14` : "#111219"}
+          stroke={selected ? accent : "#303039"}
+          strokeWidth={selected ? 1.2 : 0.8}
+          vectorEffect="non-scaling-stroke"
+        />
+      </Svg>
+
+      <View style={styles.content}>
+        <View
+          style={[
+            styles.dot,
+            {
+              backgroundColor: selected
+                ? accent
+                : color
+                  ? `${color}80`
+                  : "#777987",
+            },
+          ]}
+        />
+
+        <Text
+          numberOfLines={1}
+          style={[
+            styles.label,
+            {
+              color: selected ? accent : COLORS.muted,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </View>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    height: 38,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  content: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+  },
+
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginRight: 6,
+  },
+
+  label: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+});

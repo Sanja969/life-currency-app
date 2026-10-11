@@ -1,5 +1,13 @@
+import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, Text, View } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from "react-native";
+import Svg, { Path } from "react-native-svg";
 
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
 import { ActivityCategory } from "@/types/activity";
@@ -20,99 +28,226 @@ const CATEGORY_OPTIONS: ActivityCategory[] = [
   ActivityCategory.Other,
 ];
 
+const COLORS = {
+  gold: "#D6AD65",
+  lightGold: "#F3D49B",
+  text: "#F5F0E7",
+  muted: "#9295A5",
+  surface: "#11141D",
+  selectedSurface: "#211D17",
+};
+
+const CARD_HEIGHT = 70;
+const CORNER_CUT = 10;
+
+type CategoryCardProps = {
+  category: ActivityCategory;
+  selected: boolean;
+  onPress: () => void;
+};
+
+function CategoryCard({ category, selected, onPress }: CategoryCardProps) {
+  const [width, setWidth] = useState(0);
+
+  const meta = getActivityCategoryMeta(category);
+
+  function handleLayout(event: LayoutChangeEvent) {
+    const nextWidth = event.nativeEvent.layout.width;
+
+    if (Math.abs(nextWidth - width) > 0.5) {
+      setWidth(nextWidth);
+    }
+  }
+
+  const shapePath = `
+    M ${CORNER_CUT} 0
+    L ${width} 0
+    L ${width} ${CARD_HEIGHT - CORNER_CUT}
+    L ${width - CORNER_CUT} ${CARD_HEIGHT}
+    L 0 ${CARD_HEIGHT}
+    L 0 ${CORNER_CUT}
+    Z
+  `;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onLayout={handleLayout}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={meta.label}
+      style={({ pressed }) => [
+        styles.card,
+        {
+          opacity: pressed ? 0.75 : 1,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        },
+      ]}
+    >
+      {width > 0 && (
+        <Svg
+          pointerEvents="none"
+          width={width}
+          height={CARD_HEIGHT}
+          style={StyleSheet.absoluteFill}
+        >
+          <Path
+            d={shapePath}
+            fill={selected ? COLORS.selectedSurface : COLORS.surface}
+            stroke={selected ? COLORS.gold : "rgba(214,173,101,0.18)"}
+            strokeWidth={selected ? 1.5 : 1}
+          />
+
+          {selected && (
+            <Path
+              d={`M ${CORNER_CUT} 0 L ${Math.min(
+                width - 4,
+                CORNER_CUT + 28,
+              )} 0`}
+              stroke={COLORS.lightGold}
+              strokeWidth={1.5}
+            />
+          )}
+        </Svg>
+      )}
+
+      <View style={styles.cardContent}>
+        {/* ICON */}
+
+        <View
+          style={[
+            styles.iconContainer,
+            {
+              backgroundColor: selected
+                ? "rgba(214,173,101,0.13)"
+                : "rgba(255,255,255,0.035)",
+              borderColor: selected
+                ? "rgba(214,173,101,0.3)"
+                : "rgba(255,255,255,0.06)",
+            },
+          ]}
+        >
+          <Ionicons
+            name={meta.icon}
+            size={18}
+            color={selected ? COLORS.lightGold : COLORS.muted}
+          />
+        </View>
+
+        {/* LABEL */}
+
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={[
+            styles.categoryLabel,
+            {
+              color: selected ? COLORS.text : COLORS.muted,
+            },
+          ]}
+        >
+          {meta.label}
+        </Text>
+
+        {/* SELECTED INDICATOR */}
+
+        {selected && <View style={styles.selectedIndicator} />}
+      </View>
+    </Pressable>
+  );
+}
+
 export function CategorySelector({ value, onChange }: CategorySelectorProps) {
   return (
-    <View className="gap-3">
-      <View>
-        <Text className="text-sm font-medium text-slate-200">Life area</Text>
+    <View style={styles.container}>
+      {/* HEADER */}
 
-        <Text className="mt-1 text-xs text-slate-400">
-          Where did this time go?
-        </Text>
+      <View style={styles.header}>
+        <Text style={styles.label}>Life area</Text>
+
+        <Text style={styles.subtitle}>Where did this time go?</Text>
       </View>
 
-      <View className="flex-row flex-wrap justify-between">
-        {CATEGORY_OPTIONS.map((category) => {
-          const meta = getActivityCategoryMeta(category);
-          const selected = value === category;
+      {/* CATEGORY GRID */}
 
-          return (
-            <Pressable
-              key={category}
-              onPress={() => onChange(category)}
-              className="mb-3 w-[48.5%] rounded-[18px] border px-4 py-4"
-              style={({ pressed }) => ({
-                borderColor: selected ? "rgba(113, 139, 255, 0.72)" : "#26365A",
-
-                backgroundColor: selected
-                  ? "rgba(41, 36, 93, 0.85)"
-                  : "#0D152B",
-
-                opacity: pressed ? 0.75 : 1,
-
-                transform: [
-                  {
-                    scale: pressed ? 0.98 : 1,
-                  },
-                ],
-
-                shadowColor: selected ? "#718BFF" : "transparent",
-
-                shadowOpacity: selected ? 0.2 : 0,
-                shadowRadius: selected ? 12 : 0,
-
-                shadowOffset: {
-                  width: 0,
-                  height: 4,
-                },
-              })}
-            >
-              <View className="flex-row items-center">
-                <View
-                  className="h-9 w-9 items-center justify-center rounded-[12px]"
-                  style={{
-                    backgroundColor: selected
-                      ? "rgba(113, 139, 255, 0.18)"
-                      : "#101A30",
-                  }}
-                >
-                  <Ionicons
-                    name={meta.icon}
-                    size={18}
-                    color={selected ? "#9EACFF" : "#71809D"}
-                  />
-                </View>
-
-                <Text
-                  numberOfLines={1}
-                  className="ml-3 flex-1 text-[13px] font-semibold"
-                  style={{
-                    color: selected ? "#FFFFFF" : "#A0ABC0",
-                  }}
-                >
-                  {meta.label}
-                </Text>
-              </View>
-
-              {selected ? (
-                <View
-                  className="absolute right-3 top-3 h-[6px] w-[6px] rounded-full"
-                  style={{
-                    backgroundColor: "#8FA3FF",
-                    shadowColor: "#718BFF",
-                    shadowOpacity: 1,
-                    shadowRadius: 6,
-                    shadowOffset: {
-                      width: 0,
-                      height: 0,
-                    },
-                  }}
-                />
-              ) : null}
-            </Pressable>
-          );
-        })}
+      <View style={styles.grid} accessibilityRole="radiogroup">
+        {CATEGORY_OPTIONS.map((category) => (
+          <CategoryCard
+            key={category}
+            category={category}
+            selected={value === category}
+            onPress={() => onChange(category)}
+          />
+        ))}
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    gap: 14,
+  },
+
+  header: {
+    gap: 5,
+  },
+
+  label: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+  },
+
+  subtitle: {
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 12,
+  },
+
+  card: {
+    width: "48.5%",
+    height: CARD_HEIGHT,
+    justifyContent: "center",
+  },
+
+  cardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    gap: 10,
+  },
+
+  iconContainer: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+
+  categoryLabel: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.1,
+  },
+
+  selectedIndicator: {
+    position: "absolute",
+    top: -12,
+    right: 0,
+    width: 5,
+    height: 5,
+    backgroundColor: COLORS.gold,
+  },
+});

@@ -4,7 +4,6 @@ import {
   Animated,
   Easing,
   ImageBackground,
-  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -13,7 +12,6 @@ import {
 
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 
 import { AppButton } from "@/components/ui/AppButton";
 import { useOnboardingCompletion } from "@/lib/OnboardingContext";
@@ -253,19 +251,14 @@ export default function OnboardingScreen() {
           <View style={styles.footer}>
             <View style={styles.leftNavigation}>
               {stepIndex > 0 && (
-                <Pressable
+                <AppButton
+                  variant="icon"
+                  tone="secondary"
+                  icon="arrow-back"
+                  accessibilityLabel="Previous step"
                   onPress={handleBack}
                   disabled={isFinishing}
-                  accessibilityRole="button"
-                  accessibilityLabel="Previous step"
-                  style={styles.backButton}
-                >
-                  <Ionicons
-                    name="arrow-back"
-                    size={19}
-                    color={COLORS.lightGold}
-                  />
-                </Pressable>
+                />
               )}
 
               <View style={styles.dots}>
@@ -284,13 +277,15 @@ export default function OnboardingScreen() {
             </View>
 
             <AppButton
-              variant="onboarding"
+              variant="icon"
+              tone="primary"
               icon={isLastStep ? "checkmark" : "arrow-forward"}
+              accessibilityLabel={
+                isLastStep ? "Finish onboarding" : "Next step"
+              }
               onPress={handleNext}
               loading={isFinishing}
-            >
-              {isLastStep ? "Begin" : "Next"}
-            </AppButton>
+            />
           </View>
         </View>
       </SafeAreaView>
@@ -373,7 +368,7 @@ const styles = StyleSheet.create({
 
   title: {
     color: COLORS.text,
-    fontWeight: "700",
+    fontWeight: "600",
     letterSpacing: -1.2,
   },
 
@@ -404,16 +399,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 22,
-  },
-
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(214,173,101,0.25)",
-    alignItems: "center",
-    justifyContent: "center",
   },
 
   dots: {

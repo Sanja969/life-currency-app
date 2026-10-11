@@ -1,11 +1,29 @@
+import { useState } from "react";
 import { Control, Controller, FieldPath, FieldValues } from "react-hook-form";
-import { Text, TextInput, TextInputProps, View } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  TextInputProps,
+  View,
+  type LayoutChangeEvent,
+} from "react-native";
+import Svg, { Path } from "react-native-svg";
 
 type FormTextInputProps<T extends FieldValues> = {
   control: Control<T>;
   name: FieldPath<T>;
   label?: string;
 } & TextInputProps;
+
+const COLORS = {
+  gold: "#D6AD65",
+  lightGold: "#F3D49B",
+  text: "#F5F0E7",
+  muted: "#9295A5",
+  surface: "#11141D",
+  error: "#E78A8A",
+};
 
 export function FormTextInput<T extends FieldValues>({
   control,
@@ -14,40 +32,167 @@ export function FormTextInput<T extends FieldValues>({
   multiline,
   ...props
 }: FormTextInputProps<T>) {
+  const [focused, setFocused] = useState(false);
+  const [width, setWidth] = useState(0);
+  const [height, setHeight] = useState(multiline ? 100 : 56);
+
+  function handleLayout(event: LayoutChangeEvent) {
+    const { width: nextWidth, height: nextHeight } = event.nativeEvent.layout;
+
+    if (Math.abs(nextWidth - width) > 0.5) {
+      setWidth(nextWidth);
+    }
+
+    if (Math.abs(nextHeight - height) > 0.5) {
+      setHeight(nextHeight);
+    }
+  }
+
+  const cut = 10;
+
+  const path = `
+    M ${cut} 0
+    L ${width} 0
+    L ${width} ${height - cut}
+    L ${width - cut} ${height}
+    L 0 ${height}
+    L 0 ${cut}
+    Z
+  `;
+
   return (
     <Controller
       control={control}
       name={name}
-      render={({ field, fieldState }) => (
-        <View className="gap-2">
-          {label ? (
-            <Text className="text-sm font-medium text-slate-300">{label}</Text>
-          ) : null}
+      render={({ field, fieldState }) => {
+        const borderColor = fieldState.error
+          ? COLORS.error
+          : focused
+            ? COLORS.gold
+            : "rgba(214,173,101,0.22)";
 
-          <TextInput
-            value={field.value?.toString() ?? ""}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            multiline={multiline}
-            placeholderTextColor="#667085"
-            selectionColor="#7C83FF"
-            cursorColor="#7C83FF"
-            textAlignVertical={multiline ? "top" : "center"}
-            className={[
-              "rounded-2xl border bg-[#0D152B]/90 px-4 text-base text-white",
-              multiline ? "min-h-[92px] py-4" : "min-h-[56px]",
-              fieldState.error ? "border-red-400" : "border-[#26365A]",
-            ].join(" ")}
-            {...props}
-          />
+        return (
+          <View style={styles.wrapper}>
+            {label ? <Text style={styles.label}>{label}</Text> : null}
 
-          {fieldState.error ? (
-            <Text className="text-sm text-red-400">
-              {fieldState.error.message}
-            </Text>
-          ) : null}
-        </View>
-      )}
+            <View
+              onLayout={handleLayout}
+              style={[
+                styles.inputContainer,
+                multiline
+                  ? styles.multilineContainer
+                  : styles.singleLineContainer,
+              ]}
+            >
+              {width > 0 && (
+                <Svg
+                  pointerEvents="none"
+                  width={width}
+                  height={height}
+                  style={StyleSheet.absoluteFill}
+                >
+                  <Path
+                    d={path}
+                    fill={COLORS.surface}
+                    stroke={borderColor}
+                    strokeWidth={focused ? 1.4 : 1}
+                  />
+
+                  {focused && (
+                    <Path
+                      d={`M ${cut} 0 L ${Math.min(width - 4, cut + 32)} 0`}
+                      stroke={COLORS.lightGold}
+                      strokeWidth={1.5}
+                    />
+                  )}
+                </Svg>
+              )}
+
+              <TextInput
+                {...props}
+                value={field.value?.toString() ?? ""}
+                onChangeText={(value) => {
+                  field.onChange(value);
+                  props.onChangeText?.(value);
+                }}
+                onFocus={(event) => {
+                  setFocused(true);
+                  props.onFocus?.(event);
+                }}
+                onBlur={(event) => {
+                  setFocused(false);
+                  field.onBlur();
+                  props.onBlur?.(event);
+                }}
+                multiline={multiline}
+                placeholderTextColor={COLORS.muted}
+                selectionColor={COLORS.gold}
+                cursorColor={COLORS.lightGold}
+                textAlignVertical={multiline ? "top" : "center"}
+                style={[
+                  styles.input,
+                  multiline ? styles.multilineInput : styles.singleLineInput,
+                  props.style,
+                ]}
+              />
+            </View>
+
+            {fieldState.error ? (
+              <Text style={styles.errorText}>{fieldState.error.message}</Text>
+            ) : null}
+          </View>
+        );
+      }}
     />
   );
 }
+
+const styles = StyleSheet.create({
+  wrapper: {
+    gap: 9,
+  },
+
+  label: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+  },
+
+  inputContainer: {
+    width: "100%",
+    justifyContent: "center",
+  },
+
+  singleLineContainer: {
+    height: 56,
+  },
+
+  multilineContainer: {
+    minHeight: 100,
+  },
+
+  input: {
+    color: COLORS.text,
+    fontSize: 15,
+    paddingHorizontal: 17,
+    backgroundColor: "transparent",
+  },
+
+  singleLineInput: {
+    height: 56,
+    paddingVertical: 0,
+  },
+
+  multilineInput: {
+    minHeight: 100,
+    paddingTop: 16,
+    paddingBottom: 16,
+  },
+
+  errorText: {
+    color: COLORS.error,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+});

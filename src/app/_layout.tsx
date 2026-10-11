@@ -12,6 +12,7 @@ import { initializeDatabase } from "../database/migrations";
 import {
   hasCompletedOnboarding,
   resetOnboarding,
+  completeOnboarding,
 } from "../lib/onboarding";
 import { OnboardingContext } from "../lib/OnboardingContext";
 
@@ -33,7 +34,7 @@ export default function RootLayout() {
           initializeDatabase(),
           hasCompletedOnboarding(),
         ]);
-
+        completeOnboarding();
         setHasCompleted(completed);
         setIsAppReady(true);
       } catch (error) {
@@ -99,7 +100,9 @@ export default function RootLayout() {
   }
 
   return (
-    <OnboardingContext.Provider value={{ markOnboardingCompleted, restartOnboarding: resetOnboarding }}>
+    <OnboardingContext.Provider
+      value={{ markOnboardingCompleted, restartOnboarding: resetOnboarding }}
+    >
       <PaperProvider
         settings={{
           icon: (props) => <MaterialCommunityIcons {...props} />,

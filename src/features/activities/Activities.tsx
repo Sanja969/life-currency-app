@@ -5,6 +5,7 @@ import { FlatList, Pressable, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useActivityArrival } from "./hooks/useActivityArrival";
 import Animated from "react-native-reanimated";
+import Svg, { Path } from "react-native-svg";
 
 import { Activity, ActivityClassification } from "@/types/activity";
 
@@ -65,11 +66,13 @@ export function Activities() {
         !isSameDay(item.activityDate, previousActivity.activityDate);
 
       return (
-        <ActivityTrace
-          activity={item}
-          showDate={showDate}
-          isArriving={isArrivingActivity(item)}
-        />
+        <View style={{ paddingHorizontal: 20 }}>
+          <ActivityTrace
+            activity={item}
+            showDate={showDate}
+            isArriving={isArrivingActivity(item)}
+          />
+        </View>
       );
     },
     [activities, isArrivingActivity],
@@ -91,24 +94,23 @@ export function Activities() {
         NativeWind v5 className did not apply flex correctly to it.
       */}
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        {/* FIXED HEADER */}
-
-        <ActivitiesHeader
-          growingPercent={growingPercent}
-          leaksPercent={leaksPercent}
-          searchQuery={searchQuery}
-          filter={filter}
-          errorMessage={errorMessage}
-          setSearchQuery={setSearchQuery}
-          setFilter={setFilter}
-        />
-
         {/* SCROLLABLE TIMELINE */}
 
         <FlatList
           ref={listRef}
           style={{ flex: 1 }}
           data={activities}
+          ListHeaderComponent={
+            <ActivitiesHeader
+              growingPercent={growingPercent}
+              leaksPercent={leaksPercent}
+              searchQuery={searchQuery}
+              filter={filter}
+              errorMessage={errorMessage}
+              setSearchQuery={setSearchQuery}
+              setFilter={setFilter}
+            />
+          }
           keyExtractor={(item) => String(item.id)}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -117,7 +119,6 @@ export function Activities() {
           onScrollToIndexFailed={handleScrollToIndexFailed}
           onMomentumScrollEnd={handleMomentumScrollEnd}
           contentContainerStyle={{
-            paddingHorizontal: 20,
             paddingBottom: 170,
           }}
           renderItem={renderActivity}
@@ -129,6 +130,8 @@ export function Activities() {
           }}
           onEndReachedThreshold={0.5}
         />
+
+        {/* CREATE BUTTON */}
 
         {/* CREATE BUTTON */}
 
@@ -145,24 +148,54 @@ export function Activities() {
               params: { source: "activities" },
             });
           }}
-          className="absolute bottom-[92px] right-5 h-[60px] w-[60px] items-center justify-center rounded-full border border-[#A7B3FF]/50 bg-[#586CED]"
+          accessibilityRole="button"
+          accessibilityLabel="Add activity"
           style={({ pressed }) => ({
-            shadowColor: "#657BFF",
-            shadowOpacity: 0.55,
-            shadowRadius: 20,
+            position: "absolute",
+            bottom: 92,
+            right: 20,
+            width: 52,
+            height: 52,
+            alignItems: "center",
+            justifyContent: "center",
+            transform: [{ scale: pressed ? 0.94 : 1 }],
+            shadowColor: "#D6AD65",
+            shadowOpacity: pressed ? 0.4 : 0.2,
+            shadowRadius: pressed ? 16 : 10,
             shadowOffset: {
               width: 0,
-              height: 8,
+              height: 4,
             },
-            elevation: 12,
-            transform: [
-              {
-                scale: pressed ? 0.93 : 1,
-              },
-            ],
+            elevation: 8,
+            zIndex: 10,
           })}
         >
-          <Ionicons name="add" size={29} color="#FFFFFF" />
+          {/* ANGULAR BACKGROUND */}
+
+          <Svg
+            width={52}
+            height={52}
+            viewBox="0 0 52 52"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+            }}
+            pointerEvents="none"
+          >
+            <Path
+              d="M 12 0 L 52 0 L 52 40 L 40 52 L 0 52 L 0 12 Z"
+              fill="#D6AD65"
+              stroke="#F3D49B"
+              strokeWidth={1}
+            />
+
+            {/* TOP HIGHLIGHT */}
+
+            <Path d="M 12 0 L 31 0" stroke="#FFF0C8" strokeWidth={1.5} />
+          </Svg>
+
+          <Ionicons name="add" size={27} color="#080A10" />
         </Pressable>
       </SafeAreaView>
 

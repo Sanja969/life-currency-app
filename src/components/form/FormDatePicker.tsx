@@ -1,22 +1,42 @@
-import { useEffect, useState } from "react";
-import { Control, Controller, FieldPath, FieldValues } from "react-hook-form";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Modal,
   Platform,
   Pressable,
+  StyleSheet,
   Text,
   TextInput,
   View,
+  useWindowDimensions,
+  type LayoutChangeEvent,
 } from "react-native";
+
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
+import Svg, { Path } from "react-native-svg";
+
+import { AppButton } from "@/components/ui/AppButton";
+import { Control, Controller, FieldPath, FieldValues } from "react-hook-form";
 
 type FormDatePickerProps<T extends FieldValues> = {
   control: Control<T>;
   name: FieldPath<T>;
   label?: string;
 };
+
+const COLORS = {
+  background: "#080A10",
+  surface: "#11141D",
+  modalSurface: "#151720",
+  gold: "#D6AD65",
+  lightGold: "#F3D49B",
+  text: "#F5F0E7",
+  muted: "#9295A5",
+  error: "#E78A8A",
+};
+
+const CORNER_CUT = 10;
 
 function formatTime(date: Date) {
   return format(date, "HH:mm");
@@ -45,6 +65,97 @@ function parseTime(text: string) {
   };
 }
 
+/*
+ * Reusable angular background
+ */
+
+type AngularSurfaceProps = {
+  children: ReactNode;
+  focused?: boolean;
+  error?: boolean;
+};
+
+function AngularSurface({
+  children,
+  focused = false,
+  error = false,
+}: AngularSurfaceProps) {
+  const [size, setSize] = useState({
+    width: 0,
+    height: 0,
+  });
+
+  function handleLayout(event: LayoutChangeEvent) {
+    const { width, height } = event.nativeEvent.layout;
+
+    setSize((previous) => {
+      if (
+        Math.abs(previous.width - width) < 0.5 &&
+        Math.abs(previous.height - height) < 0.5
+      ) {
+        return previous;
+      }
+
+      return { width, height };
+    });
+  }
+
+  const { width, height } = size;
+
+  const shapePath = `
+    M ${CORNER_CUT} 0
+    L ${width} 0
+    L ${width} ${height - CORNER_CUT}
+    L ${width - CORNER_CUT} ${height}
+    L 0 ${height}
+    L 0 ${CORNER_CUT}
+    Z
+  `;
+
+  const borderColor = error
+    ? COLORS.error
+    : focused
+      ? COLORS.gold
+      : "rgba(214,173,101,0.22)";
+
+  return (
+    <View style={styles.angularSurface} onLayout={handleLayout}>
+      {width > 0 && height > 0 && (
+        <Svg
+          pointerEvents="none"
+          width={width}
+          height={height}
+          style={StyleSheet.absoluteFill}
+        >
+          <Path
+            d={shapePath}
+            fill={COLORS.surface}
+            stroke={borderColor}
+            strokeWidth={focused ? 1.5 : 1}
+          />
+
+          {focused && (
+            <Path
+              d={`M ${CORNER_CUT} 0 L ${Math.min(
+                width - 4,
+                CORNER_CUT + 30,
+              )} 0`}
+              stroke={COLORS.lightGold}
+              strokeWidth={1.5}
+            />
+          )}
+        </Svg>
+      )}
+
+      {children}
+    </View>
+  );
+}
+
+/*
+ * React Hook Form integration
+ */
+
 export function FormDatePicker<T extends FieldValues>({
   control,
   name,
@@ -64,6 +175,7 @@ export function FormDatePicker<T extends FieldValues>({
             label={label}
             error={fieldState.error?.message}
             onChange={field.onChange}
+            onBlur={field.onBlur}
           />
         );
       }}
@@ -76,6 +188,7 @@ type DateTimeFieldsProps = {
   label?: string;
   error?: string;
   onChange: (value: Date) => void;
+  onBlur: () => void;
 };
 
 function DateTimeFields({
@@ -83,14 +196,18 @@ function DateTimeFields({
   label,
   error,
   onChange,
+  onBlur,
 }: DateTimeFieldsProps) {
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const { width: screenWidth } = useWindowDimensions();
+  const modalWidth = Math.min(screenWidth - 32, 380);
 
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
   const [timeText, setTimeText] = useState(formatTime(value));
-
   const [timeError, setTimeError] = useState<string | null>(null);
+
+  const [timeFocused, setTimeFocused] = useState(false);
 
   useEffect(() => {
     setTimeText(formatTime(value));
@@ -104,6 +221,7 @@ function DateTimeFields({
     const parsed = parseTime(normalized);
 
     if (!parsed) {
+      setTimeError("Use HH:mm, for example 14:30");
       return;
     }
 
@@ -116,6 +234,9 @@ function DateTimeFields({
   }
 
   function handleTimeBlur() {
+    setTimeFocused(false);
+    onBlur();
+
     if (!parseTime(timeText)) {
       setTimeError("Use HH:mm, for example 14:30");
       return;
@@ -124,58 +245,110 @@ function DateTimeFields({
     setTimeError(null);
   }
 
+  function handleDateChange(selectedDate: Date) {
+    const nextDate = new Date(value);
+
+    nextDate.setFullYear(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+    );
+
+    onChange(nextDate);
+  }
+
+  function handleTimeChange(selectedDate: Date) {
+    const nextDate = new Date(value);
+
+    nextDate.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
+
+    setTimeText(formatTime(nextDate));
+    setTimeError(null);
+
+    onChange(nextDate);
+  }
+
   return (
-    <View className="gap-3">
-      {label ? (
-        <Text className="text-sm font-medium text-slate-200">{label}</Text>
-      ) : null}
+    <View style={styles.container}>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
 
-      <View className="flex-row gap-3">
-        <Pressable
-          onPress={() => setShowDatePicker(true)}
-          className="flex-1 rounded-2xl border border-[#26365A] bg-[#0D152B]/90 px-4 py-3"
-        >
-          <Text className="text-xs text-slate-500">Date</Text>
+      <View style={styles.fieldsRow}>
+        {/* DATE */}
 
-          <View className="mt-1 flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-white">
-              {format(value, "dd.MM.yyyy")}
-            </Text>
+        <View style={styles.fieldColumn}>
+          <AngularSurface>
+            <Pressable
+              onPress={() => setShowDatePicker(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Select date"
+              style={({ pressed }) => [
+                styles.fieldContent,
+                { opacity: pressed ? 0.75 : 1 },
+              ]}
+            >
+              <Text style={styles.fieldCaption}>DATE</Text>
 
-            <Ionicons name="calendar-outline" size={21} color="#9CA7FF" />
-          </View>
-        </Pressable>
+              <View style={styles.fieldValueRow}>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={styles.fieldValue}
+                >
+                  {format(value, "dd.MM.yyyy")}
+                </Text>
 
-        <View className="flex-1 flex-row items-center rounded-2xl border border-[#26365A] bg-[#0D152B]/90 px-4">
-          <View className="flex-1 py-2">
-            <Text className="text-xs text-slate-500">Time</Text>
+                <Ionicons
+                  name="calendar-outline"
+                  size={19}
+                  color={COLORS.gold}
+                />
+              </View>
+            </Pressable>
+          </AngularSurface>
+        </View>
 
-            <TextInput
-              value={timeText}
-              onChangeText={updateTime}
-              onBlur={handleTimeBlur}
-              keyboardType="number-pad"
-              placeholder="14:30"
-              placeholderTextColor="#68738D"
-              selectionColor="#7C83FF"
-              cursorColor="#7C83FF"
-              maxLength={5}
-              selectTextOnFocus
-              className="mt-1 p-0 text-base font-semibold text-white"
-            />
-          </View>
+        {/* TIME */}
 
-          <Pressable onPress={() => setShowTimePicker(true)} hitSlop={10}>
-            <Ionicons name="time-outline" size={23} color="#9CA7FF" />
-          </Pressable>
+        <View style={styles.fieldColumn}>
+          <AngularSurface focused={timeFocused} error={Boolean(timeError)}>
+            <View style={styles.fieldContent}>
+              <Text style={styles.fieldCaption}>TIME</Text>
+
+              <View style={styles.fieldValueRow}>
+                <TextInput
+                  value={timeText}
+                  onChangeText={updateTime}
+                  onFocus={() => setTimeFocused(true)}
+                  onBlur={handleTimeBlur}
+                  keyboardType="number-pad"
+                  placeholder="14:30"
+                  placeholderTextColor={COLORS.muted}
+                  selectionColor={COLORS.gold}
+                  cursorColor={COLORS.lightGold}
+                  maxLength={5}
+                  selectTextOnFocus
+                  style={styles.timeInput}
+                />
+
+                <Pressable
+                  onPress={() => setShowTimePicker(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Select time"
+                  hitSlop={10}
+                >
+                  <Ionicons name="time-outline" size={21} color={COLORS.gold} />
+                </Pressable>
+              </View>
+            </View>
+          </AngularSurface>
         </View>
       </View>
 
-      {timeError ? (
-        <Text className="text-sm text-red-400">{timeError}</Text>
-      ) : null}
+      {timeError ? <Text style={styles.errorText}>{timeError}</Text> : null}
 
-      {error ? <Text className="text-sm text-red-400">{error}</Text> : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      {/* DATE MODAL */}
 
       <Modal
         transparent
@@ -183,49 +356,55 @@ function DateTimeFields({
         visible={showDatePicker}
         onRequestClose={() => setShowDatePicker(false)}
       >
-        <View className="flex-1 items-center justify-center bg-black/80 px-5">
-          <View className="w-full rounded-3xl border border-[#26365A] bg-[#091124] p-5">
-            <Text className="mb-3 text-lg font-semibold text-white">
-              Select date
-            </Text>
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowDatePicker(false)}
+            accessibilityLabel="Close date picker"
+          />
+          <View style={[styles.modalCard, { width: modalWidth }]}>
+            <Text style={styles.modalEyebrow}>LIFE CURRENCY</Text>
 
-            <DateTimePicker
-              value={value}
-              mode="date"
-              themeVariant="dark"
-              display={Platform.OS === "ios" ? "inline" : "default"}
-              onChange={(_, selectedDate) => {
-                if (!selectedDate) {
-                  return;
-                }
+            <Text style={styles.modalTitle}>Select date</Text>
 
-                const nextDate = new Date(value);
+            <View style={styles.datePickerContainer}>
+              <DateTimePicker
+                value={value}
+                mode="date"
+                themeVariant="dark"
+                display={Platform.OS === "ios" ? "inline" : "default"}
+                style={{
+                  width: "100%",
+                  alignSelf: "center",
+                }}
+                onChange={(_, selectedDate) => {
+                  if (!selectedDate) return;
 
-                nextDate.setFullYear(
-                  selectedDate.getFullYear(),
-                  selectedDate.getMonth(),
-                  selectedDate.getDate(),
-                );
+                  handleDateChange(selectedDate);
 
-                onChange(nextDate);
+                  if (Platform.OS !== "ios") {
+                    setShowDatePicker(false);
+                  }
+                }}
+              />
+            </View>
 
-                if (Platform.OS !== "ios") {
-                  setShowDatePicker(false);
-                }
-              }}
-            />
-
-            {Platform.OS === "ios" ? (
-              <Pressable
-                onPress={() => setShowDatePicker(false)}
-                className="mt-4 self-end rounded-xl bg-[#172653] px-5 py-2.5"
-              >
-                <Text className="font-semibold text-indigo-100">Done</Text>
-              </Pressable>
-            ) : null}
+            {Platform.OS === "ios" && (
+              <View style={styles.modalFooter}>
+                <AppButton
+                  variant="secondary"
+                  onPress={() => setShowDatePicker(false)}
+                  style={styles.doneButton}
+                >
+                  Done
+                </AppButton>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
+
+      {/* TIME MODAL */}
 
       <Modal
         transparent
@@ -233,54 +412,185 @@ function DateTimeFields({
         visible={showTimePicker}
         onRequestClose={() => setShowTimePicker(false)}
       >
-        <View className="flex-1 items-center justify-center bg-black/80 px-5">
-          <View className="w-full rounded-3xl border border-[#26365A] bg-[#091124] p-5">
-            <Text className="mb-2 text-lg font-semibold text-white">
-              Select time
-            </Text>
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowTimePicker(false)}
+            accessibilityLabel="Close time picker"
+          />
+          <View style={[styles.modalCard, { width: modalWidth }]}>
+            <Text style={styles.modalEyebrow}>LIFE CURRENCY</Text>
 
-            <DateTimePicker
-              value={value}
-              mode="time"
-              themeVariant="dark"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
-              is24Hour
-              onChange={(_, selectedDate) => {
-                if (!selectedDate) {
-                  return;
-                }
+            <Text style={styles.modalTitle}>Select time</Text>
 
-                const nextDate = new Date(value);
+            <View style={styles.timePickerContainer}>
+              <DateTimePicker
+                value={value}
+                mode="time"
+                themeVariant="dark"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                is24Hour
+                style={{
+                  width: "100%",
+                  height: 180,
+                  alignSelf: "center",
+                }}
+                onChange={(_, selectedDate) => {
+                  if (!selectedDate) return;
 
-                nextDate.setHours(
-                  selectedDate.getHours(),
-                  selectedDate.getMinutes(),
-                  0,
-                  0,
-                );
+                  handleTimeChange(selectedDate);
 
-                setTimeText(formatTime(nextDate));
+                  if (Platform.OS !== "ios") {
+                    setShowTimePicker(false);
+                  }
+                }}
+              />
+            </View>
 
-                setTimeError(null);
-                onChange(nextDate);
-
-                if (Platform.OS !== "ios") {
-                  setShowTimePicker(false);
-                }
-              }}
-            />
-
-            {Platform.OS === "ios" ? (
-              <Pressable
-                onPress={() => setShowTimePicker(false)}
-                className="mt-4 self-end rounded-xl bg-[#172653] px-5 py-2.5"
-              >
-                <Text className="font-semibold text-indigo-100">Done</Text>
-              </Pressable>
-            ) : null}
+            {Platform.OS === "ios" && (
+              <View style={styles.modalFooter}>
+                <AppButton
+                  variant="secondary"
+                  onPress={() => setShowTimePicker(false)}
+                  style={styles.doneButton}
+                >
+                  Done
+                </AppButton>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    gap: 12,
+  },
+
+  label: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+  },
+
+  fieldsRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+
+  fieldColumn: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  angularSurface: {
+    height: 76,
+    justifyContent: "center",
+  },
+
+  fieldContent: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 8,
+  },
+
+  fieldCaption: {
+    color: COLORS.gold,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+  },
+
+  fieldValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  fieldValue: {
+    flex: 1,
+    minWidth: 0,
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  timeInput: {
+    flex: 1,
+    minWidth: 0,
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: "600",
+    padding: 0,
+  },
+
+  errorText: {
+    color: COLORS.error,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    backgroundColor: "rgba(0,0,0,0.82)",
+  },
+
+  modalCard: {
+    backgroundColor: "#151720",
+    borderWidth: 1,
+    borderColor: "rgba(214,173,101,0.3)",
+    paddingHorizontal: 14,
+    paddingTop: 20,
+    paddingBottom: 16,
+  },
+
+  modalEyebrow: {
+    color: COLORS.gold,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+    marginBottom: 10,
+    marginHorizontal: 4,
+  },
+
+  modalTitle: {
+    color: COLORS.text,
+    fontSize: 21,
+    fontWeight: "600",
+    marginBottom: 12,
+    marginHorizontal: 4,
+  },
+
+  datePickerContainer: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  timePickerContainer: {
+    width: "100%",
+    height: 190,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  modalFooter: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 14,
+    paddingHorizontal: 4,
+  },
+
+  doneButton: {
+    width: 100,
+  },
+});
