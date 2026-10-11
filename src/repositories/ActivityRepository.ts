@@ -166,11 +166,13 @@ export class ActivityRepository {
   async replaceAll(activities: Activity[]): Promise<void> {
     const database = await getDatabase();
 
-    await database.withTransactionAsync(async () => {
-      await database.runAsync(`DELETE FROM activities`);
+    await database.withExclusiveTransactionAsync(async (tx) => {
+      await tx.runAsync(
+        `DELETE FROM activities`,
+      );
 
       for (const activity of activities) {
-        await database.runAsync(
+        await tx.runAsync(
           `INSERT INTO activities (
             id,
             title,
@@ -183,20 +185,22 @@ export class ActivityRepository {
             updated_at
           )
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-
-          activity.id,
-          activity.title,
-          activity.description ?? null,
-          activity.durationMinutes,
-          activity.classification,
-          activity.category,
-          activity.activityDate.toISOString(),
-          activity.createdAt.toISOString(),
-          activity.updatedAt.toISOString(),
+          [
+            activity.id,
+            activity.title,
+            activity.description ?? null,
+            activity.durationMinutes,
+            activity.classification,
+            activity.category,
+            activity.activityDate.toISOString(),
+            activity.createdAt.toISOString(),
+            activity.updatedAt.toISOString(),
+          ],
         );
       }
     });
   }
+
   async getPage(
     limit: number,
     offset: number,
