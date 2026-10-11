@@ -1,25 +1,23 @@
-import { Text, View, StyleSheet } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { CLASSIFICATION_THEME } from "@/theme/classification";
+import { COLORS } from "@/theme/colors";
+import { ActivityClassification } from "@/types/activity";
 import { formatDuration } from "@/utils/formatDuration";
-import { PeriodProgressStat } from "../utils/progressStatistics";
+
+import type { PeriodProgressStat } from "../utils/progressStatistics";
 
 type ThirtyDayPatternProps = {
   periods: PeriodProgressStat[];
 };
 
-const COLORS = {
-  surface: "#11141D",
-  border: "#252936",
-  track: "#20242F",
-  growing: "#8274E8",
-  leaks: "#D88455",
-  gold: "#D6AD65",
-  text: "#F5F0E8",
-  muted: "#9295A3",
-  subtle: "#686C7A",
-};
-
 const MAX_BAR_HEIGHT = 150;
+
+const growingTheme = CLASSIFICATION_THEME[ActivityClassification.Serves];
+
+const restoringTheme = CLASSIFICATION_THEME[ActivityClassification.Restores];
+
+const leakTheme = CLASSIFICATION_THEME[ActivityClassification.DoesNotServe];
 
 function formatShortDate(date: Date) {
   return date.toLocaleDateString("en-US", {
@@ -98,45 +96,85 @@ export function ThirtyDayPattern({ periods }: ThirtyDayPatternProps) {
                       )
                     : 4;
 
+                // CLASSIFICATION RATIOS
+
                 const growingRatio =
                   period.totalMinutes > 0
                     ? period.growingMinutes / period.totalMinutes
                     : 0;
 
+                const restoringRatio =
+                  period.totalMinutes > 0
+                    ? period.restoringMinutes / period.totalMinutes
+                    : 0;
+
+                const leakRatio =
+                  period.totalMinutes > 0
+                    ? period.leakMinutes / period.totalMinutes
+                    : 0;
+
+                // BAR HEIGHTS
+
                 const growingHeight = totalHeight * growingRatio;
 
-                const leakHeight = totalHeight - growingHeight;
+                const restoringHeight = totalHeight * restoringRatio;
+
+                const leakHeight = totalHeight * leakRatio;
 
                 return (
                   <View
                     key={`${period.startDate.toISOString()}-${index}`}
                     style={styles.periodColumn}
                   >
+                    {/* DURATION */}
+
                     <Text numberOfLines={1} style={styles.durationLabel}>
                       {period.totalMinutes > 0
                         ? formatDuration(period.totalMinutes)
                         : ""}
                     </Text>
 
+                    {/* STACKED BAR */}
+
                     <View style={styles.barTrack}>
                       {period.totalMinutes > 0 ? (
                         <View
-                          style={[styles.barStack, { height: totalHeight }]}
+                          style={[
+                            styles.barStack,
+                            {
+                              height: totalHeight,
+                            },
+                          ]}
                         >
+                          {/* LIFE LEAKS */}
+
                           {leakHeight > 0 && (
                             <View
                               style={{
                                 height: leakHeight,
-                                backgroundColor: COLORS.leaks,
+                                backgroundColor: leakTheme.color,
                               }}
                             />
                           )}
+
+                          {/* RESTORING */}
+
+                          {restoringHeight > 0 && (
+                            <View
+                              style={{
+                                height: restoringHeight,
+                                backgroundColor: restoringTheme.color,
+                              }}
+                            />
+                          )}
+
+                          {/* GROWING */}
 
                           {growingHeight > 0 && (
                             <View
                               style={{
                                 height: growingHeight,
-                                backgroundColor: COLORS.growing,
+                                backgroundColor: growingTheme.color,
                               }}
                             />
                           )}
@@ -170,20 +208,46 @@ export function ThirtyDayPattern({ periods }: ThirtyDayPatternProps) {
             <View style={styles.divider} />
 
             <View style={styles.legend}>
+              {/* GROWING */}
+
               <View style={styles.legendItem}>
                 <View
                   style={[
                     styles.legendDot,
-                    { backgroundColor: COLORS.growing },
+                    {
+                      backgroundColor: growingTheme.color,
+                    },
                   ]}
                 />
 
                 <Text style={styles.legendText}>Growing</Text>
               </View>
 
+              {/* RESTORING */}
+
               <View style={styles.legendItem}>
                 <View
-                  style={[styles.legendDot, { backgroundColor: COLORS.leaks }]}
+                  style={[
+                    styles.legendDot,
+                    {
+                      backgroundColor: restoringTheme.color,
+                    },
+                  ]}
+                />
+
+                <Text style={styles.legendText}>Restoring</Text>
+              </View>
+
+              {/* LIFE LEAKS */}
+
+              <View style={styles.legendItem}>
+                <View
+                  style={[
+                    styles.legendDot,
+                    {
+                      backgroundColor: leakTheme.color,
+                    },
+                  ]}
                 />
 
                 <Text style={styles.legendText}>Life Leaks</Text>
@@ -200,6 +264,8 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 32,
   },
+
+  // HEADER
 
   sectionHeader: {
     marginBottom: 15,
@@ -229,6 +295,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
   },
+
+  // CHART
 
   chartContainer: {
     backgroundColor: COLORS.surface,
@@ -273,7 +341,7 @@ const styles = StyleSheet.create({
   barTrack: {
     width: 30,
     height: MAX_BAR_HEIGHT,
-    backgroundColor: COLORS.track,
+    backgroundColor: COLORS.border,
     justifyContent: "flex-end",
     overflow: "hidden",
   },
@@ -286,9 +354,11 @@ const styles = StyleSheet.create({
 
   emptyBar: {
     height: 4,
-    backgroundColor: "#343845",
+    backgroundColor: COLORS.subtle,
     marginTop: "auto",
   },
+
+  // DATE LABELS
 
   dateRow: {
     flexDirection: "row",
@@ -309,6 +379,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
+  // EMPTY STATE
+
   emptyState: {
     alignItems: "center",
     paddingVertical: 32,
@@ -328,6 +400,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
+  // LEGEND
+
   divider: {
     height: 1,
     backgroundColor: COLORS.border,
@@ -338,14 +412,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    flexWrap: "wrap",
     marginTop: 17,
-    gap: 24,
+    columnGap: 18,
+    rowGap: 10,
   },
 
   legendItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
 
   legendDot: {

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ComponentProps, ReactNode } from "react";
 import { useState } from "react";
+
 import {
   ActivityIndicator,
   Pressable,
@@ -11,7 +12,10 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+
 import Svg, { Path } from "react-native-svg";
+
+import { COLORS } from "@/theme/colors";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -26,16 +30,7 @@ type AppButtonProps = {
   icon?: IconName;
   leadingIcon?: IconName;
   trailingIcon?: IconName;
-
   style?: StyleProp<ViewStyle>;
-};
-
-const COLORS = {
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  dark: "#080A10",
-  surface: "#17150F",
-  text: "#F5F0E7",
 };
 
 export function AppButton({
@@ -55,19 +50,20 @@ export function AppButton({
 
   const isDisabled = disabled || loading;
   const isIcon = variant === "icon";
+
   const isPrimary =
     variant === "primary" || (variant === "icon" && tone === "primary");
 
   const height = isIcon ? 52 : variant === "secondary" ? 48 : 54;
   const cut = isIcon ? 12 : 10;
 
-  const handleLayout = (event: LayoutChangeEvent) => {
+  function handleLayout(event: LayoutChangeEvent) {
     const nextWidth = event.nativeEvent.layout.width;
 
-    if (Math.abs(nextWidth - width) > 0.5) {
-      setWidth(nextWidth);
-    }
-  };
+    setWidth((previous) =>
+      Math.abs(nextWidth - previous) > 0.5 ? nextWidth : previous,
+    );
+  }
 
   const shapePath = `
     M ${cut} 0
@@ -79,7 +75,7 @@ export function AppButton({
     Z
   `;
 
-  const foreground = isPrimary ? COLORS.dark : COLORS.lightGold;
+  const foreground = isPrimary ? COLORS.background : COLORS.lightGold;
 
   return (
     <Pressable
@@ -92,7 +88,7 @@ export function AppButton({
         (typeof children === "string"
           ? children
           : isIcon
-            ? "Add activity"
+            ? "Icon button"
             : undefined)
       }
       accessibilityState={{
@@ -120,14 +116,14 @@ export function AppButton({
         >
           <Path
             d={shapePath}
-            fill={isPrimary ? COLORS.gold : COLORS.surface}
-            stroke={isPrimary ? COLORS.lightGold : "rgba(214,173,101,0.48)"}
+            fill={isPrimary ? COLORS.gold : COLORS.goldBackground}
+            stroke={isPrimary ? COLORS.lightGold : COLORS.goldBorder}
             strokeWidth={1}
           />
 
           <Path
             d={`M ${cut} 0 L ${Math.min(width - 4, cut + 25)} 0`}
-            stroke={isPrimary ? "#FFF0C8" : COLORS.gold}
+            stroke={isPrimary ? COLORS.lightGold : COLORS.gold}
             strokeWidth={1.4}
           />
         </Svg>
@@ -188,7 +184,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(214,173,101,0.25)",
     backgroundColor: "rgba(214,173,101,0.10)",
-    // Intentionally square — no rounded corners.
   },
 
   label: {

@@ -1,23 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { WeeklyIntentionProgress } from "@/types/weeklyIntention";
+import { COLORS } from "@/theme/colors";
+import type { WeeklyIntentionProgress } from "@/types/weeklyIntention";
 import { formatDuration } from "@/utils/formatDuration";
 
 type Props = {
   intention: WeeklyIntentionProgress;
   onEdit: () => void;
   onDelete: () => void;
-};
-
-const COLORS = {
-  gold: "#D6AD65",
-  text: "#F5F0E8",
-  muted: "#9295A3",
-  subtle: "#686C7A",
-  border: "#252936",
-  surface: "#11141D",
-  leak: "#D88455",
 };
 
 function formatCategory(category: string): string {
@@ -35,6 +26,8 @@ export function WeeklyIntentionCard({ intention, onEdit, onDelete }: Props) {
     100,
   );
 
+  const categoryLabel = formatCategory(intention.category);
+
   return (
     <View style={styles.container}>
       {/* LEFT ACCENT */}
@@ -44,16 +37,17 @@ export function WeeklyIntentionCard({ intention, onEdit, onDelete }: Props) {
       {/* CONTENT */}
 
       <View style={styles.content}>
+        {/* HEADER */}
+
         <View style={styles.header}>
           <View style={styles.titleSection}>
-            <Text style={styles.category}>
-              {formatCategory(intention.category)}
-            </Text>
+            <Text style={styles.category}>{categoryLabel}</Text>
 
             <Text style={styles.description}>
-              {formatDuration(intention.actualMinutes)} invested
-              {" · "}
-              {formatDuration(intention.targetMinutes)} intended
+              {formatDuration(intention.actualMinutes)}
+              {" invested · "}
+              {formatDuration(intention.targetMinutes)}
+              {" intended"}
             </Text>
           </View>
 
@@ -63,7 +57,7 @@ export function WeeklyIntentionCard({ intention, onEdit, onDelete }: Props) {
             <Pressable
               onPress={onEdit}
               accessibilityRole="button"
-              accessibilityLabel={`Edit ${intention.category} intention`}
+              accessibilityLabel={`Edit ${categoryLabel} intention`}
               hitSlop={6}
               style={({ pressed }) => [
                 styles.actionButton,
@@ -76,7 +70,7 @@ export function WeeklyIntentionCard({ intention, onEdit, onDelete }: Props) {
             <Pressable
               onPress={onDelete}
               accessibilityRole="button"
-              accessibilityLabel={`Delete ${intention.category} intention`}
+              accessibilityLabel={`Delete ${categoryLabel} intention`}
               hitSlop={6}
               style={({ pressed }) => [
                 styles.actionButton,
@@ -178,8 +172,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#383326",
-    backgroundColor: "#211D18",
+    borderColor: COLORS.goldBorder,
+    backgroundColor: COLORS.goldBackground,
   },
 
   pressed: {

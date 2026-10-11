@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
-import { AppButton } from "@/components/ui/AppButton";
 import {
   ActivityIndicator,
   Alert,
@@ -13,21 +12,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ActivityForm } from "../../../components/ActivityForm";
-import { activityService } from "../../../services/ActivityService";
-import { Activity } from "../../../types/activity";
-import { ActivityFormOutput } from "../../../validation/activitySchema";
+import { AppButton } from "@/components/ui/AppButton";
+import { ActivityForm } from "@/components/ActivityForm";
 
-const COLORS = {
-  background: "#080A10",
-  surface: "#11141D",
-  border: "#252936",
-  gold: "#D6AD65",
-  text: "#F5F0E8",
-  muted: "#9295A3",
-  subtle: "#686C7A",
-  danger: "#D88455",
-};
+import { activityService } from "@/services/ActivityService";
+import { COLORS } from "@/theme/colors";
+import { Activity } from "@/types/activity";
+import { ActivityFormOutput } from "@/validation/activitySchema";
 
 function normalizeParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
@@ -50,8 +41,11 @@ export default function EditActivityScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // LOAD ACTIVITY
+
   const loadActivity = useCallback(async () => {
     if (!id) {
+      setActivity(null);
       setErrorMessage("Activity id is missing.");
       setIsLoading(false);
       return;
@@ -59,7 +53,8 @@ export default function EditActivityScreen() {
 
     const numericId = Number(id);
 
-    if (Number.isNaN(numericId)) {
+    if (!Number.isSafeInteger(numericId) || numericId <= 0) {
+      setActivity(null);
       setErrorMessage("Activity id is invalid.");
       setIsLoading(false);
       return;
@@ -76,6 +71,10 @@ export default function EditActivityScreen() {
 
       setActivity(activityData);
       setActivities(allActivities);
+
+      if (!activityData) {
+        setErrorMessage("Activity could not be found.");
+      }
     } catch (error) {
       console.error("Unable to load activity:", error);
 
@@ -95,13 +94,15 @@ export default function EditActivityScreen() {
     }, [loadActivity]),
   );
 
+  // UPDATE ACTIVITY
+
   async function handleSubmit(data: ActivityFormOutput) {
-    if (!id) {
+    if (!activity) {
       return;
     }
 
     try {
-      await activityService.updateActivity(Number(id), data);
+      await activityService.updateActivity(activity.id, data);
 
       router.back();
     } catch (error) {
@@ -116,24 +117,39 @@ export default function EditActivityScreen() {
     }
   }
 
+  // LOADING STATE
+
   if (isLoading) {
     return (
       <View style={styles.screen}>
-        <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        <SafeAreaView
+          style={styles.safeArea}
+          edges={["top", "left", "right"]}
+        >
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={COLORS.gold} />
+            <ActivityIndicator
+              size="large"
+              color={COLORS.gold}
+            />
 
-            <Text style={styles.loadingText}>Loading activity...</Text>
+            <Text style={styles.loadingText}>
+              Loading activity...
+            </Text>
           </View>
         </SafeAreaView>
       </View>
     );
   }
 
+  // ERROR STATE
+
   if (!activity || errorMessage) {
     return (
       <View style={styles.screen}>
-        <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        <SafeAreaView
+          style={styles.safeArea}
+          edges={["top", "left", "right"]}
+        >
           <View style={styles.topBar}>
             <AppButton
               variant="icon"
@@ -146,7 +162,9 @@ export default function EditActivityScreen() {
             <View style={styles.topBarLabel}>
               <View style={styles.goldDot} />
 
-              <Text style={styles.headerTitle}>EDIT ACTIVITY</Text>
+              <Text style={styles.headerTitle}>
+                EDIT ACTIVITY
+              </Text>
             </View>
 
             <View style={styles.backButtonPlaceholder} />
@@ -161,7 +179,9 @@ export default function EditActivityScreen() {
               />
             </View>
 
-            <Text style={styles.errorTitle}>Activity unavailable</Text>
+            <Text style={styles.errorTitle}>
+              Activity unavailable
+            </Text>
 
             <Text style={styles.errorDescription}>
               {errorMessage ?? "This activity could not be found."}
@@ -169,6 +189,7 @@ export default function EditActivityScreen() {
 
             <Pressable
               onPress={() => router.replace("/activities")}
+              accessibilityRole="button"
               style={({ pressed }) => [
                 styles.errorButton,
                 {
@@ -182,7 +203,9 @@ export default function EditActivityScreen() {
                 color={COLORS.gold}
               />
 
-              <Text style={styles.errorButtonText}>Back to activities</Text>
+              <Text style={styles.errorButtonText}>
+                Back to activities
+              </Text>
             </Pressable>
           </View>
         </SafeAreaView>
@@ -190,9 +213,14 @@ export default function EditActivityScreen() {
     );
   }
 
+  // EDIT SCREEN
+
   return (
     <View style={styles.screen}>
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      <SafeAreaView
+        style={styles.safeArea}
+        edges={["top", "left", "right"]}
+      >
         {/* TOP BAR */}
 
         <View style={styles.topBar}>
@@ -207,7 +235,9 @@ export default function EditActivityScreen() {
           <View style={styles.topBarLabel}>
             <View style={styles.goldDot} />
 
-            <Text style={styles.eyebrow}>EDIT ACTIVITY</Text>
+            <Text style={styles.eyebrow}>
+              EDIT ACTIVITY
+            </Text>
           </View>
 
           <View style={styles.backButtonPlaceholder} />
@@ -225,7 +255,9 @@ export default function EditActivityScreen() {
           {/* PAGE HEADER */}
 
           <View style={styles.pageHeader}>
-            <Text style={styles.pageTitle}>Edit your trace</Text>
+            <Text style={styles.pageTitle}>
+              Edit your trace
+            </Text>
 
             <Text style={styles.pageDescription}>
               Refine the details of how you spent your time.
@@ -256,6 +288,8 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+
+  // TOP BAR
 
   topBar: {
     flexDirection: "row",
@@ -297,6 +331,8 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
   },
 
+  // FORM
+
   scrollView: {
     flex: 1,
   },
@@ -326,6 +362,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
+  // LOADING
+
   loadingContainer: {
     flex: 1,
     alignItems: "center",
@@ -337,6 +375,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 16,
   },
+
+  // ERROR
 
   errorContainer: {
     flex: 1,
@@ -352,7 +392,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#302019",
     borderWidth: 1,
-    borderColor: "#493127",
+    borderColor: COLORS.border,
   },
 
   errorTitle: {

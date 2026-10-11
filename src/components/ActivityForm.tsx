@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+
 import {
   Pressable,
   StyleSheet,
@@ -9,6 +10,7 @@ import {
 
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path } from "react-native-svg";
 
@@ -19,22 +21,18 @@ import { AppButton } from "./ui/AppButton";
 
 import { CategorySelector } from "@/features/activities/components/CategorySelector";
 
-import {
-  Activity,
-  ActivityClassification,
-  ActivityCategory,
-} from "../types/activity";
+import { COLORS } from "@/theme/colors";
+import { CLASSIFICATION_THEME } from "@/theme/classification";
+
+import { Activity, ActivityClassification } from "@/types/activity";
 
 import {
   activitySchema,
-  ActivityFormInput,
-  ActivityFormOutput,
-} from "../validation/activitySchema";
+  type ActivityFormInput,
+  type ActivityFormOutput,
+} from "@/validation/activitySchema";
 
-import {
-  activitiesOverlap,
-  getActivityEndTime,
-} from "../utils/activityOverlap";
+import { activitiesOverlap, getActivityEndTime } from "@/utils/activityOverlap";
 
 type ActivityFormProps = {
   initialValues?: Partial<ActivityFormInput>;
@@ -44,34 +42,27 @@ type ActivityFormProps = {
   activityId?: number;
 };
 
-const COLORS = {
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  text: "#F5F0E7",
-  muted: "#9295A5",
-  surface: "#11141D",
-  error: "#E78A8A",
-};
-
 const QUICK_DURATIONS = [5, 10, 15, 30, 45, 60, 90, 120];
 
 const CLASSIFICATION_ITEMS = [
   {
-    label: "Growing",
+    label: CLASSIFICATION_THEME[ActivityClassification.Serves].label,
     value: ActivityClassification.Serves,
   },
   {
-    label: "Restoring",
+    label: CLASSIFICATION_THEME[ActivityClassification.Restores].label,
     value: ActivityClassification.Restores,
   },
   {
-    label: "Life Leaks",
+    label: CLASSIFICATION_THEME[ActivityClassification.DoesNotServe].label,
     value: ActivityClassification.DoesNotServe,
   },
 ];
 
-function getDurationLabel(minutes: number) {
-  if (minutes < 60) return `${minutes}m`;
+function getDurationLabel(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
 
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
@@ -79,7 +70,7 @@ function getDurationLabel(minutes: number) {
   return remainingMinutes ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
 }
 
-function formatActivityTime(date: Date) {
+function formatActivityTime(date: Date): string {
   return date.toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
@@ -87,7 +78,7 @@ function formatActivityTime(date: Date) {
 }
 
 /*
- * QUICK DURATION
+ * QUICK DURATION OPTION
  */
 
 type DurationOptionProps = {
@@ -125,7 +116,9 @@ function DurationOption({ minutes, selected, onPress }: DurationOptionProps) {
       onPress={onPress}
       onLayout={handleLayout}
       accessibilityRole="radio"
-      accessibilityState={{ checked: selected }}
+      accessibilityState={{
+        checked: selected,
+      }}
       accessibilityLabel={`${minutes} minutes`}
       style={({ pressed }) => [
         styles.durationOption,
@@ -143,8 +136,8 @@ function DurationOption({ minutes, selected, onPress }: DurationOptionProps) {
         >
           <Path
             d={shapePath}
-            fill={selected ? "rgba(214,173,101,0.16)" : COLORS.surface}
-            stroke={selected ? COLORS.gold : "rgba(214,173,101,0.2)"}
+            fill={selected ? COLORS.goldBackground : COLORS.surface}
+            stroke={selected ? COLORS.gold : COLORS.goldBorder}
             strokeWidth={selected ? 1.5 : 1}
           />
         </Svg>
@@ -220,15 +213,15 @@ function OverlapWarning({ activity }: OverlapWarningProps) {
         >
           <Path
             d={shapePath}
-            fill="#25191C"
-            stroke="rgba(231,138,138,0.55)"
+            fill={COLORS.dangerBackground}
+            stroke={COLORS.dangerBorder}
             strokeWidth={1}
           />
         </Svg>
       )}
 
       <View style={styles.warningIcon}>
-        <Ionicons name="warning-outline" size={21} color={COLORS.error} />
+        <Ionicons name="warning-outline" size={21} color={COLORS.danger} />
       </View>
 
       <View style={styles.warningContent}>
@@ -297,8 +290,17 @@ export function ActivityForm({
     name: "category",
   });
 
+  /*
+   * CHECK OVERLAPPING ACTIVITIES
+   */
+
   const conflictingActivity = useMemo(() => {
-    if (!(activityDate instanceof Date) || !duration || Number(duration) <= 0) {
+    if (
+      !(activityDate instanceof Date) ||
+      Number.isNaN(activityDate.getTime()) ||
+      !duration ||
+      Number(duration) <= 0
+    ) {
       return undefined;
     }
 
@@ -315,6 +317,10 @@ export function ActivityForm({
       return activitiesOverlap(candidate, activity);
     });
   }, [activityDate, duration, activities, activityId]);
+
+  /*
+   * SUBMIT
+   */
 
   const submit = handleSubmit(async (data) => {
     try {
@@ -355,7 +361,7 @@ export function ActivityForm({
 
       {/* CLASSIFICATION */}
 
-      <View style={{ gap: 8 }}>
+      <View style={styles.fieldGroup}>
         <FormSegmentedControl
           control={control}
           name="classification"
@@ -364,20 +370,13 @@ export function ActivityForm({
         />
 
         {errors.classification && (
-          <Text
-            style={{
-              color: "#FB7185",
-              fontSize: 12,
-            }}
-          >
-            {errors.classification.message}
-          </Text>
+          <Text style={styles.errorText}>{errors.classification.message}</Text>
         )}
       </View>
 
       {/* CATEGORY */}
 
-      <View style={{ gap: 8 }}>
+      <View style={styles.fieldGroup}>
         <CategorySelector
           value={category}
           onChange={(value) =>
@@ -389,14 +388,7 @@ export function ActivityForm({
         />
 
         {errors.category && (
-          <Text
-            style={{
-              color: "#FB7185",
-              fontSize: 12,
-            }}
-          >
-            {errors.category.message}
-          </Text>
+          <Text style={styles.errorText}>{errors.category.message}</Text>
         )}
       </View>
 
@@ -515,6 +507,15 @@ const styles = StyleSheet.create({
     lineHeight: 23,
   },
 
+  fieldGroup: {
+    gap: 8,
+  },
+
+  errorText: {
+    color: COLORS.danger,
+    fontSize: 12,
+  },
+
   sectionLabel: {
     color: COLORS.text,
     fontSize: 13,
@@ -557,9 +558,9 @@ const styles = StyleSheet.create({
     height: 34,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(231,138,138,0.12)",
+    backgroundColor: COLORS.dangerBackground,
     borderWidth: 1,
-    borderColor: "rgba(231,138,138,0.22)",
+    borderColor: COLORS.dangerBorder,
   },
 
   warningContent: {
@@ -569,13 +570,13 @@ const styles = StyleSheet.create({
   },
 
   warningTitle: {
-    color: COLORS.error,
+    color: COLORS.danger,
     fontSize: 13,
     fontWeight: "700",
   },
 
   warningDescription: {
-    color: "#D9A9AC",
+    color: COLORS.muted,
     fontSize: 12,
     lineHeight: 19,
   },

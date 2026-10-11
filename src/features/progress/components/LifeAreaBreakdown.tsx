@@ -1,32 +1,19 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
-import { formatDuration } from "@/utils/formatDuration";
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
+import { COLORS } from "@/theme/colors";
+import { formatDuration } from "@/utils/formatDuration";
 
-import { ProgressCategoryStat } from "../hooks/useProgress";
+import type { ProgressCategoryStat } from "../hooks/useProgress";
 
 type LifeAreaBreakdownProps = {
   categories: ProgressCategoryStat[];
 };
 
-const COLORS = {
-  surface: "#11141D",
-  border: "#252936",
-  text: "#F5F0E8",
-  muted: "#9295A3",
-  subtle: "#686C7A",
-  gold: "#D6AD65",
-  growing: "#8274E8",
-  leaks: "#D88455",
-  track: "#20242F",
-};
-
 export function LifeAreaBreakdown({ categories }: LifeAreaBreakdownProps) {
   return (
     <View style={styles.container}>
-      {/* SECTION HEADER */}
-
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View style={styles.goldDot} />
@@ -38,8 +25,6 @@ export function LifeAreaBreakdown({ categories }: LifeAreaBreakdownProps) {
           Where your observed time is flowing
         </Text>
       </View>
-
-      {/* EMPTY STATE */}
 
       {categories.length === 0 ? (
         <View style={styles.emptyState}>
@@ -54,28 +39,32 @@ export function LifeAreaBreakdown({ categories }: LifeAreaBreakdownProps) {
           </Text>
         </View>
       ) : (
-        /* CATEGORY LIST */
-
         <View style={styles.list}>
           {categories.map((item, index) => {
             const meta = getActivityCategoryMeta(item.category);
 
-            const growingPercent =
-              item.totalMinutes > 0
-                ? Math.round((item.growingMinutes / item.totalMinutes) * 100)
-                : 0;
-
-            const leakPercent =
-              item.totalMinutes > 0 ? 100 - growingPercent : 0;
+            const segments = [
+              {
+                key: "growing",
+                minutes: item.growingMinutes,
+                color: COLORS.growing,
+              },
+              {
+                key: "restoring",
+                minutes: item.restoringMinutes,
+                color: COLORS.restoring,
+              },
+              {
+                key: "leaks",
+                minutes: item.leakMinutes,
+                color: COLORS.leak,
+              },
+            ];
 
             return (
               <View key={item.category}>
                 <View style={styles.categoryItem}>
-                  {/* CATEGORY HEADER */}
-
                   <View style={styles.categoryHeader}>
-                    {/* ICON */}
-
                     <View style={styles.iconContainer}>
                       <Ionicons
                         name={meta.icon}
@@ -83,8 +72,6 @@ export function LifeAreaBreakdown({ categories }: LifeAreaBreakdownProps) {
                         color={COLORS.gold}
                       />
                     </View>
-
-                    {/* NAME + PERCENTAGE */}
 
                     <View style={styles.categoryInfo}>
                       <Text style={styles.categoryName} numberOfLines={1}>
@@ -96,51 +83,43 @@ export function LifeAreaBreakdown({ categories }: LifeAreaBreakdownProps) {
                       </Text>
                     </View>
 
-                    {/* TOTAL DURATION */}
-
                     <Text style={styles.totalDuration}>
                       {formatDuration(item.totalMinutes)}
                     </Text>
                   </View>
 
-                  {/* DISTRIBUTION BAR */}
-
                   <View style={styles.distributionBar}>
-                    {item.totalMinutes > 0 && (
-                      <>
+                    {item.totalMinutes > 0 &&
+                      segments.map((segment) => (
                         <View
+                          key={segment.key}
                           style={{
+                            flex: segment.minutes,
                             height: "100%",
-                            width: `${growingPercent}%`,
-                            backgroundColor: COLORS.growing,
+                            backgroundColor: segment.color,
                           }}
                         />
-
-                        <View
-                          style={{
-                            height: "100%",
-                            width: `${leakPercent}%`,
-                            backgroundColor: COLORS.leaks,
-                          }}
-                        />
-                      </>
-                    )}
+                      ))}
                   </View>
 
-                  {/* DURATION DETAILS */}
-
                   <View style={styles.durationDetails}>
-                    <Text style={styles.growingDuration}>
+                    <Text
+                      style={[styles.durationText, { color: COLORS.growing }]}
+                    >
                       Growing {formatDuration(item.growingMinutes)}
                     </Text>
 
-                    <Text style={styles.leakDuration}>
+                    <Text
+                      style={[styles.durationText, { color: COLORS.restoring }]}
+                    >
+                      Restoring {formatDuration(item.restoringMinutes)}
+                    </Text>
+
+                    <Text style={[styles.durationText, { color: COLORS.leak }]}>
                       Leaks {formatDuration(item.leakMinutes)}
                     </Text>
                   </View>
                 </View>
-
-                {/* DIVIDER */}
 
                 {index < categories.length - 1 && (
                   <View style={styles.divider} />
@@ -209,9 +188,9 @@ const styles = StyleSheet.create({
     height: 42,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#24231F",
+    backgroundColor: COLORS.goldBackground,
     borderWidth: 1,
-    borderColor: "#383125",
+    borderColor: COLORS.goldBorder,
   },
 
   categoryInfo: {
@@ -242,7 +221,7 @@ const styles = StyleSheet.create({
   distributionBar: {
     height: 5,
     flexDirection: "row",
-    backgroundColor: COLORS.track,
+    backgroundColor: COLORS.border,
     overflow: "hidden",
     marginTop: 17,
     marginLeft: 55,
@@ -252,18 +231,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     flexWrap: "wrap",
-    gap: 8,
+    columnGap: 12,
+    rowGap: 8,
     marginTop: 11,
     marginLeft: 55,
   },
 
-  growingDuration: {
-    color: COLORS.growing,
-    fontSize: 11,
-  },
-
-  leakDuration: {
-    color: COLORS.leaks,
+  durationText: {
     fontSize: 11,
   },
 
@@ -287,9 +261,9 @@ const styles = StyleSheet.create({
     height: 48,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#24231F",
+    backgroundColor: COLORS.goldBackground,
     borderWidth: 1,
-    borderColor: "#383125",
+    borderColor: COLORS.goldBorder,
   },
 
   emptyTitle: {

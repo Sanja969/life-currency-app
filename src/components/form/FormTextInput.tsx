@@ -1,29 +1,25 @@
 import { useState } from "react";
+
 import { Control, Controller, FieldPath, FieldValues } from "react-hook-form";
+
 import {
   StyleSheet,
   Text,
   TextInput,
-  TextInputProps,
+  type TextInputProps,
   View,
   type LayoutChangeEvent,
 } from "react-native";
+
 import Svg, { Path } from "react-native-svg";
+
+import { COLORS } from "@/theme/colors";
 
 type FormTextInputProps<T extends FieldValues> = {
   control: Control<T>;
   name: FieldPath<T>;
   label?: string;
 } & TextInputProps;
-
-const COLORS = {
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  text: "#F5F0E7",
-  muted: "#9295A5",
-  surface: "#11141D",
-  error: "#E78A8A",
-};
 
 export function FormTextInput<T extends FieldValues>({
   control,
@@ -39,13 +35,13 @@ export function FormTextInput<T extends FieldValues>({
   function handleLayout(event: LayoutChangeEvent) {
     const { width: nextWidth, height: nextHeight } = event.nativeEvent.layout;
 
-    if (Math.abs(nextWidth - width) > 0.5) {
-      setWidth(nextWidth);
-    }
+    setWidth((previous) =>
+      Math.abs(nextWidth - previous) > 0.5 ? nextWidth : previous,
+    );
 
-    if (Math.abs(nextHeight - height) > 0.5) {
-      setHeight(nextHeight);
-    }
+    setHeight((previous) =>
+      Math.abs(nextHeight - previous) > 0.5 ? nextHeight : previous,
+    );
   }
 
   const cut = 10;
@@ -66,10 +62,10 @@ export function FormTextInput<T extends FieldValues>({
       name={name}
       render={({ field, fieldState }) => {
         const borderColor = fieldState.error
-          ? COLORS.error
+          ? COLORS.danger
           : focused
             ? COLORS.gold
-            : "rgba(214,173,101,0.22)";
+            : COLORS.goldBorder;
 
         return (
           <View style={styles.wrapper}>
@@ -137,9 +133,9 @@ export function FormTextInput<T extends FieldValues>({
               />
             </View>
 
-            {fieldState.error ? (
+            {fieldState.error && (
               <Text style={styles.errorText}>{fieldState.error.message}</Text>
-            ) : null}
+            )}
           </View>
         );
       }}
@@ -191,7 +187,7 @@ const styles = StyleSheet.create({
   },
 
   errorText: {
-    color: COLORS.error,
+    color: COLORS.danger,
     fontSize: 12,
     lineHeight: 18,
   },

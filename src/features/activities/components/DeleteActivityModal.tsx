@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+
 import {
   ActivityIndicator,
   Modal,
@@ -9,7 +10,14 @@ import {
   View,
   type LayoutChangeEvent,
 } from "react-native";
+
 import Svg, { Path } from "react-native-svg";
+
+import { COLORS } from "@/theme/colors";
+
+/*
+ * TYPES
+ */
 
 type DeleteActivityModalProps = {
   visible: boolean;
@@ -19,16 +27,29 @@ type DeleteActivityModalProps = {
   onDelete: () => void;
 };
 
-const COLORS = {
-  surface: "#151720",
-  gold: "#D6AD65",
-  text: "#F5F0E7",
-  muted: "#9295A5",
-  danger: "#E78A8A",
+type AngularCardProps = {
+  children: ReactNode;
 };
 
-function AngularCard({ children }: { children: React.ReactNode }) {
-  const [size, setSize] = useState({ width: 0, height: 0 });
+/*
+ * CONSTANTS
+ */
+
+const CARD_SURFACE = "#151720";
+const CARD_BORDER = "rgba(214,173,101,0.30)";
+
+const DANGER_BACKGROUND = "rgba(231,138,138,0.10)";
+const DANGER_BORDER = "rgba(231,138,138,0.30)";
+
+/*
+ * ANGULAR CARD
+ */
+
+function AngularCard({ children }: AngularCardProps) {
+  const [size, setSize] = useState({
+    width: 0,
+    height: 0,
+  });
 
   function handleLayout(event: LayoutChangeEvent) {
     const { width, height } = event.nativeEvent.layout;
@@ -41,7 +62,10 @@ function AngularCard({ children }: { children: React.ReactNode }) {
         return previous;
       }
 
-      return { width, height };
+      return {
+        width,
+        height,
+      };
     });
   }
 
@@ -68,8 +92,8 @@ function AngularCard({ children }: { children: React.ReactNode }) {
         >
           <Path
             d={path}
-            fill={COLORS.surface}
-            stroke="rgba(214,173,101,0.3)"
+            fill={CARD_SURFACE}
+            stroke={CARD_BORDER}
             strokeWidth={1}
           />
         </Svg>
@@ -80,6 +104,10 @@ function AngularCard({ children }: { children: React.ReactNode }) {
   );
 }
 
+/*
+ * DELETE ACTIVITY MODAL
+ */
+
 export function DeleteActivityModal({
   visible,
   activityTitle,
@@ -87,33 +115,60 @@ export function DeleteActivityModal({
   onCancel,
   onDelete,
 }: DeleteActivityModalProps) {
+  function handleCancel() {
+    if (isDeleting) {
+      return;
+    }
+
+    onCancel();
+  }
+
+  function handleDelete() {
+    if (isDeleting) {
+      return;
+    }
+
+    onDelete();
+  }
+
   return (
     <Modal
       visible={visible}
       transparent
       animationType="fade"
       statusBarTranslucent
-      onRequestClose={() => {
-        if (!isDeleting) onCancel();
-      }}
+      onRequestClose={handleCancel}
     >
       <View style={styles.overlay}>
+        {/* BACKDROP */}
+
         <Pressable
           style={StyleSheet.absoluteFill}
           disabled={isDeleting}
-          onPress={onCancel}
+          onPress={handleCancel}
+          accessibilityRole="button"
           accessibilityLabel="Close delete confirmation"
         />
 
+        {/* CONFIRMATION CARD */}
+
         <AngularCard>
           <View style={styles.content}>
+            {/* BRAND */}
+
             <Text style={styles.eyebrow}>LIFE CURRENCY</Text>
+
+            {/* DELETE ICON */}
 
             <View style={styles.iconContainer}>
               <Ionicons name="trash-outline" size={25} color={COLORS.danger} />
             </View>
 
+            {/* TITLE */}
+
             <Text style={styles.title}>Delete this trace?</Text>
+
+            {/* DESCRIPTION */}
 
             <Text style={styles.description}>
               You're about to permanently remove
@@ -124,6 +179,8 @@ export function DeleteActivityModal({
             </Text>
 
             <Text style={styles.description}>from your activity history.</Text>
+
+            {/* WARNING */}
 
             <View style={styles.warning}>
               <Ionicons
@@ -137,26 +194,45 @@ export function DeleteActivityModal({
               </Text>
             </View>
 
+            {/* ACTIONS */}
+
             <View style={styles.actions}>
+              {/* CANCEL */}
+
               <Pressable
                 disabled={isDeleting}
-                onPress={onCancel}
+                onPress={handleCancel}
                 accessibilityRole="button"
+                accessibilityLabel="Keep activity"
+                accessibilityState={{
+                  disabled: isDeleting,
+                }}
                 style={({ pressed }) => [
                   styles.cancelButton,
-                  { opacity: isDeleting ? 0.5 : pressed ? 0.75 : 1 },
+                  {
+                    opacity: isDeleting ? 0.5 : pressed ? 0.75 : 1,
+                  },
                 ]}
               >
                 <Text style={styles.cancelText}>Keep trace</Text>
               </Pressable>
 
+              {/* DELETE */}
+
               <Pressable
                 disabled={isDeleting}
-                onPress={onDelete}
+                onPress={handleDelete}
                 accessibilityRole="button"
+                accessibilityLabel="Permanently delete activity"
+                accessibilityState={{
+                  disabled: isDeleting,
+                  busy: isDeleting,
+                }}
                 style={({ pressed }) => [
                   styles.deleteButton,
-                  { opacity: isDeleting ? 0.7 : pressed ? 0.75 : 1 },
+                  {
+                    opacity: isDeleting ? 0.7 : pressed ? 0.75 : 1,
+                  },
                 ]}
               >
                 {isDeleting ? (
@@ -168,6 +244,7 @@ export function DeleteActivityModal({
                       size={17}
                       color={COLORS.danger}
                     />
+
                     <Text style={styles.deleteText}>Delete</Text>
                   </>
                 )}
@@ -180,6 +257,10 @@ export function DeleteActivityModal({
   );
 }
 
+/*
+ * STYLES
+ */
+
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
@@ -188,16 +269,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: "rgba(0,0,0,0.82)",
   },
+
   card: {
     width: "100%",
     maxWidth: 380,
   },
+
   content: {
     paddingHorizontal: 22,
     paddingTop: 24,
     paddingBottom: 24,
     alignItems: "center",
   },
+
   eyebrow: {
     color: COLORS.gold,
     fontSize: 10,
@@ -205,16 +289,18 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     marginBottom: 20,
   },
+
   iconContainer: {
     width: 60,
     height: 60,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(231,138,138,0.1)",
+    backgroundColor: DANGER_BACKGROUND,
     borderWidth: 1,
-    borderColor: "rgba(231,138,138,0.3)",
+    borderColor: DANGER_BORDER,
     marginBottom: 18,
   },
+
   title: {
     color: COLORS.text,
     fontSize: 23,
@@ -223,12 +309,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: "center",
   },
+
   description: {
     color: COLORS.muted,
     fontSize: 13,
     lineHeight: 21,
     textAlign: "center",
   },
+
   activityTitle: {
     color: COLORS.text,
     fontSize: 15,
@@ -236,6 +324,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginVertical: 4,
   },
+
   warning: {
     width: "100%",
     flexDirection: "row",
@@ -247,31 +336,36 @@ const styles = StyleSheet.create({
     borderColor: "rgba(231,138,138,0.22)",
     marginTop: 22,
   },
+
   warningText: {
-    color: "#D9A9AC",
+    color: COLORS.danger,
     fontSize: 12,
     flex: 1,
   },
+
   actions: {
     flexDirection: "row",
     gap: 12,
     width: "100%",
     marginTop: 24,
   },
+
   cancelButton: {
     flex: 1,
     height: 50,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#11141D",
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: "rgba(214,173,101,0.22)",
   },
+
   cancelText: {
     color: COLORS.text,
     fontSize: 13,
     fontWeight: "600",
   },
+
   deleteButton: {
     flex: 1,
     height: 50,
@@ -283,6 +377,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(231,138,138,0.45)",
   },
+
   deleteText: {
     color: COLORS.danger,
     fontSize: 13,

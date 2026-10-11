@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+
 import {
   Modal,
   Platform,
@@ -11,13 +12,27 @@ import {
   type LayoutChangeEvent,
 } from "react-native";
 
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from "@react-native-community/datetimepicker";
+
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 import Svg, { Path } from "react-native-svg";
 
+import {
+  Controller,
+  type Control,
+  type FieldPath,
+  type FieldValues,
+} from "react-hook-form";
+
 import { AppButton } from "@/components/ui/AppButton";
-import { Control, Controller, FieldPath, FieldValues } from "react-hook-form";
+import { COLORS } from "@/theme/colors";
+
+/*
+ * TYPES
+ */
 
 type FormDatePickerProps<T extends FieldValues> = {
   control: Control<T>;
@@ -25,24 +40,44 @@ type FormDatePickerProps<T extends FieldValues> = {
   label?: string;
 };
 
-const COLORS = {
-  background: "#080A10",
-  surface: "#11141D",
-  modalSurface: "#151720",
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  text: "#F5F0E7",
-  muted: "#9295A5",
-  error: "#E78A8A",
+type DateTimeFieldsProps = {
+  value: Date;
+  label?: string;
+  error?: string;
+  onChange: (value: Date) => void;
+  onBlur: () => void;
 };
+
+type AngularSurfaceProps = {
+  children: ReactNode;
+  focused?: boolean;
+  error?: boolean;
+};
+
+/*
+ * CONSTANTS
+ */
 
 const CORNER_CUT = 10;
 
-function formatTime(date: Date) {
+const MODAL_SURFACE = "#151720";
+const MODAL_OVERLAY = "rgba(0,0,0,0.82)";
+
+const TIME_ERROR_MESSAGE = "Use HH:mm, for example 14:30";
+
+/*
+ * HELPERS
+ */
+
+function isValidDate(value: Date): boolean {
+  return !Number.isNaN(value.getTime());
+}
+
+function formatTime(date: Date): string {
   return format(date, "HH:mm");
 }
 
-function normalizeTime(text: string) {
+function normalizeTime(text: string): string {
   const digits = text.replace(/\D/g, "").slice(0, 4);
 
   if (digits.length <= 2) {
@@ -52,7 +87,10 @@ function normalizeTime(text: string) {
   return `${digits.slice(0, 2)}:${digits.slice(2)}`;
 }
 
-function parseTime(text: string) {
+function parseTime(text: string): {
+  hours: number;
+  minutes: number;
+} | null {
   const match = text.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
 
   if (!match) {
@@ -66,14 +104,8 @@ function parseTime(text: string) {
 }
 
 /*
- * Reusable angular background
+ * ANGULAR SURFACE
  */
-
-type AngularSurfaceProps = {
-  children: ReactNode;
-  focused?: boolean;
-  error?: boolean;
-};
 
 function AngularSurface({
   children,
@@ -113,10 +145,10 @@ function AngularSurface({
   `;
 
   const borderColor = error
-    ? COLORS.error
+    ? COLORS.danger
     : focused
       ? COLORS.gold
-      : "rgba(214,173,101,0.22)";
+      : COLORS.goldBorder;
 
   return (
     <View style={styles.angularSurface} onLayout={handleLayout}>
@@ -136,10 +168,10 @@ function AngularSurface({
 
           {focused && (
             <Path
-              d={`M ${CORNER_CUT} 0 L ${Math.min(
-                width - 4,
-                CORNER_CUT + 30,
-              )} 0`}
+              d={`
+                M ${CORNER_CUT} 0
+                L ${Math.min(width - 4, CORNER_CUT + 30)} 0
+              `}
               stroke={COLORS.lightGold}
               strokeWidth={1.5}
             />
@@ -153,7 +185,7 @@ function AngularSurface({
 }
 
 /*
- * React Hook Form integration
+ * REACT HOOK FORM INTEGRATION
  */
 
 export function FormDatePicker<T extends FieldValues>({
@@ -167,7 +199,8 @@ export function FormDatePicker<T extends FieldValues>({
       name={name}
       render={({ field, fieldState }) => {
         const fieldValue: unknown = field.value;
-        const value = fieldValue instanceof Date ? fieldValue : new Date();
+
+        const value = fieldValue instanceof Date ? fieldValue : new Date(NaN);
 
         return (
           <DateTimeFields
@@ -183,13 +216,9 @@ export function FormDatePicker<T extends FieldValues>({
   );
 }
 
-type DateTimeFieldsProps = {
-  value: Date;
-  label?: string;
-  error?: string;
-  onChange: (value: Date) => void;
-  onBlur: () => void;
-};
+/*
+ * DATE AND TIME FIELDS
+ */
 
 function DateTimeFields({
   value,
@@ -199,19 +228,75 @@ function DateTimeFields({
   onBlur,
 }: DateTimeFieldsProps) {
   const { width: screenWidth } = useWindowDimensions();
+
   const modalWidth = Math.min(screenWidth - 32, 380);
 
+  /*
+   * PICKER STATE
+   */
+
   const [showDatePicker, setShowDatePicker] = useState(false);
+
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  const [timeText, setTimeText] = useState(formatTime(value));
+  /*
+   * TIME INPUT STATE
+   */
+
+  const [timeText, setTimeText] = useState(
+    isValidDate(value) ? formatTime(value) : "",
+  );
+
   const [timeError, setTimeError] = useState<string | null>(null);
 
   const [timeFocused, setTimeFocused] = useState(false);
 
+  /*
+   * LAST VALID DATE
+   *
+   * Prevent losing the selected date
+   * when the user enters invalid time.
+   */
+
+  const lastValidDateRef = useRef<Date>(
+    isValidDate(value) ? new Date(value) : new Date(),
+  );
+
+  /*
+   * UPDATE LAST VALID DATE
+   */
+
   useEffect(() => {
-    setTimeText(formatTime(value));
+    if (isValidDate(value)) {
+      lastValidDateRef.current = new Date(value);
+    }
   }, [value]);
+
+  /*
+   * DISPLAY DATE
+   *
+   * Never pass Invalid Date to date-fns
+   * or native date/time pickers.
+   */
+
+  const displayDate = isValidDate(value) ? value : lastValidDateRef.current;
+
+  /*
+   * SYNC TIME INPUT
+   *
+   * Do not overwrite the user's text
+   * while they are editing it.
+   */
+
+  useEffect(() => {
+    if (!timeFocused && isValidDate(value)) {
+      setTimeText(formatTime(value));
+    }
+  }, [value, timeFocused]);
+
+  /*
+   * UPDATE TIME FROM TEXT INPUT
+   */
 
   function updateTime(text: string) {
     const normalized = normalizeTime(text);
@@ -221,32 +306,51 @@ function DateTimeFields({
     const parsed = parseTime(normalized);
 
     if (!parsed) {
-      setTimeError("Use HH:mm, for example 14:30");
+      setTimeError(TIME_ERROR_MESSAGE);
+
+      /*
+       * Mark the RHF field as invalid.
+       * Zod will block form submission.
+       */
+      onChange(new Date(NaN));
+
       return;
     }
 
-    const nextDate = new Date(value);
+    /*
+     * Preserve the selected calendar date.
+     */
+    const nextDate = new Date(lastValidDateRef.current);
 
     nextDate.setHours(parsed.hours, parsed.minutes, 0, 0);
 
     setTimeError(null);
+
     onChange(nextDate);
   }
 
+  /*
+   * TIME INPUT BLUR
+   */
+
   function handleTimeBlur() {
     setTimeFocused(false);
-    onBlur();
 
     if (!parseTime(timeText)) {
-      setTimeError("Use HH:mm, for example 14:30");
-      return;
+      setTimeError(TIME_ERROR_MESSAGE);
+    } else {
+      setTimeError(null);
     }
 
-    setTimeError(null);
+    onBlur();
   }
 
+  /*
+   * DATE CHANGE
+   */
+
   function handleDateChange(selectedDate: Date) {
-    const nextDate = new Date(value);
+    const nextDate = new Date(lastValidDateRef.current);
 
     nextDate.setFullYear(
       selectedDate.getFullYear(),
@@ -254,13 +358,33 @@ function DateTimeFields({
       selectedDate.getDate(),
     );
 
+    /*
+     * Preserve invalid time state.
+     *
+     * Selecting a new date must not
+     * silently validate an invalid
+     * time input.
+     */
+    if (timeError) {
+      lastValidDateRef.current = nextDate;
+      return;
+    }
+
+    lastValidDateRef.current = nextDate;
+
     onChange(nextDate);
   }
 
+  /*
+   * TIME CHANGE FROM NATIVE PICKER
+   */
+
   function handleTimeChange(selectedDate: Date) {
-    const nextDate = new Date(value);
+    const nextDate = new Date(lastValidDateRef.current);
 
     nextDate.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
+
+    lastValidDateRef.current = nextDate;
 
     setTimeText(formatTime(nextDate));
     setTimeError(null);
@@ -268,9 +392,64 @@ function DateTimeFields({
     onChange(nextDate);
   }
 
+  /*
+   * OPEN DATE PICKER
+   */
+
+  function openDatePicker() {
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: displayDate,
+        mode: "date",
+
+        onChange: (event, selectedDate) => {
+          if (event.type === "set" && selectedDate) {
+            handleDateChange(selectedDate);
+          }
+        },
+      });
+
+      return;
+    }
+
+    setShowDatePicker(true);
+  }
+
+  /*
+   * OPEN TIME PICKER
+   */
+
+  function openTimePicker() {
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: displayDate,
+        mode: "time",
+        is24Hour: true,
+
+        onChange: (event, selectedDate) => {
+          if (event.type === "set" && selectedDate) {
+            handleTimeChange(selectedDate);
+          }
+        },
+      });
+
+      return;
+    }
+
+    setShowTimePicker(true);
+  }
+
+  /*
+   * RENDER
+   */
+
   return (
     <View style={styles.container}>
+      {/* LABEL */}
+
       {label ? <Text style={styles.label}>{label}</Text> : null}
+
+      {/* DATE AND TIME */}
 
       <View style={styles.fieldsRow}>
         {/* DATE */}
@@ -278,12 +457,14 @@ function DateTimeFields({
         <View style={styles.fieldColumn}>
           <AngularSurface>
             <Pressable
-              onPress={() => setShowDatePicker(true)}
+              onPress={openDatePicker}
               accessibilityRole="button"
               accessibilityLabel="Select date"
               style={({ pressed }) => [
                 styles.fieldContent,
-                { opacity: pressed ? 0.75 : 1 },
+                {
+                  opacity: pressed ? 0.75 : 1,
+                },
               ]}
             >
               <Text style={styles.fieldCaption}>DATE</Text>
@@ -294,7 +475,7 @@ function DateTimeFields({
                   adjustsFontSizeToFit
                   style={styles.fieldValue}
                 >
-                  {format(value, "dd.MM.yyyy")}
+                  {format(displayDate, "dd.MM.yyyy")}
                 </Text>
 
                 <Ionicons
@@ -327,11 +508,12 @@ function DateTimeFields({
                   cursorColor={COLORS.lightGold}
                   maxLength={5}
                   selectTextOnFocus
+                  accessibilityLabel="Activity time"
                   style={styles.timeInput}
                 />
 
                 <Pressable
-                  onPress={() => setShowTimePicker(true)}
+                  onPress={openTimePicker}
                   accessibilityRole="button"
                   accessibilityLabel="Select time"
                   hitSlop={10}
@@ -344,52 +526,63 @@ function DateTimeFields({
         </View>
       </View>
 
+      {/* VALIDATION ERRORS */}
+
       {timeError ? <Text style={styles.errorText}>{timeError}</Text> : null}
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error && !timeError ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : null}
 
-      {/* DATE MODAL */}
+      {/* IOS DATE MODAL */}
 
-      <Modal
-        transparent
-        animationType="fade"
-        visible={showDatePicker}
-        onRequestClose={() => setShowDatePicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setShowDatePicker(false)}
-            accessibilityLabel="Close date picker"
-          />
-          <View style={[styles.modalCard, { width: modalWidth }]}>
-            <Text style={styles.modalEyebrow}>LIFE CURRENCY</Text>
+      {Platform.OS === "ios" && (
+        <Modal
+          transparent
+          animationType="fade"
+          visible={showDatePicker}
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            {/* BACKDROP */}
 
-            <Text style={styles.modalTitle}>Select date</Text>
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setShowDatePicker(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Close date picker"
+            />
 
-            <View style={styles.datePickerContainer}>
-              <DateTimePicker
-                value={value}
-                mode="date"
-                themeVariant="dark"
-                display={Platform.OS === "ios" ? "inline" : "default"}
-                style={{
-                  width: "100%",
-                  alignSelf: "center",
-                }}
-                onChange={(_, selectedDate) => {
-                  if (!selectedDate) return;
+            <View
+              style={[
+                styles.modalCard,
+                {
+                  width: modalWidth,
+                },
+              ]}
+            >
+              <Text style={styles.modalEyebrow}>LIFE CURRENCY</Text>
 
-                  handleDateChange(selectedDate);
+              <Text style={styles.modalTitle}>Select date</Text>
 
-                  if (Platform.OS !== "ios") {
-                    setShowDatePicker(false);
-                  }
-                }}
-              />
-            </View>
+              <View style={styles.datePickerContainer}>
+                <DateTimePicker
+                  value={displayDate}
+                  mode="date"
+                  themeVariant="dark"
+                  display="inline"
+                  style={{
+                    width: "100%",
+                    alignSelf: "center",
+                  }}
+                  onChange={(_, selectedDate) => {
+                    if (selectedDate) {
+                      handleDateChange(selectedDate);
+                    }
+                  }}
+                />
+              </View>
 
-            {Platform.OS === "ios" && (
               <View style={styles.modalFooter}>
                 <AppButton
                   variant="secondary"
@@ -399,55 +592,62 @@ function DateTimeFields({
                   Done
                 </AppButton>
               </View>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* TIME MODAL */}
-
-      <Modal
-        transparent
-        animationType="fade"
-        visible={showTimePicker}
-        onRequestClose={() => setShowTimePicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setShowTimePicker(false)}
-            accessibilityLabel="Close time picker"
-          />
-          <View style={[styles.modalCard, { width: modalWidth }]}>
-            <Text style={styles.modalEyebrow}>LIFE CURRENCY</Text>
-
-            <Text style={styles.modalTitle}>Select time</Text>
-
-            <View style={styles.timePickerContainer}>
-              <DateTimePicker
-                value={value}
-                mode="time"
-                themeVariant="dark"
-                display={Platform.OS === "ios" ? "spinner" : "default"}
-                is24Hour
-                style={{
-                  width: "100%",
-                  height: 180,
-                  alignSelf: "center",
-                }}
-                onChange={(_, selectedDate) => {
-                  if (!selectedDate) return;
-
-                  handleTimeChange(selectedDate);
-
-                  if (Platform.OS !== "ios") {
-                    setShowTimePicker(false);
-                  }
-                }}
-              />
             </View>
+          </View>
+        </Modal>
+      )}
 
-            {Platform.OS === "ios" && (
+      {/* IOS TIME MODAL */}
+
+      {Platform.OS === "ios" && (
+        <Modal
+          transparent
+          animationType="fade"
+          visible={showTimePicker}
+          onRequestClose={() => setShowTimePicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            {/* BACKDROP */}
+
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setShowTimePicker(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Close time picker"
+            />
+
+            <View
+              style={[
+                styles.modalCard,
+                {
+                  width: modalWidth,
+                },
+              ]}
+            >
+              <Text style={styles.modalEyebrow}>LIFE CURRENCY</Text>
+
+              <Text style={styles.modalTitle}>Select time</Text>
+
+              <View style={styles.timePickerContainer}>
+                <DateTimePicker
+                  value={displayDate}
+                  mode="time"
+                  themeVariant="dark"
+                  display="spinner"
+                  is24Hour
+                  style={{
+                    width: "100%",
+                    height: 180,
+                    alignSelf: "center",
+                  }}
+                  onChange={(_, selectedDate) => {
+                    if (selectedDate) {
+                      handleTimeChange(selectedDate);
+                    }
+                  }}
+                />
+              </View>
+
               <View style={styles.modalFooter}>
                 <AppButton
                   variant="secondary"
@@ -457,13 +657,17 @@ function DateTimeFields({
                   Done
                 </AppButton>
               </View>
-            )}
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
     </View>
   );
 }
+
+/*
+ * STYLES
+ */
 
 const styles = StyleSheet.create({
   container: {
@@ -531,7 +735,7 @@ const styles = StyleSheet.create({
   },
 
   errorText: {
-    color: COLORS.error,
+    color: COLORS.danger,
     fontSize: 12,
     lineHeight: 18,
   },
@@ -541,13 +745,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 16,
-    backgroundColor: "rgba(0,0,0,0.82)",
+    backgroundColor: MODAL_OVERLAY,
   },
 
   modalCard: {
-    backgroundColor: "#151720",
+    backgroundColor: MODAL_SURFACE,
     borderWidth: 1,
-    borderColor: "rgba(214,173,101,0.3)",
+    borderColor: COLORS.goldBorder,
     paddingHorizontal: 14,
     paddingTop: 20,
     paddingBottom: 16,

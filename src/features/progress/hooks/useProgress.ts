@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
 
 import { activityService } from "@/services/ActivityService";
+
 import {
     Activity,
     ActivityCategory,
@@ -19,27 +20,49 @@ import {
 
 export type ProgressPeriod = "7days" | "30days";
 
+/*
+ * CATEGORY STATISTICS
+ */
+
 export type ProgressCategoryStat = {
     category: ActivityCategory;
+
     totalMinutes: number;
+
     growingMinutes: number;
+    restoringMinutes: number;
     leakMinutes: number;
+
     percentage: number;
 };
 
+/*
+ * DAILY STATISTICS
+ */
+
 export type DailyProgressStat = {
     date: Date;
+
     growingMinutes: number;
+    restoringMinutes: number;
     leakMinutes: number;
+
     totalMinutes: number;
 };
 
+/*
+ * PROGRESS STATISTICS
+ */
+
 export type ProgressStatistics = {
     totalMinutes: number;
+
     growingMinutes: number;
+    restoringMinutes: number;
     leakMinutes: number;
 
     growingPercent: number;
+    restoringPercent: number;
     leakPercent: number;
 
     categoryStats: ProgressCategoryStat[];
@@ -49,18 +72,31 @@ export type ProgressStatistics = {
     biggestLeak: ProgressCategoryStat | null;
 };
 
+/*
+ * PERIOD COMPARISON
+ */
+
 export type ProgressComparison = {
     previousTotalMinutes: number;
+
     previousGrowingMinutes: number;
+    previousRestoringMinutes: number;
     previousLeakMinutes: number;
 
     previousGrowingPercent: number;
+    previousRestoringPercent: number;
     previousLeakPercent: number;
 
     totalMinutesChangePercent: number | null;
+
     growingPercentagePointChange: number | null;
+    restoringPercentagePointChange: number | null;
     leakPercentagePointChange: number | null;
 };
+
+/*
+ * CATEGORY TRENDS
+ */
 
 export type ProgressCategoryTrend = {
     category: ActivityCategory;
@@ -73,10 +109,18 @@ export type ProgressCategoryTrend = {
     previousGrowingMinutes: number;
     growingMinutesChange: number;
 
+    currentRestoringMinutes: number;
+    previousRestoringMinutes: number;
+    restoringMinutesChange: number;
+
     currentLeakMinutes: number;
     previousLeakMinutes: number;
     leakMinutesChange: number;
 };
+
+/*
+ * PROGRESS HOOK
+ */
 
 export function useProgress() {
     const [period, setPeriod] =
@@ -93,6 +137,13 @@ export function useProgress() {
 
     const hasLoadedRef = useRef(false);
 
+    /*
+     * LOAD ACTIVITIES
+     *
+     * Refreshes whenever the Progress screen
+     * receives focus.
+     */
+
     useFocusEffect(
         useCallback(() => {
             let active = true;
@@ -106,11 +157,14 @@ export function useProgress() {
                     setErrorMessage(null);
 
                     // End is exclusive: midnight tomorrow.
+
                     const end = getEndOfToday();
 
                     // Fetch 60 calendar days:
                     // 30 current + 30 previous.
+
                     const start = new Date(end);
+
                     start.setDate(start.getDate() - 60);
 
                     const result =
@@ -122,6 +176,7 @@ export function useProgress() {
                     if (!active) return;
 
                     setActivities(result);
+
                     hasLoadedRef.current = true;
                 } catch (error) {
                     if (!active) return;
@@ -146,7 +201,9 @@ export function useProgress() {
         }, []),
     );
 
-    // CURRENT PERIOD
+    /*
+     * CURRENT PERIOD ACTIVITIES
+     */
 
     const periodActivities = useMemo(() => {
         const start = getPeriodStart(period);
@@ -159,7 +216,9 @@ export function useProgress() {
         );
     }, [activities, period]);
 
-    // CURRENT STATISTICS
+    /*
+     * CURRENT STATISTICS
+     */
 
     const statistics = useMemo(() => {
         const result =
@@ -176,7 +235,9 @@ export function useProgress() {
         return result;
     }, [periodActivities, period]);
 
-    // PREVIOUS PERIOD
+    /*
+     * PREVIOUS PERIOD ACTIVITIES
+     */
 
     const previousPeriodActivities = useMemo(() => {
         const { start, end } =
@@ -189,7 +250,9 @@ export function useProgress() {
         );
     }, [activities, period]);
 
-    // PREVIOUS STATISTICS
+    /*
+     * PREVIOUS PERIOD STATISTICS
+     */
 
     const previousStatistics = useMemo(
         () =>
@@ -199,7 +262,9 @@ export function useProgress() {
         [previousPeriodActivities],
     );
 
-    // COMPARISON
+    /*
+     * PERIOD COMPARISON
+     */
 
     const comparison = useMemo(
         () =>
@@ -210,7 +275,9 @@ export function useProgress() {
         [statistics, previousStatistics],
     );
 
-    // CATEGORY TRENDS
+    /*
+     * CATEGORY TRENDS
+     */
 
     const categoryTrends = useMemo(
         () =>
@@ -226,6 +293,7 @@ export function useProgress() {
         setPeriod,
 
         activities: periodActivities,
+
         statistics,
         comparison,
         categoryTrends,

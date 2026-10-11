@@ -1,153 +1,223 @@
-import { useCallback, useMemo, useState } from "react";
+import {
+    useCallback,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
+
 import { useFocusEffect } from "expo-router";
 
 import { ActivityCategory } from "@/types/activity";
 
-import {
-  SaveWeeklyIntentionInput,
-  WeeklyIntentionProgress,
+import type {
+    SaveWeeklyIntentionInput,
+    WeeklyIntentionProgress,
 } from "@/types/weeklyIntention";
 
 import { weeklyIntentionService } from "@/services/WeeklyIntentionService";
 
 import {
-  getWeekStart,
-  shiftWeek,
+    getWeekStart,
+    shiftWeek,
 } from "../utils/weekUtils";
 
 export function useWeeklyIntentions() {
-  const [weekStart, setWeekStart] = useState(() =>
-    getWeekStart(),
-  );
+    const [weekStart, setWeekStart] = useState(
+        () => getWeekStart(),
+    );
 
-  const [intentions, setIntentions] = useState<
-    WeeklyIntentionProgress[]
-  >([]);
+    const [intentions, setIntentions] = useState<
+        WeeklyIntentionProgress[]
+    >([]);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<
-    string | null
-  >(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
-  const loadIntentions = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setErrorMessage(null);
+    const [errorMessage, setErrorMessage] = useState<
+        string | null
+    >(null);
 
-      const result =
-        await weeklyIntentionService.getWeeklyProgress(
-          weekStart,
+    /*
+     * Each load receives a unique ID.
+     * Older requests cannot overwrite newer results.
+     */
+    const loadRequestId = useRef(0);
+
+    /*
+     * LOAD WEEKLY INTENTIONS
+     */
+
+    const loadIntentions = useCallback(async () => {
+        const requestId = ++loadRequestId.current;
+
+        try {
+            setIsLoading(true);
+            setErrorMessage(null);
+
+            const result =
+                await weeklyIntentionService.getWeeklyProgress(
+                    weekStart,
+                );
+
+            if (requestId !== loadRequestId.current) {
+                return;
+            }
+
+            setIntentions(result);
+        } catch (error) {
+            if (requestId !== loadRequestId.current) {
+                return;
+            }
+
+            setIntentions([]);
+
+            setErrorMessage(
+                error instanceof Error
+                    ? error.message
+                    : "Unable to load weekly intentions.",
+            );
+        } finally {
+            if (requestId === loadRequestId.current) {
+                setIsLoading(false);
+            }
+        }
+    }, [weekStart]);
+
+    /*
+     * REFRESH WHEN SCREEN GAINS FOCUS
+     *
+     * Also refreshes when the selected week changes.
+     */
+
+    useFocusEffect(
+        useCallback(() => {
+            void loadIntentions();
+
+            return () => {
+                // Invalidate any unfinished request.
+                loadRequestId.current += 1;
+            };
+        }, [loadIntentions]),
+    );
+
+    /*
+     * WEEK NAVIGATION
+     */
+
+    const previousWeek = useCallback(() => {
+        setWeekStart((current) =>
+            shiftWeek(current, -1),
         );
+    }, []);
 
-      setIntentions(result);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to load weekly intentions.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [weekStart]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void loadIntentions();
-    }, [loadIntentions]),
-  );
-
-  const previousWeek = useCallback(() => {
-    setWeekStart((current) => shiftWeek(current, -1));
-  }, []);
-
-  const nextWeek = useCallback(() => {
-    setWeekStart((current) => shiftWeek(current, 1));
-  }, []);
-
-  const goToCurrentWeek = useCallback(() => {
-    setWeekStart(getWeekStart());
-  }, []);
-
-  const saveIntention = useCallback(
-    async (
-      category: ActivityCategory,
-      targetMinutes: number,
-    ) => {
-      setIsSaving(true);
-
-      try {
-        const input: SaveWeeklyIntentionInput = {
-          category,
-          weekStart,
-          targetMinutes,
-        };
-
-        await weeklyIntentionService.saveIntention(input);
-
-        await loadIntentions();
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [weekStart, loadIntentions],
-  );
-
-  const deleteIntention = useCallback(
-    async (category: ActivityCategory) => {
-      setIsSaving(true);
-
-      try {
-        await weeklyIntentionService.deleteIntention(
-          category,
-          weekStart,
+    const nextWeek = useCallback(() => {
+        setWeekStart((current) =>
+            shiftWeek(current, 1),
         );
+    }, []);
 
-        await loadIntentions();
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [weekStart, loadIntentions],
-  );
+    const goToCurrentWeek = useCallback(() => {
+        setWeekStart(getWeekStart());
+    }, []);
 
-  const totalTargetMinutes = useMemo(
-    () =>
-      intentions.reduce(
-        (sum, intention) =>
-          sum + intention.targetMinutes,
-        0,
-      ),
-    [intentions],
-  );
+    /*
+     * SAVE INTENTION
+     */
 
-  const totalActualMinutes = useMemo(
-    () =>
-      intentions.reduce(
-        (sum, intention) =>
-          sum + intention.actualMinutes,
-        0,
-      ),
-    [intentions],
-  );
+    const saveIntention = useCallback(
+        async (
+            category: ActivityCategory,
+            targetMinutes: number,
+        ) => {
+            if (isSaving) return;
 
-  return {
-    weekStart,
-    intentions,
-    isLoading,
-    isSaving,
-    errorMessage,
+            setIsSaving(true);
 
-    totalTargetMinutes,
-    totalActualMinutes,
+            try {
+                const input: SaveWeeklyIntentionInput = {
+                    category,
+                    weekStart,
+                    targetMinutes,
+                };
 
-    previousWeek,
-    nextWeek,
-    goToCurrentWeek,
+                await weeklyIntentionService.saveIntention(
+                    input,
+                );
 
-    saveIntention,
-    deleteIntention,
-    refresh: loadIntentions,
-  };
+                await loadIntentions();
+            } finally {
+                setIsSaving(false);
+            }
+        },
+        [weekStart, loadIntentions, isSaving],
+    );
+
+    /*
+     * DELETE INTENTION
+     */
+
+    const deleteIntention = useCallback(
+        async (category: ActivityCategory) => {
+            if (isSaving) return;
+
+            setIsSaving(true);
+
+            try {
+                await weeklyIntentionService.deleteIntention(
+                    category,
+                    weekStart,
+                );
+
+                await loadIntentions();
+            } finally {
+                setIsSaving(false);
+            }
+        },
+        [weekStart, loadIntentions, isSaving],
+    );
+
+    /*
+     * SUMMARY
+     */
+
+    const totalTargetMinutes = useMemo(
+        () =>
+            intentions.reduce(
+                (sum, intention) =>
+                    sum + intention.targetMinutes,
+                0,
+            ),
+        [intentions],
+    );
+
+    const totalActualMinutes = useMemo(
+        () =>
+            intentions.reduce(
+                (sum, intention) =>
+                    sum + intention.actualMinutes,
+                0,
+            ),
+        [intentions],
+    );
+
+    return {
+        weekStart,
+        intentions,
+
+        isLoading,
+        isSaving,
+        errorMessage,
+
+        totalTargetMinutes,
+        totalActualMinutes,
+
+        previousWeek,
+        nextWeek,
+        goToCurrentWeek,
+
+        saveIntention,
+        deleteIntention,
+
+        refresh: loadIntentions,
+    };
 }

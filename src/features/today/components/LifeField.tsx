@@ -1,8 +1,10 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { ActivityStatistics } from "@/types/activity";
-import { formatDuration } from "@/utils/formatDuration";
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
+import { CLASSIFICATION_THEME } from "@/theme/classification";
+import { COLORS } from "@/theme/colors";
+import { ActivityClassification, ActivityStatistics } from "@/types/activity";
+import { formatDuration } from "@/utils/formatDuration";
 
 type LifeFieldProps = {
   statistics: ActivityStatistics;
@@ -12,19 +14,8 @@ type Particle = {
   x: number;
   y: number;
   size: number;
-  growing: boolean;
+  classification: ActivityClassification;
   opacity: number;
-};
-
-const COLORS = {
-  background: "#080A10",
-  surface: "#0D1018",
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  growing: "#8274E8",
-  leak: "#D88455",
-  text: "#F5F0E7",
-  muted: "#9295A5",
 };
 
 const PARTICLE_POSITIONS = [
@@ -45,10 +36,56 @@ const PARTICLE_POSITIONS = [
   [23, 84],
 ] as const;
 
-function buildParticles(
-  totalMinutes: number,
-  growingPercent: number,
-): Particle[] {
+const CLASSIFICATION_ORDER = [
+  ActivityClassification.Serves,
+  ActivityClassification.Restores,
+  ActivityClassification.DoesNotServe,
+] as const;
+
+/**
+ * Distributes a limited number of visual particles
+ * proportionally across all three classifications.
+ */
+function distributeParticles(
+  count: number,
+  durations: readonly number[],
+): number[] {
+  const total = durations.reduce((sum, duration) => sum + duration, 0);
+
+  if (total <= 0) {
+    return durations.map(() => 0);
+  }
+
+  const exactCounts = durations.map((duration) => (duration / total) * count);
+
+  const counts = exactCounts.map(Math.floor);
+
+  let remaining = count - counts.reduce((sum, value) => sum + value, 0);
+
+  const priorities = exactCounts
+    .map((value, index) => ({
+      index,
+      remainder: value - counts[index],
+    }))
+    .sort((a, b) => b.remainder - a.remainder || a.index - b.index);
+
+  for (const item of priorities) {
+    if (remaining <= 0) break;
+
+    counts[item.index] += 1;
+    remaining -= 1;
+  }
+
+  return counts;
+}
+
+/**
+ * Builds deterministic particles based on
+ * the recorded duration of each classification.
+ */
+function buildParticles(statistics: ActivityStatistics): Particle[] {
+  const totalMinutes = statistics.totalDurationMinutes;
+
   if (totalMinutes <= 0) {
     return [];
   }
@@ -58,32 +95,74 @@ function buildParticles(
     Math.max(3, Math.ceil(totalMinutes / 25)),
   );
 
-  const growingCount = Math.round(count * (growingPercent / 100));
+  const durations = [
+    statistics.servesDurationMinutes,
+    statistics.restoresDurationMinutes,
+    statistics.doesNotServeDurationMinutes,
+  ];
 
-  return PARTICLE_POSITIONS.slice(0, count).map(([x, y], index) => ({
-    x,
-    y,
-    growing: index < growingCount,
-    size: 5 + ((index * 7) % 8),
-    opacity: 0.45 + ((index * 11) % 45) / 100,
-  }));
+  const distribution = distributeParticles(count, durations);
+
+  const classifications: ActivityClassification[] = [];
+
+  CLASSIFICATION_ORDER.forEach((classification, index) => {
+    for (let i = 0; i < distribution[index]; i++) {
+      classifications.push(classification);
+    }
+  });
+
+  return PARTICLE_POSITIONS.slice(0, count).map(([x, y], index) => {
+    // Spread classifications across the field
+    // rather than grouping colors together.
+    const classificationIndex = (index * 7) % count;
+
+    return {
+      x,
+      y,
+      classification: classifications[classificationIndex],
+      size: 5 + ((index * 7) % 8),
+      opacity: 0.45 + ((index * 11) % 45) / 100,
+    };
+  });
 }
 
 export function LifeField({ statistics }: LifeFieldProps) {
   const hasData = statistics.totalDurationMinutes > 0;
 
-  const growingPercent = statistics.servesPercentage;
+  const growingTheme = CLASSIFICATION_THEME[ActivityClassification.Serves];
 
-  const particles = buildParticles(
-    statistics.totalDurationMinutes,
-    growingPercent,
+  const restoringTheme = CLASSIFICATION_THEME[ActivityClassification.Restores];
+
+  const leakTheme = CLASSIFICATION_THEME[ActivityClassification.DoesNotServe];
+
+  const growingPercent = statistics.servesPercentage;
+  const restoringPercent = statistics.restoresPercentage;
+  const leakPercent = statistics.doesNotServePercentage;
+
+  const particles = buildParticles(statistics);
+
+  // Determine the dominant classification by duration.
+  const dominantClassification = CLASSIFICATION_ORDER.reduce(
+    (dominant, current) => {
+      const durations = {
+        [ActivityClassification.Serves]: statistics.servesDurationMinutes,
+        [ActivityClassification.Restores]: statistics.restoresDurationMinutes,
+        [ActivityClassification.DoesNotServe]:
+          statistics.doesNotServeDurationMinutes,
+      };
+
+      return durations[current] > durations[dominant] ? current : dominant;
+    },
   );
 
-  const dominantColor = growingPercent >= 50 ? COLORS.growing : COLORS.leak;
+  const dominantTheme = CLASSIFICATION_THEME[dominantClassification];
+
+  const dominantColor = dominantTheme.color;
 
   return (
     <View style={styles.container}>
       {/* HEADER */}
+
       <View style={styles.header}>
         <View>
           <View style={styles.titleRow}>
@@ -103,12 +182,14 @@ export function LifeField({ statistics }: LifeFieldProps) {
       </View>
 
       {/* FIELD */}
+
       <CosmicPanel
         variant="default"
         accent={COLORS.gold}
         contentStyle={styles.field}
       >
-        {/* AMBIENT GLOWS */}
+        {/* GROWING AMBIENT GLOW */}
+
         <View
           pointerEvents="none"
           style={[
@@ -116,11 +197,29 @@ export function LifeField({ statistics }: LifeFieldProps) {
             {
               left: -85,
               top: 15,
-              backgroundColor: COLORS.growing,
+              backgroundColor: growingTheme.color,
               opacity: hasData ? 0.04 + growingPercent * 0.0006 : 0.025,
             },
           ]}
         />
+
+        {/* RESTORING AMBIENT GLOW */}
+
+        <View
+          pointerEvents="none"
+          style={[
+            styles.ambientGlow,
+            {
+              left: "50%",
+              top: -95,
+              marginLeft: -115,
+              backgroundColor: restoringTheme.color,
+              opacity: hasData ? 0.025 + restoringPercent * 0.0006 : 0.015,
+            },
+          ]}
+        />
+
+        {/* LIFE LEAK AMBIENT GLOW */}
 
         <View
           pointerEvents="none"
@@ -129,13 +228,14 @@ export function LifeField({ statistics }: LifeFieldProps) {
             {
               right: -85,
               top: 45,
-              backgroundColor: COLORS.leak,
-              opacity: hasData ? 0.04 + (100 - growingPercent) * 0.0006 : 0.025,
+              backgroundColor: leakTheme.color,
+              opacity: hasData ? 0.04 + leakPercent * 0.0006 : 0.025,
             },
           ]}
         />
 
         {/* GOLD ORBITS */}
+
         <View pointerEvents="none" style={[styles.orbit, styles.orbitOuter]} />
 
         <View pointerEvents="none" style={[styles.orbit, styles.orbitMiddle]} />
@@ -143,6 +243,7 @@ export function LifeField({ statistics }: LifeFieldProps) {
         <View pointerEvents="none" style={[styles.orbit, styles.orbitInner]} />
 
         {/* ORBIT ACCENTS */}
+
         <View pointerEvents="none" style={styles.orbitAccentTop} />
 
         <View pointerEvents="none" style={styles.orbitAccentBottom} />
@@ -150,8 +251,9 @@ export function LifeField({ statistics }: LifeFieldProps) {
         {hasData ? (
           <>
             {/* PARTICLES */}
+
             {particles.map((particle, index) => {
-              const color = particle.growing ? COLORS.growing : COLORS.leak;
+              const color = CLASSIFICATION_THEME[particle.classification].color;
 
               return (
                 <View
@@ -181,6 +283,7 @@ export function LifeField({ statistics }: LifeFieldProps) {
             })}
 
             {/* CENTRAL ENERGY CORE */}
+
             <View pointerEvents="none" style={styles.coreContainer}>
               <View style={styles.coreOuter}>
                 <View
@@ -214,8 +317,54 @@ export function LifeField({ statistics }: LifeFieldProps) {
             </View>
 
             {/* FIELD LABEL */}
+
             <View style={styles.fieldFooter}>
-              <Text style={styles.fieldLabel}>{growingPercent}% GROWING</Text>
+              <View style={styles.classificationLegend}>
+                <View style={styles.legendItem}>
+                  <View
+                    style={[
+                      styles.legendDot,
+                      {
+                        backgroundColor: growingTheme.color,
+                      },
+                    ]}
+                  />
+
+                  <Text style={styles.legendText}>
+                    {Math.round(growingPercent)}%
+                  </Text>
+                </View>
+
+                <View style={styles.legendItem}>
+                  <View
+                    style={[
+                      styles.legendDot,
+                      {
+                        backgroundColor: restoringTheme.color,
+                      },
+                    ]}
+                  />
+
+                  <Text style={styles.legendText}>
+                    {Math.round(restoringPercent)}%
+                  </Text>
+                </View>
+
+                <View style={styles.legendItem}>
+                  <View
+                    style={[
+                      styles.legendDot,
+                      {
+                        backgroundColor: leakTheme.color,
+                      },
+                    ]}
+                  />
+
+                  <Text style={styles.legendText}>
+                    {Math.round(leakPercent)}%
+                  </Text>
+                </View>
+              </View>
 
               <View style={styles.fieldFooterLine} />
 
@@ -223,6 +372,8 @@ export function LifeField({ statistics }: LifeFieldProps) {
             </View>
           </>
         ) : (
+          /* EMPTY STATE */
+
           <View style={styles.emptyState}>
             <View style={styles.emptyCoreOuter}>
               <View style={styles.emptyCoreInner} />
@@ -415,11 +566,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  fieldLabel: {
+  classificationLegend: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 20,
+  },
+
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  legendDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+
+  legendText: {
     color: COLORS.lightGold,
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 1.4,
+    letterSpacing: 0.5,
   },
 
   fieldFooterLine: {

@@ -4,25 +4,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProgressBalance } from "@/features/progress/components/ProgressBalance";
 import { ProgressHeader } from "@/features/progress/components/ProgressHeader";
-import { useProgress } from "@/features/progress/hooks/useProgress";
 import { WeeklyPattern } from "@/features/progress/components/WeeklyPattern";
 import { LifeAreaBreakdown } from "@/features/progress/components/LifeAreaBreakdown";
 import { ProgressInsights } from "@/features/progress/components/ProgressInsights";
 import { ThirtyDayPattern } from "@/features/progress/components/ThirtyDayPattern";
-import { buildLast30DaysPeriods } from "@/features/progress/utils/progressStatistics";
 import { ProgressComparisonCard } from "@/features/progress/components/ProgressComparisonCard";
 import { NotableShifts } from "@/features/progress/components/NotableShifts";
 import { ProgressEmptyState } from "@/features/progress/components/ProgressEmptyState";
 
-const COLORS = {
-  background: "#080A10",
-  surface: "#11141D",
-  gold: "#D6AD65",
-  growing: "#8274E8",
-  leaks: "#D88455",
-  text: "#F5F0E8",
-  muted: "#9295A3",
-};
+import { useProgress } from "@/features/progress/hooks/useProgress";
+
+import { buildLast30DaysPeriods } from "@/features/progress/utils/progressStatistics";
+
+import { COLORS } from "@/theme/colors";
 
 export default function ProgressScreen() {
   const {
@@ -36,22 +30,35 @@ export default function ProgressScreen() {
     errorMessage,
   } = useProgress();
 
+  /*
+   * Build 30-day chart data only when
+   * the 30-day period is selected.
+   */
+
   const thirtyDayPeriods = useMemo(
     () => (period === "30days" ? buildLast30DaysPeriods(activities) : []),
     [activities, period],
   );
 
+  /*
+   * LOADING STATE
+   */
+
   if (isLoading) {
     return (
       <View
         className="flex-1 items-center justify-center"
-        style={{ backgroundColor: COLORS.background }}
+        style={{
+          backgroundColor: COLORS.background,
+        }}
       >
         <ActivityIndicator size="large" color={COLORS.gold} />
 
         <Text
           className="mt-5 text-[11px] font-semibold tracking-[3px]"
-          style={{ color: COLORS.muted }}
+          style={{
+            color: COLORS.muted,
+          }}
         >
           ANALYZING YOUR TIME
         </Text>
@@ -59,15 +66,23 @@ export default function ProgressScreen() {
     );
   }
 
+  /*
+   * ERROR STATE
+   */
+
   if (errorMessage) {
     return (
       <View
         className="flex-1 items-center justify-center px-6"
-        style={{ backgroundColor: COLORS.background }}
+        style={{
+          backgroundColor: COLORS.background,
+        }}
       >
         <Text
           className="text-center text-[14px] leading-6"
-          style={{ color: COLORS.leaks }}
+          style={{
+            color: COLORS.danger,
+          }}
         >
           {errorMessage}
         </Text>
@@ -75,8 +90,17 @@ export default function ProgressScreen() {
     );
   }
 
+  /*
+   * PROGRESS DASHBOARD
+   */
+
   return (
-    <View className="flex-1 bg-[#080A10]">
+    <View
+      className="flex-1"
+      style={{
+        backgroundColor: COLORS.background,
+      }}
+    >
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
         <ScrollView
           style={{ flex: 1 }}
@@ -87,15 +111,25 @@ export default function ProgressScreen() {
             paddingBottom: 130,
           }}
         >
+          {/* PERIOD SELECTOR */}
+
           <ProgressHeader period={period} onPeriodChange={setPeriod} />
+
+          {/* EMPTY STATE */}
 
           {statistics.totalMinutes === 0 ? (
             <ProgressEmptyState />
           ) : (
             <>
+              {/* OVERALL BALANCE */}
+
               <ProgressBalance statistics={statistics} period={period} />
 
+              {/* PERIOD COMPARISON */}
+
               <ProgressComparisonCard comparison={comparison} period={period} />
+
+              {/* TIME DISTRIBUTION */}
 
               {period === "7days" ? (
                 <WeeklyPattern days={statistics.dailyStats} />
@@ -103,14 +137,29 @@ export default function ProgressScreen() {
                 <ThirtyDayPattern periods={thirtyDayPeriods} />
               )}
 
+              {/* LIFE AREAS */}
+
               <LifeAreaBreakdown categories={statistics.categoryStats} />
+
+              {/* NOTABLE SHIFTS */}
 
               {comparison.previousTotalMinutes > 0 && (
                 <NotableShifts trends={categoryTrends} period={period} />
               )}
 
+              {/* INSIGHTS */}
+
               <ProgressInsights
                 strongestInvestment={statistics.strongestInvestment}
+                strongestRestoration={
+                  [...statistics.categoryStats]
+
+                    .filter((category) => category.restoringMinutes > 0)
+
+                    .sort(
+                      (a, b) => b.restoringMinutes - a.restoringMinutes,
+                    )[0] ?? null
+                }
                 biggestLeak={statistics.biggestLeak}
                 period={period}
               />

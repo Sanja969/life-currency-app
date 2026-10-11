@@ -1,25 +1,62 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
-import { ActivityCategoryStatistics } from "@/types/activity";
-import { formatDuration } from "@/utils/formatDuration";
-import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
+import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
+
+import { CLASSIFICATION_THEME } from "@/theme/classification";
+import { COLORS } from "@/theme/colors";
+
+import {
+  ActivityCategoryStatistics,
+  ActivityClassification,
+} from "@/types/activity";
+
+import { formatDuration } from "@/utils/formatDuration";
 
 type CategoryBreakdownProps = {
   categories: ActivityCategoryStatistics[];
 };
 
-const COLORS = {
-  surface: "#11131B",
-  gold: "#D6AD65",
-  growing: "#8274E8",
-  leaks: "#D88455",
-  text: "#F5F0E7",
-  muted: "#9295A5",
+const growingTheme =
+  CLASSIFICATION_THEME[ActivityClassification.Serves];
+
+const restoringTheme =
+  CLASSIFICATION_THEME[ActivityClassification.Restores];
+
+const leakTheme =
+  CLASSIFICATION_THEME[ActivityClassification.DoesNotServe];
+
+type EnergyLegendProps = {
+  label: string;
+  duration: number;
+  color: string;
 };
 
-export function CategoryBreakdown({ categories }: CategoryBreakdownProps) {
+function EnergyLegend({
+  label,
+  duration,
+  color,
+}: EnergyLegendProps) {
+  return (
+    <View style={styles.legendItem}>
+      <View
+        style={[
+          styles.legendDot,
+          { backgroundColor: color },
+        ]}
+      />
+
+      <Text style={[styles.legendText, { color }]}>
+        {label} {formatDuration(duration)}
+      </Text>
+    </View>
+  );
+}
+
+export function CategoryBreakdown({
+  categories,
+}: CategoryBreakdownProps) {
   if (categories.length === 0) {
     return null;
   }
@@ -29,31 +66,45 @@ export function CategoryBreakdown({ categories }: CategoryBreakdownProps) {
       {/* SECTION HEADER */}
 
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>WHERE YOUR LIFE WENT</Text>
+        <Text style={styles.sectionTitle}>
+          WHERE YOUR LIFE WENT
+        </Text>
 
-        <Text style={styles.sectionSubtitle}>Your time across life areas</Text>
+        <Text style={styles.sectionSubtitle}>
+          Your time across life areas
+        </Text>
       </View>
 
       {/* ANALYTICS PANEL */}
 
       <CosmicPanel
         variant="default"
-        accent="#D6AD65"
-        contentStyle={{
-          paddingHorizontal: 0,
-
-          paddingVertical: 0,
-        }}
+        accent={COLORS.gold}
+        contentStyle={styles.panelContent}
       >
         {categories.map((item, index) => {
-          const meta = getActivityCategoryMeta(item.category);
+          const meta = getActivityCategoryMeta(
+            item.category,
+          );
+
+          const total = item.totalDurationMinutes;
+
+          // Calculate each classification independently.
 
           const growingRatio =
-            item.totalDurationMinutes > 0
-              ? item.servesDurationMinutes / item.totalDurationMinutes
+            total > 0
+              ? item.servesDurationMinutes / total
               : 0;
 
-          const leakRatio = 1 - growingRatio;
+          const restoringRatio =
+            total > 0
+              ? item.restoresDurationMinutes / total
+              : 0;
+
+          const leakRatio =
+            total > 0
+              ? item.doesNotServeDurationMinutes / total
+              : 0;
 
           return (
             <View key={item.category}>
@@ -72,7 +123,9 @@ export function CategoryBreakdown({ categories }: CategoryBreakdownProps) {
                   </View>
 
                   <View style={styles.categoryInfo}>
-                    <Text style={styles.categoryName}>{meta.label}</Text>
+                    <Text style={styles.categoryName}>
+                      {meta.label}
+                    </Text>
 
                     <Text style={styles.categoryPercentage}>
                       {item.percentage}% of tracked time
@@ -80,7 +133,7 @@ export function CategoryBreakdown({ categories }: CategoryBreakdownProps) {
                   </View>
 
                   <Text style={styles.duration}>
-                    {formatDuration(item.totalDurationMinutes)}
+                    {formatDuration(total)}
                   </Text>
                 </View>
 
@@ -88,24 +141,43 @@ export function CategoryBreakdown({ categories }: CategoryBreakdownProps) {
 
                 <View style={styles.energySection}>
                   <View style={styles.energyTrack}>
-                    {item.totalDurationMinutes > 0 && (
+                    {total > 0 && (
                       <>
+                        {/* GROWING */}
+
                         <View
                           style={[
                             styles.energySegment,
                             {
                               width: `${growingRatio * 100}%`,
-                              backgroundColor: COLORS.growing,
+                              backgroundColor:
+                                growingTheme.color,
                             },
                           ]}
                         />
+
+                        {/* RESTORING */}
+
+                        <View
+                          style={[
+                            styles.energySegment,
+                            {
+                              width: `${restoringRatio * 100}%`,
+                              backgroundColor:
+                                restoringTheme.color,
+                            },
+                          ]}
+                        />
+
+                        {/* LIFE LEAKS */}
 
                         <View
                           style={[
                             styles.energySegment,
                             {
                               width: `${leakRatio * 100}%`,
-                              backgroundColor: COLORS.leaks,
+                              backgroundColor:
+                                leakTheme.color,
                             },
                           ]}
                         />
@@ -116,38 +188,38 @@ export function CategoryBreakdown({ categories }: CategoryBreakdownProps) {
                   {/* LEGEND */}
 
                   <View style={styles.legend}>
-                    <View style={styles.legendItem}>
-                      <View
-                        style={[
-                          styles.legendDot,
-                          { backgroundColor: COLORS.growing },
-                        ]}
-                      />
+                    <EnergyLegend
+                      label="Growing"
+                      duration={
+                        item.servesDurationMinutes
+                      }
+                      color={growingTheme.color}
+                    />
 
-                      <Text style={styles.growingText}>
-                        Growing {formatDuration(item.servesDurationMinutes)}
-                      </Text>
-                    </View>
+                    <EnergyLegend
+                      label="Restoring"
+                      duration={
+                        item.restoresDurationMinutes
+                      }
+                      color={restoringTheme.color}
+                    />
 
-                    <View style={styles.legendItem}>
-                      <View
-                        style={[
-                          styles.legendDot,
-                          { backgroundColor: COLORS.leaks },
-                        ]}
-                      />
-
-                      <Text style={styles.leaksText}>
-                        Leak {formatDuration(item.doesNotServeDurationMinutes)}
-                      </Text>
-                    </View>
+                    <EnergyLegend
+                      label="Leaks"
+                      duration={
+                        item.doesNotServeDurationMinutes
+                      }
+                      color={leakTheme.color}
+                    />
                   </View>
                 </View>
               </View>
 
               {/* DIVIDER */}
 
-              {index < categories.length - 1 && <View style={styles.divider} />}
+              {index < categories.length - 1 && (
+                <View style={styles.divider} />
+              )}
             </View>
           );
         })}
@@ -178,12 +250,9 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
   },
 
-  panel: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: "rgba(214,173,101,0.13)",
-    borderRadius: 20,
-    overflow: "hidden",
+  panelContent: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
 
   categoryRow: {
@@ -258,10 +327,10 @@ const styles = StyleSheet.create({
 
   legend: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: 8,
+    columnGap: 12,
+    rowGap: 8,
     marginTop: 10,
   },
 
@@ -277,14 +346,8 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
 
-  growingText: {
+  legendText: {
     fontSize: 10,
-    color: COLORS.growing,
-  },
-
-  leaksText: {
-    fontSize: 10,
-    color: COLORS.leaks,
   },
 
   divider: {

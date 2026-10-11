@@ -4,7 +4,7 @@ import {
     ActivityClassification,
 } from "@/types/activity";
 
-import {
+import type {
     DailyProgressStat,
     ProgressCategoryStat,
     ProgressCategoryTrend,
@@ -17,10 +17,17 @@ export type PeriodProgressStat = {
     label: string;
     startDate: Date;
     endDate: Date;
+
     growingMinutes: number;
+    restoringMinutes: number;
     leakMinutes: number;
+
     totalMinutes: number;
 };
+
+/*
+ * DATE HELPERS
+ */
 
 export function getPeriodStart(
     period: ProgressPeriod,
@@ -50,18 +57,62 @@ export function getEndOfToday(): Date {
     );
 }
 
+/*
+ * CLASSIFICATION HELPERS
+ */
+
+type ClassificationMinutes = {
+    growingMinutes: number;
+    restoringMinutes: number;
+    leakMinutes: number;
+};
+
+function createEmptyClassificationMinutes(): ClassificationMinutes {
+    return {
+        growingMinutes: 0,
+        restoringMinutes: 0,
+        leakMinutes: 0,
+    };
+}
+
+/**
+ * Adds an activity's duration to its classification.
+ *
+ * Restoring is independent from Growing and Life Leaks.
+ */
+function addClassificationMinutes(
+    target: ClassificationMinutes,
+    classification: ActivityClassification,
+    duration: number,
+): void {
+    switch (classification) {
+        case ActivityClassification.Serves:
+            target.growingMinutes += duration;
+            break;
+
+        case ActivityClassification.Restores:
+            target.restoringMinutes += duration;
+            break;
+
+        case ActivityClassification.DoesNotServe:
+            target.leakMinutes += duration;
+            break;
+    }
+}
+
+/*
+ * PROGRESS STATISTICS
+ */
+
 export function calculateProgressStatistics(
     activities: Activity[],
 ): ProgressStatistics {
-    let growingMinutes = 0;
-    let leakMinutes = 0;
+    const totals = createEmptyClassificationMinutes();
 
     const categoryMap = new Map<
         ActivityCategory,
-        {
+        ClassificationMinutes & {
             totalMinutes: number;
-            growingMinutes: number;
-            leakMinutes: number;
         }
     >();
 
@@ -73,33 +124,34 @@ export function calculateProgressStatistics(
     for (const activity of activities) {
         const duration = activity.durationMinutes;
 
-        const isGrowing =
-            activity.classification ===
-            ActivityClassification.Serves;
+        // OVERALL CLASSIFICATION TOTALS
 
-        if (isGrowing) {
-            growingMinutes += duration;
-        } else {
-            leakMinutes += duration;
-        }
+        addClassificationMinutes(
+            totals,
+            activity.classification,
+            duration,
+        );
+
+        // CATEGORY STATISTICS
 
         const category = categoryMap.get(
             activity.category,
         ) ?? {
             totalMinutes: 0,
-            growingMinutes: 0,
-            leakMinutes: 0,
+            ...createEmptyClassificationMinutes(),
         };
 
         category.totalMinutes += duration;
 
-        if (isGrowing) {
-            category.growingMinutes += duration;
-        } else {
-            category.leakMinutes += duration;
-        }
+        addClassificationMinutes(
+            category,
+            activity.classification,
+            duration,
+        );
 
         categoryMap.set(activity.category, category);
+
+        // DAILY STATISTICS
 
         const date = activity.activityDate;
 
@@ -115,23 +167,35 @@ export function calculateProgressStatistics(
                 date.getMonth(),
                 date.getDate(),
             ),
-            growingMinutes: 0,
-            leakMinutes: 0,
             totalMinutes: 0,
+            ...createEmptyClassificationMinutes(),
         };
 
         day.totalMinutes += duration;
 
-        if (isGrowing) {
-            day.growingMinutes += duration;
-        } else {
-            day.leakMinutes += duration;
-        }
+        addClassificationMinutes(
+            day,
+            activity.classification,
+            duration,
+        );
 
         dailyMap.set(dayKey, day);
     }
 
-    const totalMinutes = growingMinutes + leakMinutes;
+    // TOTAL TIME
+
+    const {
+        growingMinutes,
+        restoringMinutes,
+        leakMinutes,
+    } = totals;
+
+    const totalMinutes =
+        growingMinutes +
+        restoringMinutes +
+        leakMinutes;
+
+    // CLASSIFICATION PERCENTAGES
 
     const growingPercent =
         totalMinutes > 0
@@ -140,8 +204,21 @@ export function calculateProgressStatistics(
             )
             : 0;
 
+    const restoringPercent =
+        totalMinutes > 0
+            ? Math.round(
+                (restoringMinutes / totalMinutes) * 100,
+            )
+            : 0;
+
     const leakPercent =
-        totalMinutes > 0 ? 100 - growingPercent : 0;
+        totalMinutes > 0
+            ? Math.round(
+                (leakMinutes / totalMinutes) * 100,
+            )
+            : 0;
+
+    // CATEGORY BREAKDOWN
 
     const categoryStats: ProgressCategoryStat[] =
         Array.from(categoryMap.entries())
@@ -157,8 +234,11 @@ export function calculateProgressStatistics(
                         : 0,
             }))
             .sort(
-                (a, b) => b.totalMinutes - a.totalMinutes,
+                (a, b) =>
+                    b.totalMinutes - a.totalMinutes,
             );
+
+    // DAILY BREAKDOWN
 
     const dailyStats = Array.from(
         dailyMap.values(),
@@ -167,33 +247,52 @@ export function calculateProgressStatistics(
             a.date.getTime() - b.date.getTime(),
     );
 
+    // STRONGEST GROWING CATEGORY
+
     const strongestInvestment =
         [...categoryStats]
-            .filter((item) => item.growingMinutes > 0)
+            .filter(
+                (item) => item.growingMinutes > 0,
+            )
             .sort(
                 (a, b) =>
                     b.growingMinutes - a.growingMinutes,
             )[0] ?? null;
 
+    // BIGGEST LIFE LEAK CATEGORY
+
     const biggestLeak =
         [...categoryStats]
-            .filter((item) => item.leakMinutes > 0)
+            .filter(
+                (item) => item.leakMinutes > 0,
+            )
             .sort(
-                (a, b) => b.leakMinutes - a.leakMinutes,
+                (a, b) =>
+                    b.leakMinutes - a.leakMinutes,
             )[0] ?? null;
 
     return {
         totalMinutes,
+
         growingMinutes,
+        restoringMinutes,
         leakMinutes,
+
         growingPercent,
+        restoringPercent,
         leakPercent,
+
         categoryStats,
         dailyStats,
+
         strongestInvestment,
         biggestLeak,
     };
 }
+
+/*
+ * LAST 7 DAYS
+ */
 
 export function buildLast7DaysStats(
     activities: Activity[],
@@ -215,9 +314,8 @@ export function buildLast7DaysStats(
 
             return {
                 date,
-                growingMinutes: 0,
-                leakMinutes: 0,
                 totalMinutes: 0,
+                ...createEmptyClassificationMinutes(),
             };
         },
     );
@@ -241,18 +339,22 @@ export function buildLast7DaysStats(
 
         day.totalMinutes += activity.durationMinutes;
 
-        if (
-            activity.classification ===
-            ActivityClassification.Serves
-        ) {
-            day.growingMinutes += activity.durationMinutes;
-        } else {
-            day.leakMinutes += activity.durationMinutes;
-        }
+        addClassificationMinutes(
+            day,
+            activity.classification,
+            activity.durationMinutes,
+        );
     }
 
     return days;
 }
+
+/*
+ * LAST 30 DAYS
+ *
+ * Five consecutive periods:
+ * 7 + 7 + 7 + 7 + 2 days.
+ */
 
 export function buildLast30DaysPeriods(
     activities: Activity[],
@@ -266,37 +368,52 @@ export function buildLast30DaysPeriods(
     );
 
     const rangeStart = new Date(todayStart);
-    rangeStart.setDate(rangeStart.getDate() - 29);
+
+    rangeStart.setDate(
+        rangeStart.getDate() - 29,
+    );
 
     const periods: PeriodProgressStat[] = [];
 
     for (let index = 0; index < 5; index++) {
         const startDate = new Date(rangeStart);
-        startDate.setDate(startDate.getDate() + index * 7);
+
+        startDate.setDate(
+            startDate.getDate() + index * 7,
+        );
 
         if (startDate > todayStart) {
             break;
         }
 
         const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 6);
+
+        endDate.setDate(
+            endDate.getDate() + 6,
+        );
 
         if (endDate > todayStart) {
             endDate.setTime(todayStart.getTime());
         }
 
         periods.push({
-            label: index === 4 ? "Now" : `W${index + 1}`,
+            label:
+                index === 4
+                    ? "Now"
+                    : `W${index + 1}`,
+
             startDate,
             endDate,
-            growingMinutes: 0,
-            leakMinutes: 0,
+
             totalMinutes: 0,
+            ...createEmptyClassificationMinutes(),
         });
     }
 
     for (const activity of activities) {
-        const activityDate = new Date(activity.activityDate);
+        const activityDate = new Date(
+            activity.activityDate,
+        );
 
         const normalizedDate = new Date(
             activityDate.getFullYear(),
@@ -312,32 +429,38 @@ export function buildLast30DaysPeriods(
 
         if (!period) continue;
 
-        period.totalMinutes += activity.durationMinutes;
+        period.totalMinutes +=
+            activity.durationMinutes;
 
-        if (
-            activity.classification ===
-            ActivityClassification.Serves
-        ) {
-            period.growingMinutes += activity.durationMinutes;
-        } else {
-            period.leakMinutes += activity.durationMinutes;
-        }
+        addClassificationMinutes(
+            period,
+            activity.classification,
+            activity.durationMinutes,
+        );
     }
 
     return periods;
 }
+
+/*
+ * PREVIOUS PERIOD RANGE
+ */
 
 export function getPreviousPeriodRange(
     period: ProgressPeriod,
 ) {
     const currentStart = getPeriodStart(period);
 
-    const previousEnd = new Date(currentStart);
+    const previousEnd = new Date(
+        currentStart,
+    );
 
     const days =
         period === "7days" ? 7 : 30;
 
-    const previousStart = new Date(previousEnd);
+    const previousStart = new Date(
+        previousEnd,
+    );
 
     previousStart.setDate(
         previousStart.getDate() - days,
@@ -349,12 +472,19 @@ export function getPreviousPeriodRange(
     };
 }
 
+/*
+ * PERIOD COMPARISON
+ */
+
 export function calculateProgressComparison(
     current: ProgressStatistics,
     previous: ProgressStatistics,
 ): ProgressComparison {
+    const hasPreviousData =
+        previous.totalMinutes > 0;
+
     const totalMinutesChangePercent =
-        previous.totalMinutes > 0
+        hasPreviousData
             ? Math.round(
                 ((current.totalMinutes -
                     previous.totalMinutes) /
@@ -364,13 +494,19 @@ export function calculateProgressComparison(
             : null;
 
     const growingPercentagePointChange =
-        previous.totalMinutes > 0
+        hasPreviousData
             ? current.growingPercent -
             previous.growingPercent
             : null;
 
+    const restoringPercentagePointChange =
+        hasPreviousData
+            ? current.restoringPercent -
+            previous.restoringPercent
+            : null;
+
     const leakPercentagePointChange =
-        previous.totalMinutes > 0
+        hasPreviousData
             ? current.leakPercent -
             previous.leakPercent
             : null;
@@ -382,11 +518,17 @@ export function calculateProgressComparison(
         previousGrowingMinutes:
             previous.growingMinutes,
 
+        previousRestoringMinutes:
+            previous.restoringMinutes,
+
         previousLeakMinutes:
             previous.leakMinutes,
 
         previousGrowingPercent:
             previous.growingPercent,
+
+        previousRestoringPercent:
+            previous.restoringPercent,
 
         previousLeakPercent:
             previous.leakPercent,
@@ -394,10 +536,14 @@ export function calculateProgressComparison(
         totalMinutesChangePercent,
 
         growingPercentagePointChange,
-
+        restoringPercentagePointChange,
         leakPercentagePointChange,
     };
 }
+
+/*
+ * CATEGORY TRENDS
+ */
 
 export function calculateCategoryTrends(
     current: ProgressStatistics,
@@ -416,13 +562,17 @@ export function calculateCategoryTrends(
         .map((category) => {
             const currentCategory =
                 current.categoryStats.find(
-                    (item) => item.category === category,
+                    (item) =>
+                        item.category === category,
                 );
 
             const previousCategory =
                 previous.categoryStats.find(
-                    (item) => item.category === category,
+                    (item) =>
+                        item.category === category,
                 );
+
+            // TOTAL TIME
 
             const currentTotalMinutes =
                 currentCategory?.totalMinutes ?? 0;
@@ -430,11 +580,23 @@ export function calculateCategoryTrends(
             const previousTotalMinutes =
                 previousCategory?.totalMinutes ?? 0;
 
+            // GROWING
+
             const currentGrowingMinutes =
                 currentCategory?.growingMinutes ?? 0;
 
             const previousGrowingMinutes =
                 previousCategory?.growingMinutes ?? 0;
+
+            // RESTORING
+
+            const currentRestoringMinutes =
+                currentCategory?.restoringMinutes ?? 0;
+
+            const previousRestoringMinutes =
+                previousCategory?.restoringMinutes ?? 0;
+
+            // LIFE LEAKS
 
             const currentLeakMinutes =
                 currentCategory?.leakMinutes ?? 0;
@@ -458,6 +620,13 @@ export function calculateCategoryTrends(
                 growingMinutesChange:
                     currentGrowingMinutes -
                     previousGrowingMinutes,
+
+                currentRestoringMinutes,
+                previousRestoringMinutes,
+
+                restoringMinutesChange:
+                    currentRestoringMinutes -
+                    previousRestoringMinutes,
 
                 currentLeakMinutes,
                 previousLeakMinutes,

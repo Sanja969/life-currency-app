@@ -2,50 +2,35 @@ import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
+import { COLORS } from "@/theme/colors";
 import { formatDuration } from "@/utils/formatDuration";
 
-import { ProgressCategoryStat, ProgressPeriod } from "../hooks/useProgress";
+import type {
+  ProgressCategoryStat,
+  ProgressPeriod,
+} from "../hooks/useProgress";
 
 type ProgressInsightsProps = {
   strongestInvestment: ProgressCategoryStat | null;
+  strongestRestoration: ProgressCategoryStat | null;
   biggestLeak: ProgressCategoryStat | null;
   period: ProgressPeriod;
 };
 
-const COLORS = {
-  surface: "#11141D",
-  border: "#252936",
-  text: "#F5F0E8",
-  muted: "#9295A3",
-  subtle: "#686C7A",
-  gold: "#D6AD65",
-  growing: "#8274E8",
-  leaks: "#D88455",
-};
-
 export function ProgressInsights({
   strongestInvestment,
+  strongestRestoration,
   biggestLeak,
   period,
 }: ProgressInsightsProps) {
-  if (!strongestInvestment && !biggestLeak) {
+  if (!strongestInvestment && !strongestRestoration && !biggestLeak) {
     return null;
   }
 
   const periodLabel = period === "7days" ? "last 7 days" : "last 30 days";
 
-  const strongestInvestmentMeta = strongestInvestment
-    ? getActivityCategoryMeta(strongestInvestment.category)
-    : null;
-
-  const biggestLeakMeta = biggestLeak
-    ? getActivityCategoryMeta(biggestLeak.category)
-    : null;
-
   return (
     <View style={styles.container}>
-      {/* SECTION HEADER */}
-
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View style={styles.goldDot} />
@@ -58,13 +43,13 @@ export function ProgressInsights({
         </Text>
       </View>
 
-      {/* SIGNALS */}
-
       <View style={styles.signals}>
-        {strongestInvestment && strongestInvestmentMeta && (
+        {strongestInvestment && (
           <SignalCard
             label="STRONGEST INVESTMENT"
-            category={strongestInvestmentMeta.label}
+            category={
+              getActivityCategoryMeta(strongestInvestment.category).label
+            }
             duration={formatDuration(strongestInvestment.growingMinutes)}
             description={`Most Growing time in the ${periodLabel}.`}
             icon="trending-up-outline"
@@ -74,16 +59,31 @@ export function ProgressInsights({
           />
         )}
 
-        {biggestLeak && biggestLeakMeta && (
+        {strongestRestoration && (
+          <SignalCard
+            label="MOST RESTORING TIME"
+            category={
+              getActivityCategoryMeta(strongestRestoration.category).label
+            }
+            duration={formatDuration(strongestRestoration.restoringMinutes)}
+            description={`Most Restoring time in the ${periodLabel}.`}
+            icon="leaf-outline"
+            accent={COLORS.restoring}
+            iconBackground="#142B2A"
+            iconBorder="#28514B"
+          />
+        )}
+
+        {biggestLeak && (
           <SignalCard
             label="BIGGEST LEAK"
-            category={biggestLeakMeta.label}
+            category={getActivityCategoryMeta(biggestLeak.category).label}
             duration={formatDuration(biggestLeak.leakMinutes)}
             description={`Most Life Leak time in the ${periodLabel}.`}
             icon="trending-down-outline"
-            accent={COLORS.leaks}
-            iconBackground="#302019"
-            iconBorder="#493127"
+            accent={COLORS.leak}
+            iconBackground={COLORS.dangerBackground}
+            iconBorder={COLORS.dangerBorder}
           />
         )}
       </View>
@@ -96,7 +96,7 @@ type SignalCardProps = {
   category: string;
   duration: string;
   description: string;
-  icon: "trending-up-outline" | "trending-down-outline";
+  icon: "trending-up-outline" | "trending-down-outline" | "leaf-outline";
   accent: string;
   iconBackground: string;
   iconBorder: string;

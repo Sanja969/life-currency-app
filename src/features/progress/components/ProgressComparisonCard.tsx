@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
-import { ProgressComparison, ProgressPeriod } from "../hooks/useProgress";
+import { COLORS } from "@/theme/colors";
+
+import type { ProgressComparison, ProgressPeriod } from "../hooks/useProgress";
 
 type ProgressComparisonCardProps = {
   comparison: ProgressComparison;
@@ -13,17 +15,7 @@ type ChangeRowProps = {
   value: number | null;
   direction?: "positive" | "negative" | "neutral";
   suffix?: string;
-};
-
-const COLORS = {
-  surface: "#11141D",
-  border: "#252936",
-  text: "#F5F0E8",
-  muted: "#9295A3",
-  subtle: "#686C7A",
-  growing: "#8274E8",
-  leaks: "#D88455",
-  gold: "#D6AD65",
+  accent?: string;
 };
 
 function ChangeRow({
@@ -31,11 +23,13 @@ function ChangeRow({
   value,
   direction = "neutral",
   suffix = "%",
+  accent,
 }: ChangeRowProps) {
   if (value === null) {
     return (
       <View style={styles.changeRow}>
         <Text style={styles.changeLabel}>{label}</Text>
+
         <Text style={styles.noData}>No previous data</Text>
       </View>
     );
@@ -48,12 +42,16 @@ function ChangeRow({
         ? "arrow-down-outline"
         : "remove-outline";
 
-  let color = COLORS.muted;
+  let color: string = COLORS.muted;
 
-  if (value !== 0 && direction !== "neutral") {
-    const improved = direction === "positive" ? value > 0 : value < 0;
+  if (value !== 0) {
+    if (accent) {
+      color = accent;
+    } else if (direction !== "neutral") {
+      const improved = direction === "positive" ? value > 0 : value < 0;
 
-    color = improved ? COLORS.growing : COLORS.leaks;
+      color = improved ? COLORS.growing : COLORS.leak;
+    }
   }
 
   const formattedValue = value > 0 ? `+${value}` : `${value}`;
@@ -106,6 +104,15 @@ export function ProgressComparisonCard({
             value={comparison.growingPercentagePointChange}
             direction="positive"
             suffix=" pp"
+          />
+
+          <View style={styles.divider} />
+
+          <ChangeRow
+            label="Restoring share"
+            value={comparison.restoringPercentagePointChange}
+            suffix=" pp"
+            accent={COLORS.restoring}
           />
 
           <View style={styles.divider} />

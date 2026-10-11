@@ -3,31 +3,42 @@ import { router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
 import { AppButton } from "@/components/ui/AppButton";
-
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
-import { ActivityStatistics } from "@/types/activity";
+import { COLORS } from "@/theme/colors";
+import { CLASSIFICATION_THEME } from "@/theme/classification";
+import { ActivityClassification, ActivityStatistics } from "@/types/activity";
 import { formatDuration } from "@/utils/formatDuration";
-
-const COLORS = {
-  background: "#080A10",
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  growing: "#8274E8",
-  leak: "#D88455",
-  text: "#F5F0E7",
-  muted: "#9295A5",
-};
 
 type TodayOverviewProps = {
   statistics: ActivityStatistics;
 };
 
+type EnergyItem = {
+  classification: ActivityClassification;
+  minutes: number;
+  percentage: number;
+};
+
 export function TodayOverview({ statistics }: TodayOverviewProps) {
   const hasTrackedTime = statistics.totalDurationMinutes > 0;
 
-  const growingPercent = hasTrackedTime ? statistics.servesPercentage : 0;
-
-  const leakPercent = hasTrackedTime ? 100 - growingPercent : 0;
+  const energyItems: EnergyItem[] = [
+    {
+      classification: ActivityClassification.Serves,
+      minutes: statistics.servesDurationMinutes,
+      percentage: statistics.servesPercentage,
+    },
+    {
+      classification: ActivityClassification.Restores,
+      minutes: statistics.restoresDurationMinutes,
+      percentage: statistics.restoresPercentage,
+    },
+    {
+      classification: ActivityClassification.DoesNotServe,
+      minutes: statistics.doesNotServeDurationMinutes,
+      percentage: statistics.doesNotServePercentage,
+    },
+  ];
 
   const today = new Date();
 
@@ -77,7 +88,7 @@ export function TodayOverview({ statistics }: TodayOverviewProps) {
         Trace activity
       </AppButton>
 
-      {/* TIME OBSERVED — COSMIC PANEL */}
+      {/* TIME OBSERVED */}
 
       <CosmicPanel
         variant="default"
@@ -115,96 +126,88 @@ export function TodayOverview({ statistics }: TodayOverviewProps) {
         <View style={styles.balanceSection}>
           <Text style={styles.balanceHeading}>YOUR ENERGY BALANCE</Text>
 
+          {/* THREE CLASSIFICATIONS */}
+
           <View style={styles.energyRow}>
-            {/* GROWING */}
+            {energyItems.map((item) => {
+              const theme = CLASSIFICATION_THEME[item.classification];
 
-            <View style={styles.energyColumn}>
-              <View style={styles.energyLabelRow}>
-                <View
-                  style={[
-                    styles.energyDot,
-                    {
-                      backgroundColor: COLORS.growing,
-                      shadowColor: COLORS.growing,
-                    },
-                  ]}
-                />
+              return (
+                <View key={item.classification} style={styles.energyColumn}>
+                  {/* LABEL */}
 
-                <Text style={[styles.energyLabel, { color: COLORS.growing }]}>
-                  GROWING
-                </Text>
-              </View>
+                  <View style={styles.energyLabelRow}>
+                    <View
+                      style={[
+                        styles.energyDot,
+                        {
+                          backgroundColor: theme.color,
+                          shadowColor: theme.color,
+                        },
+                      ]}
+                    />
 
-              <Text style={styles.energyTime}>
-                {formatDuration(statistics.servesDurationMinutes)}
-              </Text>
+                    <Text
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={[styles.energyLabel, { color: theme.color }]}
+                    >
+                      {item.classification ===
+                      ActivityClassification.DoesNotServe
+                        ? "LIFE LEAKS"
+                        : theme.shortLabel}
+                    </Text>
+                  </View>
 
-              <Text style={styles.energyPercent}>
-                {growingPercent}% of tracked time
-              </Text>
-            </View>
+                  {/* DURATION */}
 
-            {/* LIFE LEAKS */}
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={styles.energyTime}
+                  >
+                    {formatDuration(item.minutes)}
+                  </Text>
 
-            <View style={[styles.energyColumn, styles.leakColumn]}>
-              <View style={styles.energyLabelRow}>
-                <Text style={[styles.energyLabel, { color: COLORS.leak }]}>
-                  LIFE LEAKS
-                </Text>
+                  {/* PERCENTAGE */}
 
-                <View
-                  style={[
-                    styles.energyDot,
-                    {
-                      backgroundColor: COLORS.leak,
-                      shadowColor: COLORS.leak,
-                    },
-                  ]}
-                />
-              </View>
-
-              <Text style={styles.energyTime}>
-                {formatDuration(statistics.doesNotServeDurationMinutes)}
-              </Text>
-
-              <Text style={styles.energyPercent}>
-                {leakPercent}% of tracked time
-              </Text>
-            </View>
+                  <Text style={styles.energyPercent}>
+                    {Number(item.percentage.toFixed(1))}%
+                  </Text>
+                </View>
+              );
+            })}
           </View>
 
-          {/* BALANCE BAR */}
+          {/* THREE-COLOR BALANCE BAR */}
 
           <View style={styles.balanceTrack}>
-            {hasTrackedTime && (
-              <>
-                <View
-                  style={[
-                    styles.balanceSegment,
-                    {
-                      width: `${growingPercent}%`,
-                      backgroundColor: COLORS.growing,
-                    },
-                  ]}
-                />
+            {hasTrackedTime &&
+              energyItems.map((item) => {
+                const theme = CLASSIFICATION_THEME[item.classification];
 
-                <View
-                  style={[
-                    styles.balanceSegment,
-                    {
-                      width: `${leakPercent}%`,
-                      backgroundColor: COLORS.leak,
-                    },
-                  ]}
-                />
-              </>
-            )}
+                return (
+                  <View
+                    key={item.classification}
+                    style={[
+                      styles.balanceSegment,
+                      {
+                        flexGrow: item.minutes,
+                        flexBasis: 0,
+                        backgroundColor: theme.color,
+                      },
+                    ]}
+                  />
+                );
+              })}
           </View>
 
           {/* BALANCE FOOTER */}
 
           <View style={styles.balanceFooter}>
             <Text style={styles.balanceFooterText}>Growth</Text>
+
+            <Text style={styles.balanceFooterText}>Restoration</Text>
 
             <Text style={styles.balanceFooterText}>Life leaks</Text>
           </View>
@@ -268,32 +271,6 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
 
-  traceGradient: {
-    minHeight: 48,
-    paddingHorizontal: 15,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 11,
-  },
-
-  traceIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "rgba(214,173,101,0.13)",
-    borderWidth: 1,
-    borderColor: "rgba(214,173,101,0.28)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  traceText: {
-    color: COLORS.lightGold,
-    fontSize: 13,
-    fontWeight: "600",
-    letterSpacing: 0.2,
-  },
-
   // COSMIC PANEL
 
   cosmicCardContent: {
@@ -345,7 +322,7 @@ const styles = StyleSheet.create({
   // ENERGY BALANCE
 
   balanceSection: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 21,
     paddingBottom: 26,
   },
@@ -361,7 +338,7 @@ const styles = StyleSheet.create({
   energyRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
+    gap: 8,
   },
 
   energyColumn: {
@@ -369,20 +346,16 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
 
-  leakColumn: {
-    alignItems: "flex-end",
-  },
-
   energyLabelRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
+    gap: 5,
   },
 
   energyDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     shadowOpacity: 0.65,
     shadowRadius: 7,
     shadowOffset: {
@@ -392,22 +365,23 @@ const styles = StyleSheet.create({
   },
 
   energyLabel: {
-    fontSize: 10,
+    flexShrink: 1,
+    fontSize: 9,
     fontWeight: "700",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
 
   energyTime: {
     color: COLORS.text,
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "600",
-    marginTop: 11,
+    marginTop: 12,
   },
 
   energyPercent: {
     color: COLORS.muted,
     fontSize: 11,
-    marginTop: 5,
+    marginTop: 6,
   },
 
   // BALANCE BAR
@@ -418,17 +392,20 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderRadius: 3,
     backgroundColor: "#20212C",
-    marginTop: 23,
+    marginTop: 24,
   },
 
   balanceSegment: {
     height: "100%",
+    flexShrink: 1,
   },
+
+  // BALANCE FOOTER
 
   balanceFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 10,
+    marginTop: 11,
   },
 
   balanceFooterText: {

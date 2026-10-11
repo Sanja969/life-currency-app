@@ -16,23 +16,18 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { ActivityForm } from "../../components/ActivityForm";
-import { AppButton } from "../../components/ui/AppButton";
-import { activityService } from "../../services/ActivityService";
-import { setPendingActivityArrival } from "../../lib/activityArrival";
+import { ActivityForm } from "@/components/ActivityForm";
+import { AppButton } from "@/components/ui/AppButton";
+import { setPendingActivityArrival } from "@/lib/activityArrival";
+import { activityService } from "@/services/ActivityService";
+import { CLASSIFICATION_THEME } from "@/theme/classification";
+import { COLORS } from "@/theme/colors";
 
 import {
   Activity,
   ActivityClassification,
   ActivityInput,
-} from "../../types/activity";
-
-const COLORS = {
-  background: "#080A10",
-  growing: "#8274E8",
-  restoring: "#58C7B5",
-  leak: "#D88455",
-};
+} from "@/types/activity";
 
 export default function CreateActivityScreen() {
   const router = useRouter();
@@ -71,7 +66,7 @@ export default function CreateActivityScreen() {
       }
     }
 
-    loadActivities();
+    void loadActivities();
   }, []);
 
   /*
@@ -330,48 +325,22 @@ export default function CreateActivityScreen() {
   }
 
   /*
-   * PARTICLE COLORS
+   * CENTRALIZED PARTICLE THEME
    */
 
-  const PARTICLE_COLORS = {
-    [ActivityClassification.Serves]: {
-      core: "#EDE8FF",
-      particle: COLORS.growing,
-      glow: "rgba(130,116,232,0.22)",
-      ring: "rgba(165,153,255,0.75)",
-      inner: "rgba(130,116,232,0.24)",
-    },
+  const classificationTheme = CLASSIFICATION_THEME[particleType];
 
-    [ActivityClassification.Restores]: {
-      core: "#E0FFF8",
-      particle: COLORS.restoring,
-      glow: "rgba(88,199,181,0.22)",
-      ring: "rgba(120,230,210,0.75)",
-      inner: "rgba(88,199,181,0.24)",
-    },
-
-    [ActivityClassification.DoesNotServe]: {
-      core: "#FFE9DA",
-      particle: COLORS.leak,
-      glow: "rgba(216,132,85,0.22)",
-      ring: "rgba(240,171,128,0.75)",
-      inner: "rgba(216,132,85,0.24)",
-    },
-  };
-
-  const particlePalette = PARTICLE_COLORS[particleType];
+  const particlePalette = classificationTheme.particle;
 
   const particleCoreColor = particlePalette.core;
-  const particleColor = particlePalette.particle;
+  const particleColor = classificationTheme.color;
   const glowColor = particlePalette.glow;
   const ringColor = particlePalette.ring;
   const particleInnerColor = particlePalette.inner;
 
   return (
     <View style={styles.screen}>
-      {/* ============================================= */}
-      {/* NORMAL SCREEN                                 */}
-      {/* ============================================= */}
+      {/* NORMAL SCREEN */}
 
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         {/* BACK BUTTON */}
@@ -403,15 +372,13 @@ export default function CreateActivityScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      {/* ============================================= */}
-      {/* QUANTUM CREATION OVERLAY                      */}
-      {/* ============================================= */}
+      {/* QUANTUM CREATION OVERLAY */}
 
       <Animated.View
         pointerEvents="none"
         style={[styles.animationOverlay, fieldStyle]}
       >
-        {/* DARKEN BACKGROUND DURING ANIMATION */}
+        {/* DARKEN BACKGROUND */}
 
         <View style={styles.animationBackdrop} />
 
@@ -423,9 +390,7 @@ export default function CreateActivityScreen() {
           <Animated.View
             style={[
               styles.largeGlow,
-              {
-                backgroundColor: glowColor,
-              },
+              { backgroundColor: glowColor },
               glowStyle,
             ]}
           />
@@ -435,9 +400,7 @@ export default function CreateActivityScreen() {
           <Animated.View
             style={[
               styles.outerRing,
-              {
-                borderColor: ringColor,
-              },
+              { borderColor: ringColor },
               outerRingStyle,
             ]}
           />
@@ -447,9 +410,7 @@ export default function CreateActivityScreen() {
           <Animated.View
             style={[
               styles.innerRing,
-              {
-                borderColor: ringColor,
-              },
+              { borderColor: ringColor },
               innerRingStyle,
             ]}
           />
@@ -459,9 +420,7 @@ export default function CreateActivityScreen() {
           <Animated.View
             style={[
               styles.energyTrail,
-              {
-                backgroundColor: particleColor,
-              },
+              { backgroundColor: particleColor },
               trailStyle,
             ]}
           />
@@ -553,9 +512,7 @@ export default function CreateActivityScreen() {
           <Animated.View
             style={[
               styles.particleGlow,
-              {
-                backgroundColor: glowColor,
-              },
+              { backgroundColor: glowColor },
               particleStyle,
             ]}
           >

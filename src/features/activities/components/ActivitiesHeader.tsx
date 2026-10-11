@@ -1,34 +1,42 @@
 import { Ionicons } from "@expo/vector-icons";
+
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+
+import Svg, { Path } from "react-native-svg";
 
 import { ActivityClassification } from "@/types/activity";
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
-import Svg, { Path } from "react-native-svg";
+
+import { COLORS } from "@/theme/colors";
+import { CLASSIFICATION_THEME } from "@/theme/classification";
+
 import { EnergyFilter } from "./EnergyFilter";
+
+import type { ActivityFilter } from "../hooks/useActivities";
 
 type ActivitiesHeaderProps = {
   growingPercent: number;
+  restoringPercent: number;
   leaksPercent: number;
+
   searchQuery: string;
-  filter: "all" | ActivityClassification;
+  filter: ActivityFilter;
   errorMessage: string | null;
+
   setSearchQuery: (value: string) => void;
-  setFilter: (value: "all" | ActivityClassification) => void;
+  setFilter: (value: ActivityFilter) => void;
 };
 
-const COLORS = {
-  background: "#080A10",
-  surface: "#11141D",
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  growing: "#8274E8",
-  leaks: "#D88455",
-  text: "#F5F0E7",
-  muted: "#9295A5",
+type DistributionItem = {
+  label: string;
+  shortLabel: string;
+  percent: number;
+  color: string;
 };
 
 export function ActivitiesHeader({
   growingPercent,
+  restoringPercent,
   leaksPercent,
   searchQuery,
   filter,
@@ -36,6 +44,31 @@ export function ActivitiesHeader({
   setSearchQuery,
   setFilter,
 }: ActivitiesHeaderProps) {
+  /*
+   * TIME DISTRIBUTION
+   */
+
+  const distribution: DistributionItem[] = [
+    {
+      label: "GROWING",
+      shortLabel: "Growth",
+      percent: growingPercent,
+      color: CLASSIFICATION_THEME[ActivityClassification.Serves].color,
+    },
+    {
+      label: "RESTORING",
+      shortLabel: "Restoring",
+      percent: restoringPercent,
+      color: CLASSIFICATION_THEME[ActivityClassification.Restores].color,
+    },
+    {
+      label: "LIFE LEAKS",
+      shortLabel: "Life leaks",
+      percent: leaksPercent,
+      color: CLASSIFICATION_THEME[ActivityClassification.DoesNotServe].color,
+    },
+  ];
+
   return (
     <View style={styles.container}>
       {/* HEADER */}
@@ -52,7 +85,7 @@ export function ActivitiesHeader({
         <Text style={styles.subtitle}>Every moment leaves a trace.</Text>
       </View>
 
-      {/* ENERGY DISTRIBUTION */}
+      {/* TIME DISTRIBUTION */}
 
       <CosmicPanel
         variant="default"
@@ -65,92 +98,83 @@ export function ActivitiesHeader({
           <Ionicons name="analytics-outline" size={18} color={COLORS.gold} />
         </View>
 
+        {/* THREE CLASSIFICATIONS */}
+
         <View style={styles.statsRow}>
-          {/* GROWING */}
+          {distribution.map((item) => (
+            <View key={item.label} style={styles.statColumn}>
+              <View style={styles.statLabelRow}>
+                <View
+                  style={[
+                    styles.statDot,
+                    {
+                      backgroundColor: item.color,
+                      shadowColor: item.color,
+                    },
+                  ]}
+                />
 
-          <View style={styles.statColumn}>
-            <View style={styles.statLabelRow}>
-              <View
-                style={[
-                  styles.statDot,
-                  {
-                    backgroundColor: COLORS.growing,
-                    shadowColor: COLORS.growing,
-                  },
-                ]}
-              />
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={[
+                    styles.statLabel,
+                    {
+                      color: item.color,
+                    },
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </View>
 
-              <Text style={[styles.statLabel, { color: COLORS.growing }]}>
-                GROWING
-              </Text>
+              <Text style={styles.statValue}>{item.percent}%</Text>
+
+              <Text style={styles.statDescription}>of tracked time</Text>
             </View>
-
-            <Text style={styles.statValue}>{growingPercent}%</Text>
-
-            <Text style={styles.statDescription}>of tracked time</Text>
-          </View>
-
-          {/* LIFE LEAKS */}
-
-          <View style={styles.statColumnRight}>
-            <View style={styles.statLabelRow}>
-              <Text style={[styles.statLabel, { color: COLORS.leaks }]}>
-                LIFE LEAKS
-              </Text>
-
-              <View
-                style={[
-                  styles.statDot,
-                  {
-                    backgroundColor: COLORS.leaks,
-                    shadowColor: COLORS.leaks,
-                  },
-                ]}
-              />
-            </View>
-
-            <Text style={styles.statValue}>{leaksPercent}%</Text>
-
-            <Text style={styles.statDescription}>of tracked time</Text>
-          </View>
+          ))}
         </View>
 
         {/* DISTRIBUTION BAR */}
 
         <View style={styles.balanceTrack}>
-          <View
-            style={[
-              styles.balanceSegment,
-              {
-                width: `${growingPercent}%`,
-                backgroundColor: COLORS.growing,
-              },
-            ]}
-          />
-
-          <View
-            style={[
-              styles.balanceSegment,
-              {
-                width: `${leaksPercent}%`,
-                backgroundColor: COLORS.leaks,
-              },
-            ]}
-          />
+          {distribution.map((item) => (
+            <View
+              key={item.label}
+              style={[
+                styles.balanceSegment,
+                {
+                  width: `${Math.max(0, item.percent)}%` as `${number}%`,
+                  backgroundColor: item.color,
+                },
+              ]}
+            />
+          ))}
         </View>
 
-        <View style={styles.balanceFooter}>
-          <Text style={styles.balanceFooterText}>Growth</Text>
+        {/* DISTRIBUTION LEGEND */}
 
-          <Text style={styles.balanceFooterText}>Life leaks</Text>
+        <View style={styles.balanceFooter}>
+          {distribution.map((item) => (
+            <View key={item.label} style={styles.legendItem}>
+              <View
+                style={[
+                  styles.legendDot,
+                  {
+                    backgroundColor: item.color,
+                  },
+                ]}
+              />
+
+              <Text style={styles.balanceFooterText}>{item.shortLabel}</Text>
+            </View>
+          ))}
         </View>
       </CosmicPanel>
 
       {/* SEARCH */}
 
       <View style={styles.searchContainer}>
-        {/* ANGULAR BACKGROUND */}
-
         <Svg
           style={StyleSheet.absoluteFill}
           width="100%"
@@ -162,16 +186,14 @@ export function ActivitiesHeader({
           <Path
             d="M 12 0 L 100 0 L 100 36 L 88 48 L 0 48 L 0 12 Z"
             fill={COLORS.surface}
-            stroke="rgba(214,173,101,0.24)"
+            stroke={COLORS.goldBorder}
             strokeWidth={1}
             vectorEffect="non-scaling-stroke"
           />
 
-          {/* GOLD ACCENT */}
-
           <Path
             d="M 12 0 L 38 0"
-            stroke="#D6AD65"
+            stroke={COLORS.gold}
             strokeWidth={1.4}
             vectorEffect="non-scaling-stroke"
           />
@@ -183,7 +205,7 @@ export function ActivitiesHeader({
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search your traces"
-          placeholderTextColor="#777987"
+          placeholderTextColor={COLORS.subtle}
           style={styles.searchInput}
           selectionColor={COLORS.gold}
           returnKeyType="search"
@@ -225,8 +247,15 @@ export function ActivitiesHeader({
         />
 
         <EnergyFilter
+          label="Restoring"
+          color={COLORS.restoring}
+          selected={filter === ActivityClassification.Restores}
+          onPress={() => setFilter(ActivityClassification.Restores)}
+        />
+
+        <EnergyFilter
           label="Leaks"
-          color={COLORS.leaks}
+          color={COLORS.leak}
           selected={filter === ActivityClassification.DoesNotServe}
           onPress={() => setFilter(ActivityClassification.DoesNotServe)}
         />
@@ -236,11 +265,7 @@ export function ActivitiesHeader({
 
       {errorMessage && (
         <View style={styles.errorContainer}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={18}
-            color={COLORS.leaks}
-          />
+          <Ionicons name="alert-circle-outline" size={18} color={COLORS.leak} />
 
           <Text style={styles.errorText}>{errorMessage}</Text>
         </View>
@@ -249,12 +274,18 @@ export function ActivitiesHeader({
   );
 }
 
+/*
+ * STYLES
+ */
+
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
   },
 
-  // HEADER
+  /*
+   * HEADER
+   */
 
   header: {
     paddingTop: 12,
@@ -297,8 +328,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
+  /*
+   * TIME DISTRIBUTION
+   */
+
   balanceContent: {
-    paddingHorizontal: 22,
+    paddingHorizontal: 18,
     paddingTop: 22,
     paddingBottom: 21,
   },
@@ -320,30 +355,26 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
+    gap: 8,
   },
 
   statColumn: {
     flex: 1,
     minWidth: 0,
-  },
-
-  statColumnRight: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: "flex-end",
+    alignItems: "center",
   },
 
   statLabelRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
+    justifyContent: "center",
+    gap: 5,
   },
 
   statDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     shadowOpacity: 0.65,
     shadowRadius: 7,
     shadowOffset: {
@@ -353,33 +384,36 @@ const styles = StyleSheet.create({
   },
 
   statLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "700",
-    letterSpacing: 1,
+    letterSpacing: 0.4,
   },
 
   statValue: {
     color: COLORS.text,
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "600",
     letterSpacing: -0.8,
-    marginTop: 10,
+    marginTop: 11,
   },
 
   statDescription: {
     color: COLORS.muted,
-    fontSize: 11,
-    marginTop: 2,
+    fontSize: 10,
+    marginTop: 3,
+    textAlign: "center",
   },
 
-  // DISTRIBUTION BAR
+  /*
+   * DISTRIBUTION BAR
+   */
 
   balanceTrack: {
     height: 5,
     flexDirection: "row",
     overflow: "hidden",
     borderRadius: 3,
-    backgroundColor: "#20212C",
+    backgroundColor: COLORS.border,
     marginTop: 23,
   },
 
@@ -389,8 +423,22 @@ const styles = StyleSheet.create({
 
   balanceFooter: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 10,
+    marginTop: 12,
+    gap: 8,
+  },
+
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+
+  legendDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
   },
 
   balanceFooterText: {
@@ -398,7 +446,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
 
-  // SEARCH
+  /*
+   * SEARCH
+   */
 
   searchContainer: {
     height: 48,
@@ -417,15 +467,19 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
 
-  // FILTERS
+  /*
+   * FILTERS
+   */
 
   filtersContainer: {
     flexDirection: "row",
-    gap: 8,
+    gap: 6,
     marginBottom: 24,
   },
 
-  // ERROR
+  /*
+   * ERROR
+   */
 
   errorContainer: {
     flexDirection: "row",
@@ -434,14 +488,14 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "rgba(216,132,85,0.25)",
-    backgroundColor: "rgba(216,132,85,0.08)",
+    borderColor: COLORS.dangerBorder,
+    backgroundColor: COLORS.dangerBackground,
     borderRadius: 12,
   },
 
   errorText: {
     flex: 1,
-    color: "#E5A482",
+    color: COLORS.danger,
     fontSize: 12,
     lineHeight: 18,
   },

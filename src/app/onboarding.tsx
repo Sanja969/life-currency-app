@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
+
 import {
   Animated,
   Easing,
@@ -14,16 +15,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppButton } from "@/components/ui/AppButton";
+
 import { useOnboardingCompletion } from "@/lib/OnboardingContext";
 import { completeOnboarding } from "@/lib/onboarding";
 
-const COLORS = {
-  background: "#080A10",
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  text: "#F5F0E7",
-  muted: "#B1AAA1",
-};
+import { COLORS } from "@/theme/colors";
 
 const STEPS = [
   {
@@ -42,9 +38,9 @@ const STEPS = [
   },
   {
     eyebrow: "03 — YOUR ENERGY",
-    title: "Invest in what\nmakes you grow.",
+    title: "Understand your\nenergy.",
     description:
-      "Recognize what gives you energy, what drains it, and what truly matters.",
+      "Discover what helps you grow, what restores your energy, and what drains it.",
     image: require("@assets/onboarding/grow.jpg"),
   },
   {
@@ -137,6 +133,7 @@ export default function OnboardingScreen() {
   return (
     <View style={styles.screen}>
       {/* FULL-SCREEN BACKGROUND */}
+
       <Animated.View
         pointerEvents="none"
         style={[
@@ -150,14 +147,13 @@ export default function OnboardingScreen() {
         <ImageBackground
           source={step.image}
           resizeMode="cover"
-          imageStyle={{
-            opacity: 0.9,
-          }}
+          imageStyle={{ opacity: 0.9 }}
           style={styles.backgroundImage}
         />
       </Animated.View>
 
       {/* ATMOSPHERIC OVERLAY */}
+
       <LinearGradient
         pointerEvents="none"
         colors={[
@@ -165,13 +161,14 @@ export default function OnboardingScreen() {
           "rgba(8,10,16,0.04)",
           "rgba(8,10,16,0.18)",
           "rgba(8,10,16,0.78)",
-          "#080A10",
+          COLORS.background,
         ]}
         locations={[0, 0.22, 0.48, 0.72, 1]}
         style={StyleSheet.absoluteFill}
       />
 
       {/* WARM GOLDEN ATMOSPHERE */}
+
       <LinearGradient
         pointerEvents="none"
         colors={["transparent", "rgba(169,110,44,0.06)", "transparent"]}
@@ -189,7 +186,8 @@ export default function OnboardingScreen() {
             },
           ]}
         >
-          {/* TOP BAR */}
+          {/* HEADER */}
+
           <View style={styles.header}>
             <View style={styles.brand}>
               <View style={styles.brandDot} />
@@ -204,10 +202,12 @@ export default function OnboardingScreen() {
             </Text>
           </View>
 
-          {/* SPACE RESERVED FOR ARTWORK */}
+          {/* ARTWORK SPACE */}
+
           <View style={styles.artworkSpace} />
 
           {/* TEXT */}
+
           <Animated.View
             style={[
               styles.textContent,
@@ -247,7 +247,8 @@ export default function OnboardingScreen() {
             </Text>
           </Animated.View>
 
-          {/* BOTTOM NAVIGATION */}
+          {/* FOOTER */}
+
           <View style={styles.footer}>
             <View style={styles.leftNavigation}>
               {stepIndex > 0 && (
@@ -373,7 +374,7 @@ const styles = StyleSheet.create({
   },
 
   goldSparkle: {
-    color: "#D6AD65",
+    color: COLORS.gold,
     fontSize: 18,
     fontWeight: "300",
     marginTop: 16,

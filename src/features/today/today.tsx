@@ -2,8 +2,8 @@ import { ActivityIndicator, View } from "react-native";
 
 import { AppText } from "@/components/ui/AppText";
 import { Section } from "@/components/ui/section";
-import { CategoryBreakdown } from "./components/CategoryBreakdown";
 
+import { CategoryBreakdown } from "./components/CategoryBreakdown";
 import { TodayOverview } from "./components/TodayOverview";
 import { LifeField } from "./components/LifeField";
 import { TodaySignal } from "./components/TodaySignal";
@@ -11,13 +11,12 @@ import { TodayActivitySummary } from "./components/TodayActivitySummary";
 
 import { useToday } from "./hooks/useToday";
 
-const COLORS = {
-  background: "#080A10",
-  gold: "#D6AD65",
-};
+import { COLORS } from "@/theme/colors";
 
 export function Today() {
   const { statistics, isLoading, errorMessage } = useToday();
+
+  // LOADING STATE
 
   if (isLoading) {
     return (
@@ -34,6 +33,8 @@ export function Today() {
     );
   }
 
+  // ERROR STATE
+
   if (errorMessage || !statistics) {
     return (
       <View
@@ -49,6 +50,8 @@ export function Today() {
       </View>
     );
   }
+
+  // TODAY DASHBOARD
 
   return (
     <>

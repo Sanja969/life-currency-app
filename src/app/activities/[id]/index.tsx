@@ -18,46 +18,11 @@ import { AppButton } from "@/components/ui/AppButton";
 import { DeleteActivityModal } from "@/features/activities/components/DeleteActivityModal";
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
 import { activityService } from "@/services/ActivityService";
-import { Activity, ActivityClassification } from "@/types/activity";
+import { CLASSIFICATION_THEME } from "@/theme/classification";
+import { COLORS } from "@/theme/colors";
+import { Activity } from "@/types/activity";
 
-const COLORS = {
-  background: "#080A10",
-  surface: "#11141D",
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  text: "#F5F0E7",
-  muted: "#9295A5",
-  growing: "#8274E8",
-  restoring: "#58C7B5",
-  leak: "#D88455",
-  danger: "#E78A8A",
-};
-
-const CLASSIFICATION_META = {
-  [ActivityClassification.Serves]: {
-    accent: COLORS.growing,
-    background: "#171527",
-    label: "GROWING",
-    energyLabel: "INVESTED IN GROWTH",
-    description: "Time dedicated to something that helps you grow.",
-  },
-
-  [ActivityClassification.Restores]: {
-    accent: COLORS.restoring,
-    background: "#142B2A",
-    label: "RESTORING",
-    energyLabel: "TIME SPENT RESTORING",
-    description: "Time dedicated to rest, recovery, and restoring your energy.",
-  },
-
-  [ActivityClassification.DoesNotServe]: {
-    accent: COLORS.leak,
-    background: "#241A16",
-    label: "LIFE LEAK",
-    energyLabel: "SPENT ON A LIFE LEAK",
-    description: "Time spent on something you've marked as draining.",
-  },
-};
+// HELPERS
 
 function normalizeParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -72,6 +37,8 @@ function formatDuration(minutes: number) {
 
   return `${hours}h ${remainingMinutes}m`;
 }
+
+// ANGULAR CARD
 
 type AngularCardProps = {
   children: ReactNode;
@@ -138,6 +105,8 @@ function AngularCard({
   );
 }
 
+// DETAIL ROW
+
 type DetailRowProps = {
   icon: React.ComponentProps<typeof Ionicons>["name"];
   label: string;
@@ -171,6 +140,8 @@ function DetailRow({
   );
 }
 
+// ACTIVITY DETAIL SCREEN
+
 export default function ActivityDetailScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = normalizeParam(params.id);
@@ -180,6 +151,8 @@ export default function ActivityDetailScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+
+  // LOAD ACTIVITY
 
   const loadActivity = useCallback(async () => {
     const numericId = Number(id);
@@ -206,6 +179,7 @@ export default function ActivityDetailScreen() {
       setActivity(foundActivity);
     } catch (error) {
       setActivity(null);
+
       setErrorMessage(
         error instanceof Error ? error.message : "Unable to load activity.",
       );
@@ -219,6 +193,8 @@ export default function ActivityDetailScreen() {
       void loadActivity();
     }, [loadActivity]),
   );
+
+  // ACTIONS
 
   function handleEdit() {
     if (!activity) return;
@@ -241,6 +217,7 @@ export default function ActivityDetailScreen() {
       await activityService.deleteActivity(activity.id);
 
       setIsDeleteModalVisible(false);
+
       router.replace("/activities");
     } catch (error) {
       setIsDeleting(false);
@@ -254,14 +231,19 @@ export default function ActivityDetailScreen() {
     }
   }
 
+  // LOADING
+
   if (isLoading) {
     return (
       <View style={styles.centeredScreen}>
         <ActivityIndicator size="large" color={COLORS.gold} />
+
         <Text style={styles.loadingText}>Loading activity...</Text>
       </View>
     );
   }
+
+  // ERROR
 
   if (!activity || errorMessage) {
     return (
@@ -302,10 +284,17 @@ export default function ActivityDetailScreen() {
     );
   }
 
-  const classificationMeta = CLASSIFICATION_META[activity.classification];
-  const accent = classificationMeta.accent;
+  // CLASSIFICATION THEME
+
+  const classificationTheme = CLASSIFICATION_THEME[activity.classification];
+
+  const accent = classificationTheme.color;
+
+  // CATEGORY
 
   const categoryMeta = getActivityCategoryMeta(activity.category);
+
+  // DATE AND TIME
 
   const formattedDate = activity.activityDate.toLocaleDateString([], {
     weekday: "long",
@@ -362,7 +351,7 @@ export default function ActivityDetailScreen() {
               />
 
               <Text style={[styles.classificationText, { color: accent }]}>
-                {classificationMeta.label}
+                {classificationTheme.shortLabel}
               </Text>
             </View>
 
@@ -386,7 +375,7 @@ export default function ActivityDetailScreen() {
           <AngularCard
             style={styles.energyCard}
             borderColor={`${accent}80`}
-            backgroundColor={classificationMeta.background}
+            backgroundColor={classificationTheme.detailBackground}
             cut={18}
           >
             <View style={styles.energyContent}>
@@ -427,12 +416,13 @@ export default function ActivityDetailScreen() {
               <Text style={styles.energyDuration}>
                 {formatDuration(activity.durationMinutes)}
               </Text>
+
               <Text style={[styles.energyLabel, { color: accent }]}>
-                {classificationMeta.energyLabel}
+                {classificationTheme.energyLabel}
               </Text>
 
               <Text style={styles.energyDescription}>
-                {classificationMeta.description}
+                {classificationTheme.energyDescription}
               </Text>
             </View>
           </AngularCard>
@@ -493,7 +483,9 @@ export default function ActivityDetailScreen() {
             accessibilityRole="button"
             style={({ pressed }) => [
               styles.deleteButton,
-              { opacity: isDeleting ? 0.5 : pressed ? 0.7 : 1 },
+              {
+                opacity: isDeleting ? 0.5 : pressed ? 0.7 : 1,
+              },
             ]}
           >
             <Ionicons name="trash-outline" size={17} color={COLORS.danger} />
@@ -503,12 +495,16 @@ export default function ActivityDetailScreen() {
         </ScrollView>
       </SafeAreaView>
 
+      {/* DELETE MODAL */}
+
       <DeleteActivityModal
         visible={isDeleteModalVisible}
         activityTitle={activity.title}
         isDeleting={isDeleting}
         onCancel={() => {
-          if (!isDeleting) setIsDeleteModalVisible(false);
+          if (!isDeleting) {
+            setIsDeleteModalVisible(false);
+          }
         }}
         onDelete={() => {
           void deleteActivity();
@@ -517,6 +513,8 @@ export default function ActivityDetailScreen() {
     </View>
   );
 }
+
+// STYLES
 
 const styles = StyleSheet.create({
   screen: {

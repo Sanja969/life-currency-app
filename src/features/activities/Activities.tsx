@@ -1,26 +1,59 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useRef } from "react";
-import { FlatList, Pressable, View } from "react-native";
+import { useCallback, useMemo, useRef } from "react";
+
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useActivityArrival } from "./hooks/useActivityArrival";
 import Animated from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 
 import { Activity, ActivityClassification } from "@/types/activity";
 
+import { COLORS } from "@/theme/colors";
+import { CLASSIFICATION_THEME } from "@/theme/classification";
+
 import { ActivitiesBackground } from "./components/ActivitiesBackground";
 import { ActivityTrace } from "./components/ActivityTrace";
 import { EmptyField } from "./components/EmptyField";
-import { useActivities } from "./hooks/useActivities";
-import { isSameDay } from "./utils/activityDate";
 import { ActivitiesHeader } from "./components/ActivitiesHeader";
+
+import { useActivities } from "./hooks/useActivities";
+import { useActivityArrival } from "./hooks/useActivityArrival";
+
+import { isSameDay } from "./utils/activityDate";
+
+/*
+ * CONSTANTS
+ */
 
 const VIEWABILITY_CONFIG = {
   itemVisiblePercentThreshold: 60,
 };
 
+const FLOATING_BUTTON_SIZE = 52;
+
+/*
+ * HELPERS
+ */
+
+function calculatePercentage(minutes: number, totalMinutes: number): number {
+  if (totalMinutes <= 0) {
+    return 0;
+  }
+
+  return Math.round((minutes / totalMinutes) * 100);
+}
+
+/*
+ * ACTIVITIES SCREEN
+ */
+
 export function Activities() {
+  /*
+   * ACTIVITIES DATA
+   */
+
   const {
     activities,
     counts,
@@ -36,6 +69,10 @@ export function Activities() {
     completeArrival,
   } = useActivities();
 
+  /*
+   * ARRIVAL ANIMATION
+   */
+
   const {
     arrival,
     listRef,
@@ -46,16 +83,66 @@ export function Activities() {
     isArrivingActivity,
   } = useActivityArrival(activities, pendingArrival, completeArrival);
 
+  /*
+   * NAVIGATION GUARD
+   */
+
   const isOpeningNewActivity = useRef(false);
 
-  const { growingMinutes, leaksMinutes } = counts;
+  /*
+   * CLASSIFICATION STATISTICS
+   */
 
-  const totalMinutes = growingMinutes + leaksMinutes;
+  const { growingPercent, restoringPercent, leaksPercent } = useMemo(() => {
+    const growingMinutes = counts.growingMinutes ?? 0;
 
-  const growingPercent =
-    totalMinutes > 0 ? Math.round((growingMinutes / totalMinutes) * 100) : 0;
+    const restoringMinutes = counts.restoringMinutes ?? 0;
 
-  const leaksPercent = totalMinutes > 0 ? 100 - growingPercent : 0;
+    const leaksMinutes = counts.leaksMinutes ?? 0;
+
+    const totalMinutes = growingMinutes + restoringMinutes + leaksMinutes;
+
+    if (totalMinutes <= 0) {
+      return {
+        growingPercent: 0,
+        restoringPercent: 0,
+        leaksPercent: 0,
+      };
+    }
+
+    const growingPercent = calculatePercentage(growingMinutes, totalMinutes);
+
+    const restoringPercent = calculatePercentage(
+      restoringMinutes,
+      totalMinutes,
+    );
+
+    /*
+     * Use the remainder for the final
+     * classification so all percentages
+     * add up to exactly 100%.
+     */
+
+    const leaksPercent = 100 - growingPercent - restoringPercent;
+
+    return {
+      growingPercent,
+      restoringPercent,
+      leaksPercent,
+    };
+  }, [counts.growingMinutes, counts.restoringMinutes, counts.leaksMinutes]);
+
+  /*
+   * ARRIVAL PARTICLE THEME
+   */
+
+  const arrivalTheme = arrival
+    ? CLASSIFICATION_THEME[arrival.classification]
+    : null;
+
+  /*
+   * RENDER ACTIVITY
+   */
 
   const renderActivity = useCallback(
     ({ item, index }: { item: Activity; index: number }) => {
@@ -66,7 +153,7 @@ export function Activities() {
         !isSameDay(item.activityDate, previousActivity.activityDate);
 
       return (
-        <View style={{ paddingHorizontal: 20 }}>
+        <View style={styles.activityContainer}>
           <ActivityTrace
             activity={item}
             showDate={showDate}
@@ -78,31 +165,56 @@ export function Activities() {
     [activities, isArrivingActivity],
   );
 
+  /*
+   * RESET NAVIGATION GUARD
+   */
+
   useFocusEffect(
     useCallback(() => {
       isOpeningNewActivity.current = false;
     }, []),
   );
 
+  /*
+   * OPEN NEW ACTIVITY
+   */
+
+  function openNewActivity() {
+    if (isOpeningNewActivity.current) {
+      return;
+    }
+
+    isOpeningNewActivity.current = true;
+
+    router.push({
+      pathname: "/activities/new",
+      params: {
+        source: "activities",
+      },
+    });
+  }
+
+  /*
+   * RENDER
+   */
+
   return (
-    <View className="flex-1 bg-[#080A10]">
+    <View style={styles.screen}>
+      {/* COSMIC BACKGROUND */}
+
       <ActivitiesBackground />
 
-      {/*
-        Keep style={{ flex: 1 }} here.
-        SafeAreaView is from react-native-safe-area-context and
-        NativeWind v5 className did not apply flex correctly to it.
-      */}
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        {/* SCROLLABLE TIMELINE */}
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+        {/* ACTIVITY TIMELINE */}
 
         <FlatList
           ref={listRef}
-          style={{ flex: 1 }}
+          style={styles.list}
           data={activities}
           ListHeaderComponent={
             <ActivitiesHeader
               growingPercent={growingPercent}
+              restoringPercent={restoringPercent}
               leaksPercent={leaksPercent}
               searchQuery={searchQuery}
               filter={filter}
@@ -118,9 +230,7 @@ export function Activities() {
           viewabilityConfig={VIEWABILITY_CONFIG}
           onScrollToIndexFailed={handleScrollToIndexFailed}
           onMomentumScrollEnd={handleMomentumScrollEnd}
-          contentContainerStyle={{
-            paddingBottom: 170,
-          }}
+          contentContainerStyle={styles.listContent}
           renderItem={renderActivity}
           ListEmptyComponent={!errorMessage ? <EmptyField /> : null}
           onEndReached={() => {
@@ -131,136 +241,176 @@ export function Activities() {
           onEndReachedThreshold={0.5}
         />
 
-        {/* CREATE BUTTON */}
-
-        {/* CREATE BUTTON */}
+        {/* FLOATING CREATE BUTTON */}
 
         <Pressable
-          onPress={() => {
-            if (isOpeningNewActivity.current) {
-              return;
-            }
-
-            isOpeningNewActivity.current = true;
-
-            router.push({
-              pathname: "/activities/new",
-              params: { source: "activities" },
-            });
-          }}
+          onPress={openNewActivity}
           accessibilityRole="button"
           accessibilityLabel="Add activity"
-          style={({ pressed }) => ({
-            position: "absolute",
-            bottom: 92,
-            right: 20,
-            width: 52,
-            height: 52,
-            alignItems: "center",
-            justifyContent: "center",
-            transform: [{ scale: pressed ? 0.94 : 1 }],
-            shadowColor: "#D6AD65",
-            shadowOpacity: pressed ? 0.4 : 0.2,
-            shadowRadius: pressed ? 16 : 10,
-            shadowOffset: {
-              width: 0,
-              height: 4,
+          style={({ pressed }) => [
+            styles.floatingButton,
+            {
+              transform: [
+                {
+                  scale: pressed ? 0.94 : 1,
+                },
+              ],
+              shadowOpacity: pressed ? 0.4 : 0.2,
+              shadowRadius: pressed ? 16 : 10,
             },
-            elevation: 8,
-            zIndex: 10,
-          })}
+          ]}
         >
-          {/* ANGULAR BACKGROUND */}
-
           <Svg
-            width={52}
-            height={52}
+            width={FLOATING_BUTTON_SIZE}
+            height={FLOATING_BUTTON_SIZE}
             viewBox="0 0 52 52"
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-            }}
+            style={StyleSheet.absoluteFill}
             pointerEvents="none"
           >
             <Path
-              d="M 12 0 L 52 0 L 52 40 L 40 52 L 0 52 L 0 12 Z"
-              fill="#D6AD65"
-              stroke="#F3D49B"
+              d="
+                M 12 0
+                L 52 0
+                L 52 40
+                L 40 52
+                L 0 52
+                L 0 12
+                Z
+              "
+              fill={COLORS.gold}
+              stroke={COLORS.lightGold}
               strokeWidth={1}
             />
 
-            {/* TOP HIGHLIGHT */}
-
-            <Path d="M 12 0 L 31 0" stroke="#FFF0C8" strokeWidth={1.5} />
+            <Path
+              d="M 12 0 L 31 0"
+              stroke={COLORS.lightGold}
+              strokeWidth={1.5}
+            />
           </Svg>
 
-          <Ionicons name="add" size={27} color="#080A10" />
+          <Ionicons name="add" size={27} color={COLORS.background} />
         </Pressable>
       </SafeAreaView>
 
-      {/* INCOMING PARTICLE */}
+      {/* INCOMING ACTIVITY PARTICLE */}
 
-      {arrival ? (
+      {arrival && arrivalTheme && (
         <Animated.View
           pointerEvents="none"
-          style={[
-            {
-              position: "absolute",
-              top: 80,
-              left: "50%",
-              width: 34,
-              height: 34,
-              marginLeft: -17,
-              borderRadius: 17,
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 999,
-            },
-            incomingParticleStyle,
-          ]}
+          style={[styles.arrivalContainer, incomingParticleStyle]}
         >
           <View
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 17,
-              alignItems: "center",
-              justifyContent: "center",
+            style={[
+              styles.arrivalParticle,
+              {
+                backgroundColor: arrivalTheme.color,
 
-              backgroundColor:
-                arrival.classification === ActivityClassification.Serves
-                  ? "#8274E8"
-                  : "#D88455",
-
-              shadowColor:
-                arrival.classification === ActivityClassification.Serves
-                  ? "#8274E8"
-                  : "#D88455",
-
-              shadowOpacity: 1,
-              shadowRadius: 18,
-              shadowOffset: {
-                width: 0,
-                height: 0,
+                shadowColor: arrivalTheme.color,
               },
-            }}
+            ]}
           >
             <View
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: 5,
-
-                backgroundColor:
-                  arrival.classification === ActivityClassification.Serves
-                    ? "#E5DFFF"
-                    : "#FFE1CC",
-              }}
+              style={[
+                styles.arrivalCore,
+                {
+                  backgroundColor: arrivalTheme.coreLight,
+                },
+              ]}
             />
           </View>
         </Animated.View>
-      ) : null}
+      )}
     </View>
   );
 }
+
+/*
+ * STYLES
+ */
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+
+  safeArea: {
+    flex: 1,
+  },
+
+  list: {
+    flex: 1,
+  },
+
+  listContent: {
+    paddingBottom: 170,
+  },
+
+  activityContainer: {
+    paddingHorizontal: 20,
+  },
+
+  /*
+   * FLOATING CREATE BUTTON
+   */
+
+  floatingButton: {
+    position: "absolute",
+    bottom: 92,
+    right: 20,
+    width: FLOATING_BUTTON_SIZE,
+    height: FLOATING_BUTTON_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+
+    shadowColor: COLORS.gold,
+
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+
+    elevation: 8,
+    zIndex: 10,
+  },
+
+  /*
+   * ARRIVAL ANIMATION
+   */
+
+  arrivalContainer: {
+    position: "absolute",
+    top: 80,
+    left: "50%",
+    width: 34,
+    height: 34,
+    marginLeft: -17,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 999,
+  },
+
+  arrivalParticle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+
+    shadowOpacity: 1,
+    shadowRadius: 18,
+
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+  },
+
+  arrivalCore: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+});

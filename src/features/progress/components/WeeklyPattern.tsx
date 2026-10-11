@@ -1,4 +1,8 @@
-import { Text, View, StyleSheet } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+import { CLASSIFICATION_THEME } from "@/theme/classification";
+import { COLORS } from "@/theme/colors";
+import { ActivityClassification } from "@/types/activity";
 
 import { DailyProgressStat } from "../hooks/useProgress";
 
@@ -6,19 +10,13 @@ type WeeklyPatternProps = {
   days: DailyProgressStat[];
 };
 
-const COLORS = {
-  surface: "#11141D",
-  border: "#252936",
-  track: "#20242F",
-  growing: "#8274E8",
-  leaks: "#D88455",
-  gold: "#D6AD65",
-  text: "#F5F0E8",
-  muted: "#9295A3",
-  subtle: "#686C7A",
-};
-
 const MAX_BAR_HEIGHT = 118;
+
+const growingTheme = CLASSIFICATION_THEME[ActivityClassification.Serves];
+
+const restoringTheme = CLASSIFICATION_THEME[ActivityClassification.Restores];
+
+const leakTheme = CLASSIFICATION_THEME[ActivityClassification.DoesNotServe];
 
 function isSameDay(first: Date, second: Date) {
   return (
@@ -31,10 +29,7 @@ function isSameDay(first: Date, second: Date) {
 export function WeeklyPattern({ days }: WeeklyPatternProps) {
   const today = new Date();
 
-  const maxMinutes = Math.max(
-    ...days.map((day) => day.totalMinutes),
-    1,
-  );
+  const maxMinutes = Math.max(...days.map((day) => day.totalMinutes), 1);
 
   return (
     <View style={styles.container}>
@@ -44,9 +39,7 @@ export function WeeklyPattern({ days }: WeeklyPatternProps) {
         <View style={styles.headerRow}>
           <View style={styles.goldDot} />
 
-          <Text style={styles.sectionTitle}>
-            7-DAY PATTERN
-          </Text>
+          <Text style={styles.sectionTitle}>7-DAY PATTERN</Text>
         </View>
 
         <Text style={styles.sectionDescription}>
@@ -63,59 +56,76 @@ export function WeeklyPattern({ days }: WeeklyPatternProps) {
           {days.map((day) => {
             const totalHeight =
               day.totalMinutes > 0
-                ? Math.max(
-                    8,
-                    (day.totalMinutes / maxMinutes) *
-                      MAX_BAR_HEIGHT,
-                  )
+                ? Math.max(8, (day.totalMinutes / maxMinutes) * MAX_BAR_HEIGHT)
                 : 4;
 
+            // CLASSIFICATION DURATIONS
+
+            const growingMinutes = day.growingMinutes;
+            const restoringMinutes = day.restoringMinutes;
+            const leakMinutes = day.leakMinutes;
+
+            // CLASSIFICATION RATIOS
+
             const growingRatio =
-              day.totalMinutes > 0
-                ? day.growingMinutes / day.totalMinutes
-                : 0;
+              day.totalMinutes > 0 ? growingMinutes / day.totalMinutes : 0;
+
+            const restoringRatio =
+              day.totalMinutes > 0 ? restoringMinutes / day.totalMinutes : 0;
+
+            const leakRatio =
+              day.totalMinutes > 0 ? leakMinutes / day.totalMinutes : 0;
+
+            // BAR SEGMENTS
 
             const growingHeight = totalHeight * growingRatio;
-            const leakHeight = totalHeight - growingHeight;
+
+            const restoringHeight = totalHeight * restoringRatio;
+
+            const leakHeight = totalHeight * leakRatio;
 
             const isToday = isSameDay(day.date, today);
 
-            const dayLabel = day.date.toLocaleDateString(
-              "en-US",
-              {
-                weekday: "short",
-              },
-            );
+            const dayLabel = day.date.toLocaleDateString("en-US", {
+              weekday: "short",
+            });
 
             return (
-              <View
-                key={day.date.toISOString()}
-                style={styles.dayColumn}
-              >
+              <View key={day.date.toISOString()} style={styles.dayColumn}>
                 {/* BAR */}
 
                 <View style={styles.barTrack}>
                   {day.totalMinutes > 0 ? (
-                    <View
-                      style={[
-                        styles.barStack,
-                        { height: totalHeight },
-                      ]}
-                    >
+                    <View style={[styles.barStack, { height: totalHeight }]}>
+                      {/* LIFE LEAKS */}
+
                       {leakHeight > 0 && (
                         <View
                           style={{
                             height: leakHeight,
-                            backgroundColor: COLORS.leaks,
+                            backgroundColor: leakTheme.color,
                           }}
                         />
                       )}
+
+                      {/* RESTORING */}
+
+                      {restoringHeight > 0 && (
+                        <View
+                          style={{
+                            height: restoringHeight,
+                            backgroundColor: restoringTheme.color,
+                          }}
+                        />
+                      )}
+
+                      {/* GROWING */}
 
                       {growingHeight > 0 && (
                         <View
                           style={{
                             height: growingHeight,
-                            backgroundColor: COLORS.growing,
+                            backgroundColor: growingTheme.color,
                           }}
                         />
                       )}
@@ -131,9 +141,7 @@ export function WeeklyPattern({ days }: WeeklyPatternProps) {
                   style={[
                     styles.dayLabel,
                     {
-                      color: isToday
-                        ? COLORS.gold
-                        : COLORS.muted,
+                      color: isToday ? COLORS.gold : COLORS.muted,
                     },
                   ]}
                 >
@@ -146,9 +154,7 @@ export function WeeklyPattern({ days }: WeeklyPatternProps) {
                   style={[
                     styles.todayIndicator,
                     {
-                      backgroundColor: isToday
-                        ? COLORS.gold
-                        : "transparent",
+                      backgroundColor: isToday ? COLORS.gold : "transparent",
                     },
                   ]}
                 />
@@ -162,30 +168,49 @@ export function WeeklyPattern({ days }: WeeklyPatternProps) {
         <View style={styles.divider} />
 
         <View style={styles.legend}>
+          {/* GROWING */}
+
           <View style={styles.legendItem}>
             <View
               style={[
                 styles.legendDot,
-                { backgroundColor: COLORS.growing },
+                {
+                  backgroundColor: growingTheme.color,
+                },
               ]}
             />
 
-            <Text style={styles.legendText}>
-              Growing
-            </Text>
+            <Text style={styles.legendText}>Growing</Text>
           </View>
 
+          {/* RESTORING */}
+
           <View style={styles.legendItem}>
             <View
               style={[
                 styles.legendDot,
-                { backgroundColor: COLORS.leaks },
+                {
+                  backgroundColor: restoringTheme.color,
+                },
               ]}
             />
 
-            <Text style={styles.legendText}>
-              Life Leaks
-            </Text>
+            <Text style={styles.legendText}>Restoring</Text>
+          </View>
+
+          {/* LIFE LEAKS */}
+
+          <View style={styles.legendItem}>
+            <View
+              style={[
+                styles.legendDot,
+                {
+                  backgroundColor: leakTheme.color,
+                },
+              ]}
+            />
+
+            <Text style={styles.legendText}>Life Leaks</Text>
           </View>
         </View>
       </View>
@@ -197,6 +222,8 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 32,
   },
+
+  // HEADER
 
   sectionHeader: {
     marginBottom: 15,
@@ -226,6 +253,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
   },
+
+  // CHART
 
   chartContainer: {
     backgroundColor: COLORS.surface,
@@ -262,7 +291,7 @@ const styles = StyleSheet.create({
   barTrack: {
     width: 18,
     height: MAX_BAR_HEIGHT,
-    backgroundColor: COLORS.track,
+    backgroundColor: COLORS.border,
     justifyContent: "flex-end",
     overflow: "hidden",
   },
@@ -275,7 +304,7 @@ const styles = StyleSheet.create({
 
   emptyBar: {
     height: 4,
-    backgroundColor: "#343845",
+    backgroundColor: COLORS.subtle,
     marginTop: "auto",
   },
 
@@ -291,6 +320,8 @@ const styles = StyleSheet.create({
     height: 3,
   },
 
+  // LEGEND
+
   divider: {
     height: 1,
     backgroundColor: COLORS.border,
@@ -301,14 +332,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    flexWrap: "wrap",
     marginTop: 17,
-    gap: 24,
+    columnGap: 18,
+    rowGap: 10,
   },
 
   legendItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
 
   legendDot: {

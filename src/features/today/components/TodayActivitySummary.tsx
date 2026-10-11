@@ -1,10 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { StyleSheet, Text, View, Pressable } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
+import { CLASSIFICATION_THEME } from "@/theme/classification";
+import { COLORS } from "@/theme/colors";
 
-import { ActivityStatistics } from "@/types/activity";
+import { ActivityClassification, ActivityStatistics } from "@/types/activity";
+
 import { formatDuration } from "@/utils/formatDuration";
 
 type TodayActivitySummaryProps = {
@@ -18,14 +21,6 @@ type EnergyCardProps = {
   percentage: number;
   accent: string;
   icon: keyof typeof Ionicons.glyphMap;
-};
-
-const COLORS = {
-  gold: "#D6AD65",
-  growing: "#8274E8",
-  leaks: "#D88455",
-  text: "#F5F0E7",
-  muted: "#9295A5",
 };
 
 function EnergyCard({
@@ -46,6 +41,8 @@ function EnergyCard({
       style={styles.card}
       contentStyle={styles.cardContent}
     >
+      {/* CARD HEADER */}
+
       <View style={styles.cardRow}>
         <View
           style={[
@@ -59,6 +56,8 @@ function EnergyCard({
           <Ionicons name={icon} size={20} color={accent} />
         </View>
 
+        {/* ACTIVITY INFO */}
+
         <View style={styles.cardInfo}>
           <Text style={styles.cardTitle}>{title}</Text>
 
@@ -67,21 +66,25 @@ function EnergyCard({
           </Text>
         </View>
 
+        {/* DURATION AND PERCENTAGE */}
+
         <View style={styles.cardValues}>
           <Text style={styles.duration}>{formatDuration(duration)}</Text>
 
           <Text style={[styles.percentage, { color: accent }]}>
-            {safePercentage}%
+            {Math.round(safePercentage)}%
           </Text>
         </View>
 
         <Ionicons
           name="chevron-forward"
           size={17}
-          color="#77716B"
+          color={COLORS.subtle}
           style={styles.chevron}
         />
       </View>
+
+      {/* ENERGY BAR */}
 
       <View style={styles.energyTrack}>
         <View
@@ -101,18 +104,33 @@ function EnergyCard({
 export function TodayActivitySummary({
   statistics,
 }: TodayActivitySummaryProps) {
+  // CENTRALIZED CLASSIFICATION THEMES
+
+  const growingTheme = CLASSIFICATION_THEME[ActivityClassification.Serves];
+
+  const restoringTheme = CLASSIFICATION_THEME[ActivityClassification.Restores];
+
+  const leakTheme = CLASSIFICATION_THEME[ActivityClassification.DoesNotServe];
+
+  // STATISTICS
+
   const growingPercent = statistics.servesPercentage;
 
-  const leakPercent =
-    statistics.totalDurationMinutes > 0 ? 100 - growingPercent : 0;
+  const restoringPercent = statistics.restoresPercentage;
+
+  const leakPercent = statistics.doesNotServePercentage;
 
   return (
     <View style={styles.container}>
+      {/* HEADER */}
+
       <View style={styles.header}>
         <Text style={styles.sectionTitle}>TODAY'S ACTIVITIES</Text>
 
         <Pressable
           onPress={() => router.push("/activities")}
+          accessibilityRole="button"
+          accessibilityLabel="View all activities"
           hitSlop={10}
           style={styles.viewAll}
         >
@@ -122,21 +140,36 @@ export function TodayActivitySummary({
         </Pressable>
       </View>
 
+      {/* GROWING */}
+
       <EnergyCard
-        title="Growing"
+        title={growingTheme.label}
         count={statistics.servesCount}
         duration={statistics.servesDurationMinutes}
         percentage={growingPercent}
-        accent={COLORS.growing}
+        accent={growingTheme.color}
         icon="leaf-outline"
       />
 
+      {/* RESTORING */}
+
       <EnergyCard
-        title="Life Leaks"
+        title={restoringTheme.label}
+        count={statistics.restoresCount}
+        duration={statistics.restoresDurationMinutes}
+        percentage={restoringPercent}
+        accent={restoringTheme.color}
+        icon="water-outline"
+      />
+
+      {/* LIFE LEAKS */}
+
+      <EnergyCard
+        title={leakTheme.label}
         count={statistics.doesNotServeCount}
         duration={statistics.doesNotServeDurationMinutes}
         percentage={leakPercent}
-        accent={COLORS.leaks}
+        accent={leakTheme.color}
         icon="flame-outline"
       />
     </View>
@@ -147,6 +180,8 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 24,
   },
+
+  // HEADER
 
   header: {
     flexDirection: "row",
@@ -171,8 +206,10 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#F3D49B",
+    color: COLORS.lightGold,
   },
+
+  // CARDS
 
   card: {
     marginBottom: 11,
@@ -189,6 +226,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
+  // ICON
+
   iconContainer: {
     width: 42,
     height: 42,
@@ -197,6 +236,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
+  // ACTIVITY INFO
 
   cardInfo: {
     flex: 1,
@@ -214,6 +255,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.muted,
   },
+
+  // VALUES
 
   cardValues: {
     alignItems: "flex-end",
@@ -234,6 +277,8 @@ const styles = StyleSheet.create({
   chevron: {
     marginLeft: 8,
   },
+
+  // ENERGY BAR
 
   energyTrack: {
     height: 3,

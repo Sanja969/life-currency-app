@@ -1,8 +1,13 @@
 import { z } from "zod";
-import { ActivityCategory, ActivityClassification } from "../types/activity";
+
+import {
+    ActivityCategory,
+    ActivityClassification,
+} from "@/types/activity";
 
 export const activitySchema = z.object({
-    title: z.string()
+    title: z
+        .string()
         .trim()
         .min(1, "Title is required"),
 
@@ -10,7 +15,9 @@ export const activitySchema = z.object({
 
     durationMinutes: z.coerce
         .number()
-        .positive("Duration must be greater than zero"),
+        .int("Duration must be a whole number")
+        .positive("Duration must be greater than zero")
+        .safe("Duration is too large"),
 
     classification: z.enum(ActivityClassification, {
         error: "Please select Growing, Restoring, or Life Leaks",
@@ -26,4 +33,5 @@ export const activitySchema = z.object({
 });
 
 export type ActivityFormInput = z.input<typeof activitySchema>;
+
 export type ActivityFormOutput = z.output<typeof activitySchema>;

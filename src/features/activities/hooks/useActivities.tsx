@@ -7,17 +7,22 @@ import {
 } from "@/lib/activityArrival";
 
 import { activityService } from "@/services/ActivityService";
+
 import { Activity, ActivityClassification } from "@/types/activity";
+
+/*
+ * TYPES
+ */
 
 export type ActivityFilter = "all" | ActivityClassification;
 
-const PAGE_SIZE = 50;
-const SEARCH_DEBOUNCE_MS = 300;
-
 type ActivityCounts = {
   growingCount: number;
+  restoringCount: number;
   leaksCount: number;
+
   growingMinutes: number;
+  restoringMinutes: number;
   leaksMinutes: number;
 };
 
@@ -26,33 +31,68 @@ type ActivityQuery = {
   filter: ActivityFilter;
 };
 
+/*
+ * CONSTANTS
+ */
+
+const PAGE_SIZE = 50;
+const SEARCH_DEBOUNCE_MS = 300;
+
 const EMPTY_COUNTS: ActivityCounts = {
   growingCount: 0,
+  restoringCount: 0,
   leaksCount: 0,
+
   growingMinutes: 0,
+  restoringMinutes: 0,
   leaksMinutes: 0,
 };
 
+/*
+ * HOOK
+ */
+
 export function useActivities() {
+  /*
+   * ACTIVITIES STATE
+   */
+
   const [activities, setActivities] = useState<Activity[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<ActivityFilter>("all");
 
+  /*
+   * GLOBAL STATISTICS
+   */
+
   const [counts, setCounts] = useState<ActivityCounts>(EMPTY_COUNTS);
+
+  /*
+   * ARRIVAL ANIMATION
+   */
 
   const [pendingArrival, setPendingArrival] = useState<ActivityArrival | null>(
     null,
   );
 
+  /*
+   * LOADING STATE
+   */
+
   const [isLoading, setIsLoading] = useState(true);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
+
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const [hasMore, setHasMore] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // SCREEN / REQUEST REFS
+  /*
+   * SCREEN / REQUEST REFS
+   */
 
   const hasLoadedRef = useRef(false);
   const isFocusedRef = useRef(false);
@@ -75,7 +115,9 @@ export function useActivities() {
 
   const arrivalRef = useRef<ActivityArrival | null>(null);
 
-  // CURRENT SEARCH / FILTER VALUES
+  /*
+   * CURRENT SEARCH / FILTER VALUES
+   */
 
   const searchQueryRef = useRef(searchQuery);
   const filterRef = useRef(filter);
@@ -83,7 +125,9 @@ export function useActivities() {
   searchQueryRef.current = searchQuery;
   filterRef.current = filter;
 
-  // SEARCH DEBOUNCE
+  /*
+   * SEARCH DEBOUNCE
+   */
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -94,8 +138,12 @@ export function useActivities() {
     }
   }, []);
 
-  // GLOBAL TIME DISTRIBUTION
-  // Runs on screen focus and manual reload, not on search/filter changes.
+  /*
+   * GLOBAL TIME DISTRIBUTION
+   *
+   * Global statistics are independent
+   * of the active search and filter.
+   */
 
   const loadGlobalCounts = useCallback(async () => {
     const version = ++countsRequestVersionRef.current;
@@ -123,11 +171,19 @@ export function useActivities() {
     }
   }, []);
 
-  // LOAD FIRST PAGE + FILTERED COUNT
+  /*
+   * LOAD FIRST PAGE
+   *
+   * Includes:
+   * - Growing
+   * - Restoring
+   * - Life Leaks
+   */
 
   const loadActivities = useCallback(
     async (query: ActivityQuery, arrival: ActivityArrival | null = null) => {
       const version = ++requestVersionRef.current;
+
       const initial = !hasLoadedRef.current;
 
       loadingPageRef.current = true;
@@ -148,8 +204,11 @@ export function useActivities() {
 
         let pageSize = PAGE_SIZE;
 
-        // Include newly created activity even if it is older
-        // than the first page of the timeline.
+        /*
+         * Include newly created activity
+         * even if it is older than the
+         * first page of the timeline.
+         */
 
         if (arrival) {
           const position = await activityService.getActivityPosition(
@@ -162,6 +221,11 @@ export function useActivities() {
 
           pageSize = Math.max(PAGE_SIZE, position + 1);
         }
+
+        /*
+         * Load page and filtered counts
+         * in parallel.
+         */
 
         const [page, filteredCounts] = await Promise.all([
           activityService.getActivitiesPage(
@@ -178,14 +242,32 @@ export function useActivities() {
           return;
         }
 
+        /*
+         * UPDATE ACTIVITIES
+         */
+
         activitiesRef.current = page;
         setActivities(page);
 
+        /*
+         * TOTAL FILTERED ACTIVITIES
+         *
+         * All three classifications
+         * must be included.
+         */
+
         const totalFiltered =
-          filteredCounts.growingCount + filteredCounts.leaksCount;
+          filteredCounts.growingCount +
+          filteredCounts.restoringCount +
+          filteredCounts.leaksCount;
 
         filteredCountRef.current = totalFiltered;
+
         activeQueryRef.current = query;
+
+        /*
+         * PAGINATION
+         */
 
         const more = page.length < totalFiltered;
 
@@ -202,8 +284,9 @@ export function useActivities() {
           error instanceof Error ? error.message : "Unable to load activities.",
         );
       } finally {
-        if (version === requestVersionRef.current) {
+        if (version === requestVersionRef.current && isFocusedRef.current) {
           loadingPageRef.current = false;
+
           setIsLoading(false);
           setIsRefreshing(false);
         }
@@ -212,7 +295,9 @@ export function useActivities() {
     [],
   );
 
-  // LOAD NEXT PAGE
+  /*
+   * LOAD NEXT PAGE
+   */
 
   const loadMore = useCallback(async () => {
     if (
@@ -242,12 +327,20 @@ export function useActivities() {
         return;
       }
 
+      /*
+       * APPEND NEW PAGE
+       */
+
       const updated = [...activitiesRef.current, ...page];
 
       activitiesRef.current = updated;
       setActivities(updated);
 
-      const more = updated.length < filteredCountRef.current;
+      /*
+       * CHECK IF MORE ACTIVITIES EXIST
+       */
+
+      const more = page.length > 0 && updated.length < filteredCountRef.current;
 
       hasMoreRef.current = more;
       setHasMore(more);
@@ -262,21 +355,25 @@ export function useActivities() {
           : "Unable to load more activities.",
       );
     } finally {
-      if (version === requestVersionRef.current) {
+      if (version === requestVersionRef.current && isFocusedRef.current) {
         loadingMoreRef.current = false;
         setIsLoadingMore(false);
       }
     }
   }, []);
 
-  // COMPLETE ARRIVAL ANIMATION
+  /*
+   * COMPLETE ARRIVAL ANIMATION
+   */
 
   const completeArrival = useCallback(() => {
     arrivalRef.current = null;
     setPendingArrival(null);
   }, []);
 
-  // MANUAL RELOAD
+  /*
+   * MANUAL RELOAD
+   */
 
   const reload = useCallback(async () => {
     clearSearchTimer();
@@ -292,8 +389,15 @@ export function useActivities() {
     ]);
   }, [clearSearchTimer, loadActivities, loadGlobalCounts]);
 
-  // SCREEN FOCUS
-  // Reloads data after creating, editing or deleting an activity.
+  /*
+   * SCREEN FOCUS
+   *
+   * Reload activities after:
+   * - creating an activity
+   * - editing an activity
+   * - deleting an activity
+   * - returning to this screen
+   */
 
   useFocusEffect(
     useCallback(() => {
@@ -301,10 +405,22 @@ export function useActivities() {
 
       clearSearchTimer();
 
+      /*
+       * Check whether a newly created
+       * activity should animate into
+       * the timeline.
+       */
+
       const arrival = consumePendingActivityArrival();
 
       arrivalRef.current = arrival;
       setPendingArrival(arrival);
+
+      /*
+       * Reset filters for a newly
+       * created activity so it remains
+       * visible in the timeline.
+       */
 
       const query: ActivityQuery = arrival
         ? {
@@ -324,8 +440,16 @@ export function useActivities() {
         setFilter("all");
       }
 
+      /*
+       * REFRESH DATA
+       */
+
       void loadActivities(query, arrival);
       void loadGlobalCounts();
+
+      /*
+       * CLEANUP
+       */
 
       return () => {
         isFocusedRef.current = false;
@@ -343,9 +467,15 @@ export function useActivities() {
     }, [clearSearchTimer, loadActivities, loadGlobalCounts]),
   );
 
-  // SEARCH + FILTER CHANGES
-  // Filter changes load immediately.
-  // Search changes wait 300 ms.
+  /*
+   * SEARCH AND FILTER CHANGES
+   *
+   * Filter changes:
+   * - load immediately
+   *
+   * Search changes:
+   * - wait 300 ms
+   */
 
   const previousInputsRef = useRef<ActivityQuery>({
     searchQuery: "",
@@ -356,6 +486,7 @@ export function useActivities() {
     const previous = previousInputsRef.current;
 
     const searchChanged = previous.searchQuery !== searchQuery;
+
     const filterChanged = previous.filter !== filter;
 
     previousInputsRef.current = {
@@ -382,10 +513,18 @@ export function useActivities() {
       filter,
     };
 
+    /*
+     * FILTER CHANGED
+     */
+
     if (filterChanged) {
       void loadActivities(query);
       return;
     }
+
+    /*
+     * SEARCH CHANGED
+     */
 
     searchTimerRef.current = setTimeout(() => {
       searchTimerRef.current = null;
@@ -400,19 +539,29 @@ export function useActivities() {
     return clearSearchTimer;
   }, [searchQuery, filter, clearSearchTimer, loadActivities]);
 
+  /*
+   * PUBLIC API
+   */
+
   return {
     activities,
     counts,
+
     pendingArrival,
+
     searchQuery,
     filter,
+
     isLoading,
     isRefreshing,
     isLoadingMore,
     hasMore,
+
     errorMessage,
+
     setSearchQuery,
     setFilter,
+
     reload,
     loadMore,
     completeArrival,

@@ -1,5 +1,5 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Alert,
@@ -14,11 +14,12 @@ import {
 } from "react-native";
 
 import { AppButton } from "@/components/ui/AppButton";
-
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
 
+import { COLORS } from "@/theme/colors";
+
 import { ActivityCategory } from "@/types/activity";
-import { WeeklyIntentionProgress } from "@/types/weeklyIntention";
+import type { WeeklyIntentionProgress } from "@/types/weeklyIntention";
 
 type Props = {
   visible: boolean;
@@ -27,17 +28,6 @@ type Props = {
   isSaving: boolean;
   onClose: () => void;
   onSave: (category: ActivityCategory, targetMinutes: number) => Promise<void>;
-};
-
-const COLORS = {
-  background: "#080A10",
-  surface: "#11141D",
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  text: "#F5F0E8",
-  muted: "#9295A3",
-  subtle: "#686C7A",
-  border: "#252936",
 };
 
 function formatCategory(category: ActivityCategory): string {
@@ -62,6 +52,10 @@ export function AddIntentionModal({
 
   const isEditing = Boolean(intention);
 
+  /*
+   * INITIALIZE FORM
+   */
+
   useEffect(() => {
     if (!visible) return;
 
@@ -72,10 +66,20 @@ export function AddIntentionModal({
     setMinutes(intention ? String(intention.targetMinutes % 60) : "");
   }, [visible, intention]);
 
+  /*
+   * AVAILABLE CATEGORIES
+   *
+   * Prevent duplicate weekly intentions.
+   */
+
   const availableCategories = Object.values(ActivityCategory).filter(
     (item) =>
       item === intention?.category || !existingCategories.includes(item),
   );
+
+  /*
+   * SAVE INTENTION
+   */
 
   async function handleSave() {
     if (isSaving) return;
@@ -115,6 +119,7 @@ export function AddIntentionModal({
 
     try {
       await onSave(category, targetMinutes);
+
       onClose();
     } catch (error) {
       console.error("Failed to save intention:", error);
@@ -132,36 +137,70 @@ export function AddIntentionModal({
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={() => {
-        if (!isSaving) onClose();
+        if (!isSaving) {
+          onClose();
+        }
       }}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1 bg-[#080A10]"
+        className="flex-1"
+        style={{
+          backgroundColor: COLORS.background,
+        }}
       >
         {/* HEADER */}
 
-        <View className="flex-row items-center justify-between border-b border-[#252936] px-5 pb-5 pt-7">
-          <View>
-            <Text className="text-[10px] font-bold tracking-[2px] text-[#D6AD65]">
+        <View
+          className="flex-row items-center justify-between px-5 pb-5 pt-7"
+          style={{
+            borderBottomWidth: 1,
+            borderBottomColor: COLORS.border,
+          }}
+        >
+          <View className="flex-1 pr-4">
+            <Text
+              className="text-[10px] font-bold tracking-[2px]"
+              style={{
+                color: COLORS.gold,
+              }}
+            >
               LIFE CURRENCY
             </Text>
 
-            <Text className="mt-3 text-[27px] font-semibold tracking-[-0.5px] text-[#F5F0E8]">
+            <Text
+              className="mt-3 text-[27px] font-semibold tracking-[-0.5px]"
+              style={{
+                color: COLORS.text,
+              }}
+            >
               {isEditing ? "Edit intention" : "New intention"}
             </Text>
 
-            <Text className="mt-2 text-[12px] text-[#9295A3]">
+            <Text
+              className="mt-2 text-[12px]"
+              style={{
+                color: COLORS.muted,
+              }}
+            >
               Invest your time with purpose.
             </Text>
           </View>
+
+          {/* CLOSE */}
 
           <Pressable
             onPress={onClose}
             disabled={isSaving}
             accessibilityRole="button"
             accessibilityLabel="Close intention modal"
-            className="h-10 w-10 items-center justify-center border border-[#383326] bg-[#211D18]"
+            className="h-10 w-10 items-center justify-center"
+            style={({ pressed }) => ({
+              borderWidth: 1,
+              borderColor: COLORS.goldBorder,
+              backgroundColor: COLORS.goldBackground,
+              opacity: isSaving ? 0.5 : pressed ? 0.75 : 1,
+            })}
           >
             <MaterialCommunityIcons
               name="close"
@@ -170,6 +209,8 @@ export function AddIntentionModal({
             />
           </Pressable>
         </View>
+
+        {/* CONTENT */}
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -183,14 +224,29 @@ export function AddIntentionModal({
           {/* LIFE AREA */}
 
           <View className="mb-4 flex-row items-center">
-            <View className="mr-2 h-[6px] w-[6px] bg-[#D6AD65]" />
+            <View
+              className="mr-2 h-[6px] w-[6px]"
+              style={{
+                backgroundColor: COLORS.gold,
+              }}
+            />
 
-            <Text className="text-[10px] font-bold tracking-[1.8px] text-[#9295A3]">
+            <Text
+              className="text-[10px] font-bold tracking-[1.8px]"
+              style={{
+                color: COLORS.muted,
+              }}
+            >
               LIFE AREA
             </Text>
           </View>
 
-          <Text className="mb-5 text-[13px] leading-[21px] text-[#9295A3]">
+          <Text
+            className="mb-5 text-[13px] leading-[21px]"
+            style={{
+              color: COLORS.muted,
+            }}
+          >
             Choose where you want to invest your time.
           </Text>
 
@@ -200,23 +256,34 @@ export function AddIntentionModal({
             {availableCategories.map((item) => {
               const selected = category === item;
 
+              const disabled = isEditing || isSaving;
+
               return (
                 <Pressable
                   key={item}
                   onPress={() => setCategory(item)}
-                  disabled={isEditing || isSaving}
+                  disabled={disabled}
                   accessibilityRole="button"
                   accessibilityState={{
                     selected,
-                    disabled: isEditing || isSaving,
+                    disabled,
                   }}
                   className="mb-2 mr-2 border px-4 py-3"
                   style={({ pressed }) => ({
-                    backgroundColor: selected ? "#24231F" : COLORS.surface,
+                    backgroundColor: selected
+                      ? COLORS.goldBackground
+                      : COLORS.surface,
 
                     borderColor: selected ? COLORS.gold : COLORS.border,
 
-                    opacity: isEditing && !selected ? 0.45 : pressed ? 0.75 : 1,
+                    opacity:
+                      isEditing && !selected
+                        ? 0.45
+                        : disabled
+                          ? 0.7
+                          : pressed
+                            ? 0.75
+                            : 1,
                   })}
                 >
                   <Text
@@ -234,14 +301,29 @@ export function AddIntentionModal({
 
           {/* DIVIDER */}
 
-          <View className="my-7 h-[1px] bg-[#252936]" />
+          <View
+            className="my-7 h-[1px]"
+            style={{
+              backgroundColor: COLORS.border,
+            }}
+          />
 
           {/* WEEKLY TIME INTENTION */}
 
           <View className="mb-5 flex-row items-center">
-            <View className="mr-2 h-[6px] w-[6px] bg-[#D6AD65]" />
+            <View
+              className="mr-2 h-[6px] w-[6px]"
+              style={{
+                backgroundColor: COLORS.gold,
+              }}
+            />
 
-            <Text className="text-[10px] font-bold tracking-[1.8px] text-[#9295A3]">
+            <Text
+              className="text-[10px] font-bold tracking-[1.8px]"
+              style={{
+                color: COLORS.muted,
+              }}
+            >
               WEEKLY TIME INTENTION
             </Text>
           </View>
@@ -252,15 +334,27 @@ export function AddIntentionModal({
               padding: 18,
             }}
           >
-            <Text className="mb-5 text-[13px] leading-[21px] text-[#9295A3]">
+            <Text
+              className="mb-5 text-[13px] leading-[21px]"
+              style={{
+                color: COLORS.muted,
+              }}
+            >
               How much time would you like to invest in this area each week?
             </Text>
 
             {/* HOURS / MINUTES */}
 
             <View className="flex-row gap-3">
+              {/* HOURS */}
+
               <View className="flex-1">
-                <Text className="mb-2 text-[12px] font-medium text-[#9295A3]">
+                <Text
+                  className="mb-2 text-[12px] font-medium"
+                  style={{
+                    color: COLORS.muted,
+                  }}
+                >
                   Hours
                 </Text>
 
@@ -276,8 +370,8 @@ export function AddIntentionModal({
                   style={{
                     height: 58,
                     borderWidth: 1,
-                    borderColor: "#383326",
-                    backgroundColor: "#17150F",
+                    borderColor: COLORS.goldBorder,
+                    backgroundColor: COLORS.goldBackground,
                     paddingHorizontal: 16,
                     color: COLORS.text,
                     fontSize: 20,
@@ -287,8 +381,15 @@ export function AddIntentionModal({
                 />
               </View>
 
+              {/* MINUTES */}
+
               <View className="flex-1">
-                <Text className="mb-2 text-[12px] font-medium text-[#9295A3]">
+                <Text
+                  className="mb-2 text-[12px] font-medium"
+                  style={{
+                    color: COLORS.muted,
+                  }}
+                >
                   Minutes
                 </Text>
 
@@ -304,8 +405,8 @@ export function AddIntentionModal({
                   style={{
                     height: 58,
                     borderWidth: 1,
-                    borderColor: "#383326",
-                    backgroundColor: "#17150F",
+                    borderColor: COLORS.goldBorder,
+                    backgroundColor: COLORS.goldBackground,
                     paddingHorizontal: 16,
                     color: COLORS.text,
                     fontSize: 20,
@@ -325,7 +426,12 @@ export function AddIntentionModal({
                 color={COLORS.gold}
               />
 
-              <Text className="ml-2 flex-1 text-[12px] leading-[19px] text-[#9295A3]">
+              <Text
+                className="ml-2 flex-1 text-[12px] leading-[19px]"
+                style={{
+                  color: COLORS.muted,
+                }}
+              >
                 Progress is calculated automatically from activities marked as
                 Growing.
               </Text>
@@ -351,7 +457,12 @@ export function AddIntentionModal({
 
           {/* FOOTER */}
 
-          <Text className="mt-6 text-center text-[12px] italic leading-[19px] text-[#686C7A]">
+          <Text
+            className="mt-6 text-center text-[12px] italic leading-[19px]"
+            style={{
+              color: COLORS.subtle,
+            }}
+          >
             Small intentions. Meaningful change.
           </Text>
         </ScrollView>

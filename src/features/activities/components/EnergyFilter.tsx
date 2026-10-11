@@ -1,6 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
+import { COLORS } from "@/theme/colors";
+
 type EnergyFilterProps = {
   label: string;
   selected: boolean;
@@ -8,10 +10,7 @@ type EnergyFilterProps = {
   color?: string;
 };
 
-const COLORS = {
-  gold: "#D6AD65",
-  muted: "#9295A5",
-};
+const FILTER_HEIGHT = 38;
 
 export function EnergyFilter({
   label,
@@ -21,14 +20,23 @@ export function EnergyFilter({
 }: EnergyFilterProps) {
   const accent = color ?? COLORS.gold;
 
+  const backgroundColor = selected ? `${accent}14` : COLORS.surface;
+
+  const borderColor = selected ? accent : COLORS.border;
+
+  const dotColor = selected ? accent : color ? `${color}80` : COLORS.subtle;
+
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityLabel={`Filter: ${label}`}
       accessibilityState={{ selected }}
       style={({ pressed }) => [
         styles.container,
-        { opacity: pressed ? 0.75 : 1 },
+        {
+          opacity: pressed ? 0.75 : 1,
+        },
       ]}
     >
       {/* ANGULAR BACKGROUND */}
@@ -42,25 +50,30 @@ export function EnergyFilter({
         pointerEvents="none"
       >
         <Path
-          d="M 10 0 L 100 0 L 100 28 L 90 38 L 0 38 L 0 10 Z"
-          fill={selected ? `${accent}14` : "#11141D"}
-          stroke={selected ? accent : "#303039"}
+          d="
+            M 10 0
+            L 100 0
+            L 100 28
+            L 90 38
+            L 0 38
+            L 0 10
+            Z
+          "
+          fill={backgroundColor}
+          stroke={borderColor}
           strokeWidth={selected ? 1.2 : 0.8}
           vectorEffect="non-scaling-stroke"
-          accessibilityLabel={`Filter: ${label}`}
         />
       </Svg>
+
+      {/* FILTER CONTENT */}
 
       <View style={styles.content}>
         <View
           style={[
             styles.dot,
             {
-              backgroundColor: selected
-                ? accent
-                : color
-                  ? `${color}80`
-                  : "#777987",
+              backgroundColor: dotColor,
             },
           ]}
         />
@@ -84,7 +97,8 @@ export function EnergyFilter({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    height: 38,
+    minWidth: 0,
+    height: FILTER_HEIGHT,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -104,8 +118,10 @@ const styles = StyleSheet.create({
   },
 
   label: {
+    flexShrink: 1,
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.2,
+    textAlign: "center",
   },
 });

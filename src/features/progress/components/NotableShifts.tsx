@@ -2,9 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
 import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
+import { COLORS } from "@/theme/colors";
 import { formatDuration } from "@/utils/formatDuration";
 
-import { ProgressCategoryTrend, ProgressPeriod } from "../hooks/useProgress";
+import type {
+  ProgressCategoryTrend,
+  ProgressPeriod,
+} from "../hooks/useProgress";
 
 type NotableShiftsProps = {
   trends: ProgressCategoryTrend[];
@@ -14,21 +18,9 @@ type NotableShiftsProps = {
 type Shift = {
   key: string;
   categoryLabel: string;
-  type: "positive" | "negative" | "neutral";
-  signal: "growing" | "leak";
+  signal: "growing" | "restoring" | "leak";
   direction: "up" | "down";
   changeMinutes: number;
-};
-
-const COLORS = {
-  surface: "#11141D",
-  border: "#252936",
-  text: "#F5F0E8",
-  muted: "#9295A3",
-  subtle: "#686C7A",
-  gold: "#D6AD65",
-  growing: "#8274E8",
-  leaks: "#D88455",
 };
 
 function buildNotableShifts(trends: ProgressCategoryTrend[]): Shift[] {
@@ -37,29 +29,30 @@ function buildNotableShifts(trends: ProgressCategoryTrend[]): Shift[] {
   for (const trend of trends) {
     const meta = getActivityCategoryMeta(trend.category);
 
-    if (trend.growingMinutesChange !== 0) {
-      const increased = trend.growingMinutesChange > 0;
+    const changes = [
+      {
+        signal: "growing" as const,
+        minutes: trend.growingMinutesChange,
+      },
+      {
+        signal: "restoring" as const,
+        minutes: trend.restoringMinutesChange,
+      },
+      {
+        signal: "leak" as const,
+        minutes: trend.leakMinutesChange,
+      },
+    ];
+
+    for (const change of changes) {
+      if (change.minutes === 0) continue;
 
       candidates.push({
-        key: `${trend.category}-growing`,
+        key: `${trend.category}-${change.signal}`,
         categoryLabel: meta.label,
-        type: increased ? "positive" : "negative",
-        signal: "growing",
-        direction: increased ? "up" : "down",
-        changeMinutes: Math.abs(trend.growingMinutesChange),
-      });
-    }
-
-    if (trend.leakMinutesChange !== 0) {
-      const increased = trend.leakMinutesChange > 0;
-
-      candidates.push({
-        key: `${trend.category}-leak`,
-        categoryLabel: meta.label,
-        type: increased ? "negative" : "positive",
-        signal: "leak",
-        direction: increased ? "up" : "down",
-        changeMinutes: Math.abs(trend.leakMinutesChange),
+        signal: change.signal,
+        direction: change.minutes > 0 ? "up" : "down",
+        changeMinutes: Math.abs(change.minutes),
       });
     }
   }
@@ -70,30 +63,36 @@ function buildNotableShifts(trends: ProgressCategoryTrend[]): Shift[] {
 }
 
 function getShiftContent(shift: Shift) {
-  if (shift.signal === "growing" && shift.direction === "up") {
+  if (shift.signal === "growing") {
     return {
-      eyebrow: "GROWING INCREASED",
-      message: "more Growing time",
+      eyebrow:
+        shift.direction === "up" ? "GROWING INCREASED" : "GROWING DECREASED",
+      message:
+        shift.direction === "up" ? "more Growing time" : "less Growing time",
+      color: shift.direction === "up" ? COLORS.growing : COLORS.leak,
     };
   }
 
-  if (shift.signal === "growing" && shift.direction === "down") {
+  if (shift.signal === "restoring") {
     return {
-      eyebrow: "GROWING DECREASED",
-      message: "less Growing time",
-    };
-  }
-
-  if (shift.signal === "leak" && shift.direction === "down") {
-    return {
-      eyebrow: "LIFE LEAK DECREASED",
-      message: "less Life Leak time",
+      eyebrow:
+        shift.direction === "up"
+          ? "RESTORING INCREASED"
+          : "RESTORING DECREASED",
+      message:
+        shift.direction === "up"
+          ? "more Restoring time"
+          : "less Restoring time",
+      color: COLORS.restoring,
     };
   }
 
   return {
-    eyebrow: "LIFE LEAK INCREASED",
-    message: "more Life Leak time",
+    eyebrow:
+      shift.direction === "up" ? "LIFE LEAK INCREASED" : "LIFE LEAK DECREASED",
+    message:
+      shift.direction === "up" ? "more Life Leak time" : "less Life Leak time",
+    color: shift.direction === "up" ? COLORS.leak : COLORS.growing,
   };
 }
 
@@ -137,9 +136,6 @@ export function NotableShifts({ trends, period }: NotableShiftsProps) {
 function ShiftRow({ shift }: { shift: Shift }) {
   const content = getShiftContent(shift);
 
-  const positive = shift.type === "positive";
-  const accent = positive ? COLORS.growing : COLORS.leaks;
-
   const iconName =
     shift.direction === "up" ? "arrow-up-outline" : "arrow-down-outline";
 
@@ -147,12 +143,19 @@ function ShiftRow({ shift }: { shift: Shift }) {
 
   return (
     <View style={styles.shiftRow}>
-      <View style={[styles.accentLine, { backgroundColor: accent }]} />
+      <View
+        style={[
+          styles.accentLine,
+          {
+            backgroundColor: content.color,
+          },
+        ]}
+      />
 
       <View style={styles.shiftContent}>
         <View style={styles.shiftTopRow}>
           <View style={styles.shiftInfo}>
-            <Text style={[styles.eyebrow, { color: accent }]}>
+            <Text style={[styles.eyebrow, { color: content.color }]}>
               {content.eyebrow}
             </Text>
 
@@ -160,9 +163,9 @@ function ShiftRow({ shift }: { shift: Shift }) {
           </View>
 
           <View style={styles.changeValueRow}>
-            <Ionicons name={iconName} size={16} color={accent} />
+            <Ionicons name={iconName} size={16} color={content.color} />
 
-            <Text style={[styles.changeValue, { color: accent }]}>
+            <Text style={[styles.changeValue, { color: content.color }]}>
               {sign}
               {formatDuration(shift.changeMinutes)}
             </Text>

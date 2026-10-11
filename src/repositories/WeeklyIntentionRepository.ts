@@ -2,62 +2,90 @@ import { getDatabase } from "@/database/database";
 
 import { ActivityCategory } from "@/types/activity";
 
-import {
-  WeeklyIntention,
-  SaveWeeklyIntentionInput,
+import type {
+    WeeklyIntention,
+    SaveWeeklyIntentionInput,
 } from "@/types/weeklyIntention";
 
 type WeeklyIntentionRow = {
-  id: number;
-  category: string;
-  week_start: string;
-  target_minutes: number;
-  created_at: string;
-  updated_at: string;
+    id: number;
+    category: string;
+    week_start: string;
+    target_minutes: number;
+    created_at: string;
+    updated_at: string;
 };
 
+/**
+ * Converts SQLite timestamps to JavaScript Date.
+ *
+ * Supports:
+ * - SQLite CURRENT_TIMESTAMP: YYYY-MM-DD HH:mm:ss
+ * - ISO timestamps with timezone
+ */
+function parseDatabaseDate(value: string): Date {
+    const normalized = value.replace(" ", "T");
+
+    const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(
+        normalized,
+    );
+
+    return new Date(
+        hasTimezone ? normalized : `${normalized}Z`,
+    );
+}
+
 function toWeeklyIntention(
-  row: WeeklyIntentionRow,
+    row: WeeklyIntentionRow,
 ): WeeklyIntention {
-  return {
-    id: row.id,
-    category: row.category as ActivityCategory,
-    weekStart: row.week_start,
-    targetMinutes: row.target_minutes,
-    createdAt: new Date(
-      row.created_at.replace(" ", "T") + "Z",
-    ),
-    updatedAt: new Date(
-      row.updated_at.replace(" ", "T") + "Z",
-    ),
-  };
+    return {
+        id: row.id,
+
+        category: row.category as ActivityCategory,
+
+        weekStart: row.week_start,
+
+        targetMinutes: row.target_minutes,
+
+        createdAt: parseDatabaseDate(row.created_at),
+
+        updatedAt: parseDatabaseDate(row.updated_at),
+    };
 }
 
 export class WeeklyIntentionRepository {
-  async getByWeek(
-    weekStart: string,
-  ): Promise<WeeklyIntention[]> {
-    const database = await getDatabase();
+    /**
+     * Returns all intentions for a specific week.
+     */
+    async getByWeek(
+        weekStart: string,
+    ): Promise<WeeklyIntention[]> {
+        const database = await getDatabase();
 
-    const rows =
-      await database.getAllAsync<WeeklyIntentionRow>(
-        `SELECT *
+        const rows =
+            await database.getAllAsync<WeeklyIntentionRow>(
+                `SELECT *
          FROM weekly_intentions
          WHERE week_start = ?
          ORDER BY id ASC`,
-        [weekStart],
-      );
+                [weekStart],
+            );
 
-    return rows.map(toWeeklyIntention);
-  }
+        return rows.map(toWeeklyIntention);
+    }
 
-  async save(
-    input: SaveWeeklyIntentionInput,
-  ): Promise<void> {
-    const database = await getDatabase();
+    /**
+     * Creates a new intention or updates
+     * an existing intention for the same
+     * category and week.
+     */
+    async save(
+        input: SaveWeeklyIntentionInput,
+    ): Promise<void> {
+        const database = await getDatabase();
 
-    await database.runAsync(
-      `INSERT INTO weekly_intentions (
+        await database.runAsync(
+            `INSERT INTO weekly_intentions (
         category,
         week_start,
         target_minutes
@@ -67,28 +95,32 @@ export class WeeklyIntentionRepository {
       DO UPDATE SET
         target_minutes = excluded.target_minutes,
         updated_at = CURRENT_TIMESTAMP`,
-      [
-        input.category,
-        input.weekStart,
-        input.targetMinutes,
-      ],
-    );
-  }
+            [
+                input.category,
+                input.weekStart,
+                input.targetMinutes,
+            ],
+        );
+    }
 
-  async delete(
-    category: ActivityCategory,
-    weekStart: string,
-  ): Promise<void> {
-    const database = await getDatabase();
+    /**
+     * Deletes an intention for a
+     * specific category and week.
+     */
+    async delete(
+        category: ActivityCategory,
+        weekStart: string,
+    ): Promise<void> {
+        const database = await getDatabase();
 
-    await database.runAsync(
-      `DELETE FROM weekly_intentions
+        await database.runAsync(
+            `DELETE FROM weekly_intentions
        WHERE category = ?
          AND week_start = ?`,
-      [category, weekStart],
-    );
-  }
+            [category, weekStart],
+        );
+    }
 }
 
 export const weeklyIntentionRepository =
-  new WeeklyIntentionRepository();
+    new WeeklyIntentionRepository();

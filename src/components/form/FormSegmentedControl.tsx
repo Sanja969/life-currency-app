@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Control, Controller, FieldPath, FieldValues } from "react-hook-form";
+
 import {
   Pressable,
   StyleSheet,
@@ -7,9 +8,13 @@ import {
   View,
   type LayoutChangeEvent,
 } from "react-native";
+
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path } from "react-native-svg";
+
 import { ActivityClassification } from "@/types/activity";
+import { COLORS } from "@/theme/colors";
+import { CLASSIFICATION_THEME } from "@/theme/classification";
 
 type SegmentItem = {
   label: string;
@@ -23,37 +28,11 @@ type FormSegmentedControlProps<T extends FieldValues> = {
   items: SegmentItem[];
 };
 
-const COLORS = {
-  growing: "#8274E8",
-  restoring: "#58C7B5",
-  leak: "#D88455",
-  text: "#F5F0E7",
-  muted: "#9295A5",
-  surface: "#11141D",
-};
-
-const CLASSIFICATION_META = {
-  [ActivityClassification.Serves]: {
-    accent: COLORS.growing,
-    background: "#1D1934",
-    icon: "sparkles" as const,
-    description: "Builds my life",
-  },
-
-  [ActivityClassification.Restores]: {
-    accent: COLORS.restoring,
-    background: "#142B2A",
-    icon: "leaf-outline" as const,
-    description: "Restores energy",
-  },
-
-  [ActivityClassification.DoesNotServe]: {
-    accent: COLORS.leak,
-    background: "#2B1D18",
-    icon: "pulse-outline" as const,
-    description: "Drains energy",
-  },
-};
+const CLASSIFICATION_ICONS = {
+  [ActivityClassification.Serves]: "sparkles",
+  [ActivityClassification.Restores]: "leaf-outline",
+  [ActivityClassification.DoesNotServe]: "pulse-outline",
+} as const;
 
 const CARD_HEIGHT = 94;
 const CORNER_CUT = 12;
@@ -64,12 +43,32 @@ type SegmentCardProps = {
   onPress: () => void;
 };
 
+function isActivityClassification(
+  value: string,
+): value is ActivityClassification {
+  return Object.values(ActivityClassification).some(
+    (classification) => classification === value,
+  );
+}
+
 function SegmentCard({ item, selected, onPress }: SegmentCardProps) {
   const [width, setWidth] = useState(0);
 
-  const meta = CLASSIFICATION_META[item.value as ActivityClassification];
+  const classification = isActivityClassification(item.value)
+    ? item.value
+    : null;
 
-  const { accent, background, icon, description } = meta;
+  const theme = classification ? CLASSIFICATION_THEME[classification] : null;
+
+  const accent = theme?.color ?? COLORS.gold;
+
+  const background = theme?.background ?? COLORS.goldBackground;
+
+  const description = theme?.description ?? "";
+
+  const icon = classification
+    ? CLASSIFICATION_ICONS[classification]
+    : "ellipse-outline";
 
   function handleLayout(event: LayoutChangeEvent) {
     const nextWidth = event.nativeEvent.layout.width;
@@ -94,7 +93,9 @@ function SegmentCard({ item, selected, onPress }: SegmentCardProps) {
       onPress={onPress}
       onLayout={handleLayout}
       accessibilityRole="radio"
-      accessibilityState={{ checked: selected }}
+      accessibilityState={{
+        checked: selected,
+      }}
       accessibilityLabel={item.label}
       style={({ pressed }) => [
         styles.card,
@@ -103,6 +104,8 @@ function SegmentCard({ item, selected, onPress }: SegmentCardProps) {
         },
       ]}
     >
+      {/* CARD SHAPE */}
+
       {width > 0 && (
         <Svg
           pointerEvents="none"
@@ -113,16 +116,16 @@ function SegmentCard({ item, selected, onPress }: SegmentCardProps) {
           <Path
             d={shapePath}
             fill={selected ? background : COLORS.surface}
-            stroke={selected ? accent : "rgba(214,173,101,0.18)"}
+            stroke={selected ? accent : COLORS.goldBorder}
             strokeWidth={selected ? 1.5 : 1}
           />
 
           {selected && (
             <Path
-              d={`M ${CORNER_CUT} 0 L ${Math.min(
-                width - 4,
-                CORNER_CUT + 34,
-              )} 0`}
+              d={`
+                M ${CORNER_CUT} 0
+                L ${Math.min(width - 4, CORNER_CUT + 34)} 0
+              `}
               stroke={accent}
               strokeWidth={2}
             />
@@ -130,15 +133,18 @@ function SegmentCard({ item, selected, onPress }: SegmentCardProps) {
         </Svg>
       )}
 
+      {/* CARD CONTENT */}
+
       <View style={styles.cardContent}>
+        {/* ICON */}
+
         <View
           style={[
             styles.iconContainer,
             {
-              backgroundColor: selected
-                ? `${accent}20`
-                : "rgba(255,255,255,0.04)",
-              borderColor: selected ? `${accent}65` : "rgba(255,255,255,0.08)",
+              backgroundColor: selected ? `${accent}20` : COLORS.surface,
+
+              borderColor: selected ? `${accent}65` : COLORS.border,
             },
           ]}
         >
@@ -148,6 +154,8 @@ function SegmentCard({ item, selected, onPress }: SegmentCardProps) {
             color={selected ? accent : COLORS.muted}
           />
         </View>
+
+        {/* TEXT */}
 
         <View style={styles.textContainer}>
           <Text
@@ -192,7 +200,11 @@ export function FormSegmentedControl<T extends FieldValues>({
       name={name}
       render={({ field }) => (
         <View style={styles.container}>
+          {/* LABEL */}
+
           {label ? <Text style={styles.label}>{label}</Text> : null}
+
+          {/* CLASSIFICATION CARDS */}
 
           <View style={styles.row} accessibilityRole="radiogroup">
             {items.map((item) => (
@@ -266,13 +278,5 @@ const styles = StyleSheet.create({
     fontSize: 9,
     lineHeight: 12,
     textAlign: "center",
-  },
-
-  selectedIndicator: {
-    position: "absolute",
-    top: -16,
-    right: 0,
-    width: 5,
-    height: 5,
   },
 });

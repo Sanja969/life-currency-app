@@ -1,20 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-import { ProgressPeriod } from "../hooks/useProgress";
+import { COLORS } from "@/theme/colors";
+
+import type { ProgressPeriod } from "../hooks/useProgress";
 
 type ProgressHeaderProps = {
   period: ProgressPeriod;
   onPeriodChange: (period: ProgressPeriod) => void;
-};
-
-const COLORS = {
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  text: "#F5F0E8",
-  muted: "#9295A3",
-  surface: "#11141D",
-  border: "#252936",
 };
 
 export function ProgressHeader({
@@ -25,6 +18,7 @@ export function ProgressHeader({
     <View>
       <View style={styles.eyebrowRow}>
         <View style={styles.goldDot} />
+
         <Text style={styles.eyebrow}>LIFE PATTERNS</Text>
       </View>
 
@@ -61,11 +55,7 @@ type PeriodButtonProps = {
   onPress: () => void;
 };
 
-function PeriodButton({
-  label,
-  selected,
-  onPress,
-}: PeriodButtonProps) {
+function PeriodButton({ label, selected, onPress }: PeriodButtonProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -88,8 +78,8 @@ function PeriodButton({
       >
         <Path
           d="M 10 0 L 160 0 L 160 36 L 150 46 L 0 46 L 0 10 Z"
-          fill={selected ? "#24231F" : COLORS.surface}
-          stroke={selected ? "#80683E" : COLORS.border}
+          fill={selected ? COLORS.goldBackground : COLORS.surface}
+          stroke={selected ? COLORS.goldBorder : COLORS.border}
           strokeWidth={1}
           vectorEffect="non-scaling-stroke"
         />

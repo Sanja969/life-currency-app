@@ -2,26 +2,52 @@ import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
+import { COLORS } from "@/theme/colors";
 import { formatDuration } from "@/utils/formatDuration";
 
-import { ProgressPeriod, ProgressStatistics } from "../hooks/useProgress";
+import type { ProgressPeriod, ProgressStatistics } from "../hooks/useProgress";
 
 type ProgressBalanceProps = {
   statistics: ProgressStatistics;
   period: ProgressPeriod;
 };
 
-const COLORS = {
-  gold: "#D6AD65",
-  text: "#F5F0E8",
-  muted: "#9295A3",
-  growing: "#8274E8",
-  leaks: "#D88455",
-  border: "#252936",
-};
-
 export function ProgressBalance({ statistics, period }: ProgressBalanceProps) {
-  const hasData = statistics.totalMinutes > 0;
+  const {
+    totalMinutes,
+    growingMinutes,
+    restoringMinutes,
+    leakMinutes,
+    growingPercent,
+    restoringPercent,
+    leakPercent,
+  } = statistics;
+
+  const hasData = totalMinutes > 0;
+
+  const segments = [
+    {
+      key: "growing",
+      label: "GROWING",
+      minutes: growingMinutes,
+      percent: growingPercent,
+      color: COLORS.growing,
+    },
+    {
+      key: "restoring",
+      label: "RESTORING",
+      minutes: restoringMinutes,
+      percent: restoringPercent,
+      color: COLORS.restoring,
+    },
+    {
+      key: "leaks",
+      label: "LIFE LEAKS",
+      minutes: leakMinutes,
+      percent: leakPercent,
+      color: COLORS.leak,
+    },
+  ];
 
   return (
     <View style={styles.container}>
@@ -38,9 +64,7 @@ export function ProgressBalance({ statistics, period }: ProgressBalanceProps) {
           <Ionicons name="hourglass-outline" size={19} color={COLORS.gold} />
         </View>
 
-        <Text style={styles.totalTime}>
-          {formatDuration(statistics.totalMinutes)}
-        </Text>
+        <Text style={styles.totalTime}>{formatDuration(totalMinutes)}</Text>
 
         <Text style={styles.periodDescription}>
           {period === "7days"
@@ -53,71 +77,59 @@ export function ProgressBalance({ statistics, period }: ProgressBalanceProps) {
         <Text style={styles.energyHeading}>YOUR ENERGY BALANCE</Text>
 
         <View style={styles.energyRow}>
-          <View style={styles.energyColumn}>
-            <View style={styles.energyLabelRow}>
-              <View
-                style={[styles.energyDot, { backgroundColor: COLORS.growing }]}
-              />
+          {segments.map((segment) => (
+            <View key={segment.key} style={styles.energyColumn}>
+              <View style={styles.energyLabelRow}>
+                <View
+                  style={[
+                    styles.energyDot,
+                    {
+                      backgroundColor: segment.color,
+                    },
+                  ]}
+                />
 
-              <Text style={[styles.energyLabel, { color: COLORS.growing }]}>
-                GROWING
+                <Text
+                  style={[styles.energyLabel, { color: segment.color }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {segment.label}
+                </Text>
+              </View>
+
+              <Text
+                style={styles.energyTime}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {formatDuration(segment.minutes)}
               </Text>
+
+              <Text style={styles.energyPercent}>{segment.percent}%</Text>
             </View>
-
-            <Text style={styles.energyTime}>
-              {formatDuration(statistics.growingMinutes)}
-            </Text>
-
-            <Text style={styles.energyPercent}>
-              {statistics.growingPercent}% of tracked time
-            </Text>
-          </View>
-
-          <View style={styles.energyColumnRight}>
-            <View style={styles.energyLabelRow}>
-              <Text style={[styles.energyLabel, { color: COLORS.leaks }]}>
-                LIFE LEAKS
-              </Text>
-
-              <View
-                style={[styles.energyDot, { backgroundColor: COLORS.leaks }]}
-              />
-            </View>
-
-            <Text style={styles.energyTime}>
-              {formatDuration(statistics.leakMinutes)}
-            </Text>
-
-            <Text style={styles.energyPercent}>
-              {statistics.leakPercent}% of tracked time
-            </Text>
-          </View>
+          ))}
         </View>
 
         <View style={styles.balanceTrack}>
-          {hasData && (
-            <>
+          {hasData &&
+            segments.map((segment) => (
               <View
+                key={segment.key}
                 style={{
-                  width: `${statistics.growingPercent}%`,
+                  flex: segment.minutes,
                   height: "100%",
-                  backgroundColor: COLORS.growing,
+                  backgroundColor: segment.color,
                 }}
               />
-
-              <View
-                style={{
-                  width: `${statistics.leakPercent}%`,
-                  height: "100%",
-                  backgroundColor: COLORS.leaks,
-                }}
-              />
-            </>
-          )}
+            ))}
         </View>
 
         <View style={styles.balanceFooter}>
           <Text style={styles.balanceFooterText}>Growth</Text>
+
+          <Text style={styles.balanceFooterText}>Recovery</Text>
+
           <Text style={styles.balanceFooterText}>Life leaks</Text>
         </View>
       </CosmicPanel>
@@ -175,7 +187,8 @@ const styles = StyleSheet.create({
 
   divider: {
     height: 1,
-    backgroundColor: "rgba(214,173,101,0.12)",
+    backgroundColor: COLORS.goldBorder,
+    opacity: 0.5,
     marginTop: 24,
   },
 
@@ -191,45 +204,41 @@ const styles = StyleSheet.create({
 
   energyRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    gap: 8,
   },
 
   energyColumn: {
     flex: 1,
     minWidth: 0,
-  },
-
-  energyColumnRight: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: "flex-end",
+    alignItems: "center",
   },
 
   energyLabelRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
+    justifyContent: "center",
+    gap: 5,
   },
 
   energyDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
 
   energyLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "700",
-    letterSpacing: 1,
+    letterSpacing: 0.4,
   },
 
   energyTime: {
     color: COLORS.text,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "600",
-    marginTop: 11,
+    marginTop: 12,
+    textAlign: "center",
   },
 
   energyPercent: {
@@ -242,7 +251,7 @@ const styles = StyleSheet.create({
     height: 5,
     flexDirection: "row",
     overflow: "hidden",
-    backgroundColor: "#20212C",
+    backgroundColor: COLORS.border,
     marginTop: 23,
     marginHorizontal: 24,
   },

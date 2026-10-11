@@ -6,26 +6,9 @@ import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { dataBackupService } from "@/services/DataBackupService";
 import { activityService } from "@/services/ActivityService";
-
-const COLORS = {
-  background: "#080A10",
-  surface: "#11141D",
-  border: "#252936",
-
-  gold: "#D6AD65",
-  goldBackground: "#24231F",
-  goldBorder: "#403728",
-
-  text: "#F5F0E8",
-  muted: "#9295A3",
-  subtle: "#686C7A",
-
-  danger: "#D88455",
-  dangerBackground: "#302019",
-  dangerBorder: "#493127",
-};
+import { dataBackupService } from "@/services/DataBackupService";
+import { COLORS } from "@/theme/colors";
 
 type SettingsRowProps = {
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
@@ -120,15 +103,16 @@ function SettingsDivider() {
     <View
       style={{
         height: 1,
-
         marginLeft: 74,
-
         backgroundColor: COLORS.border,
       }}
     />
   );
 }
+
 function SettingsSectionHeader({ title }: { title: string }) {
+  const isDangerZone = title === "DANGER ZONE";
+
   return (
     <View
       style={{
@@ -143,14 +127,13 @@ function SettingsSectionHeader({ title }: { title: string }) {
         style={{
           width: 6,
           height: 6,
-          backgroundColor:
-            title === "DANGER ZONE" ? COLORS.danger : COLORS.gold,
+          backgroundColor: isDangerZone ? COLORS.danger : COLORS.gold,
         }}
       />
 
       <Text
         style={{
-          color: title === "DANGER ZONE" ? COLORS.danger : COLORS.muted,
+          color: isDangerZone ? COLORS.danger : COLORS.muted,
           fontSize: 10,
           fontWeight: "700",
           letterSpacing: 1.8,
@@ -334,7 +317,12 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View className="flex-1 bg-[#080A10]">
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: COLORS.background,
+      }}
+    >
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -446,7 +434,10 @@ export default function SettingsScreen() {
               color={COLORS.gold}
             />
 
-            <Text className="ml-2 flex-1 text-[12px] leading-[19px] text-[#686C7A]">
+            <Text
+              className="ml-2 flex-1 text-[12px] leading-[19px]"
+              style={{ color: COLORS.subtle }}
+            >
               Your activity history is stored on this device. Export a backup
               before deleting the app or changing devices.
             </Text>
@@ -515,11 +506,17 @@ export default function SettingsScreen() {
               </View>
 
               <View className="ml-3.5 flex-1">
-                <Text className="text-[15px] font-semibold text-[#F5F0E8]">
+                <Text
+                  className="text-[15px] font-semibold"
+                  style={{ color: COLORS.text }}
+                >
                   Life Currency
                 </Text>
 
-                <Text className="mt-1 text-[12px] text-[#9295A3]">
+                <Text
+                  className="mt-1 text-[12px]"
+                  style={{ color: COLORS.muted }}
+                >
                   Version {Constants.expoConfig?.version ?? "1.0.0"}
                 </Text>
               </View>
@@ -533,7 +530,10 @@ export default function SettingsScreen() {
                   paddingVertical: 6,
                 }}
               >
-                <Text className="text-[10px] font-semibold text-[#D6AD65]">
+                <Text
+                  className="text-[10px] font-semibold"
+                  style={{ color: COLORS.gold }}
+                >
                   v1
                 </Text>
               </View>
@@ -543,9 +543,17 @@ export default function SettingsScreen() {
           {/* FOOTER */}
 
           <View className="mt-9 items-center">
-            <View className="mb-4 h-px w-10 bg-[#403728]" />
+            <View
+              className="mb-4 h-px w-10"
+              style={{
+                backgroundColor: COLORS.goldBorder,
+              }}
+            />
 
-            <Text className="text-center text-[12px] italic tracking-[0.3px] text-[#9295A3]">
+            <Text
+              className="text-center text-[12px] italic tracking-[0.3px]"
+              style={{ color: COLORS.muted }}
+            >
               Your time is your life currency.
             </Text>
           </View>

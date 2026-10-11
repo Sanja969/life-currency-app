@@ -1,15 +1,13 @@
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
-const COLORS = {
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  text: "#F5F0E7",
-  muted: "#9295A5",
-  surface: "#11141D",
+import { COLORS } from "@/theme/colors";
+
+type EmptyFieldProps = {
+  isFiltered?: boolean;
 };
 
-export function EmptyField() {
+export function EmptyField({ isFiltered = false }: EmptyFieldProps) {
   return (
     <View style={styles.container}>
       {/* EMPTY ENERGY FIELD */}
@@ -19,9 +17,18 @@ export function EmptyField() {
           {/* OUTER ANGULAR FIELD */}
 
           <Path
-            d="M 28 8 L 104 8 L 104 84 L 84 104 L 8 104 L 8 28 Z"
+            d="
+              M 28 8
+              L 104 8
+              L 104 84
+              L 84 104
+              L 8 104
+              L 8 28
+              Z
+            "
             fill={COLORS.surface}
-            stroke="rgba(214,173,101,0.25)"
+            stroke={COLORS.gold}
+            strokeOpacity={0.25}
             strokeWidth={1}
           />
 
@@ -61,10 +68,14 @@ export function EmptyField() {
 
       {/* TEXT */}
 
-      <Text style={styles.title}>Your field is quiet</Text>
+      <Text style={styles.title}>
+        {isFiltered ? "No matching traces" : "Your field is quiet"}
+      </Text>
 
       <Text style={styles.description}>
-        Create a moment to leave your first trace.
+        {isFiltered
+          ? "No activities match your current search or filter. Try adjusting your selection."
+          : "Create a moment to leave your first trace."}
       </Text>
     </View>
   );

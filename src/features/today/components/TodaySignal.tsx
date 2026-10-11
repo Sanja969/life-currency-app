@@ -1,43 +1,43 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Text, View, StyleSheet } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+import { CosmicPanel } from "@/components/ui/CosmicPanel";
+import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
+import { CLASSIFICATION_THEME } from "@/theme/classification";
+import { COLORS } from "@/theme/colors";
 
 import {
   ActivityCategoryStatistics,
+  ActivityClassification,
   ActivityStatistics,
 } from "@/types/activity";
 
-import { getActivityCategoryMeta } from "@/features/activities/utils/activityCategory";
-
 import { formatDuration } from "@/utils/formatDuration";
-import { CosmicPanel } from "@/components/ui/CosmicPanel";
 
 type TodaySignalProps = {
   statistics: ActivityStatistics;
 };
 
-const COLORS = {
-  background: "#080A10",
-  surface: "#101119",
-  gold: "#D6AD65",
-  lightGold: "#F3D49B",
-  growing: "#8274E8",
-  leaks: "#D88455",
-  text: "#F5F0E7",
-  muted: "#9295A5",
-};
+type SignalTone = "neutral" | ActivityClassification;
 
-type SignalTone = "neutral" | "growing" | "leaks";
-
-function getSignal(
-  strongestInvestment?: ActivityCategoryStatistics,
-  biggestLeak?: ActivityCategoryStatistics,
-): {
+type Signal = {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   message: string;
   tone: SignalTone;
-} {
-  if (!strongestInvestment && !biggestLeak) {
+};
+
+function getSignal(statistics: ActivityStatistics): Signal {
+  const {
+    strongestInvestment,
+    biggestLeak,
+    restoresDurationMinutes,
+    totalDurationMinutes,
+  } = statistics;
+
+  // NO ACTIVITIES
+
+  if (totalDurationMinutes === 0) {
     return {
       icon: "sparkles-outline",
       title: "Your field is still forming",
@@ -46,6 +46,21 @@ function getSignal(
       tone: "neutral",
     };
   }
+
+  // ONLY RESTORING
+
+  if (!strongestInvestment && !biggestLeak && restoresDurationMinutes > 0) {
+    return {
+      icon: "leaf-outline",
+      title: "A moment of restoration",
+      message: `You've dedicated ${formatDuration(
+        restoresDurationMinutes,
+      )} to rest and recovery today. Restoring your energy is part of living intentionally.`,
+      tone: ActivityClassification.Restores,
+    };
+  }
+
+  // ONLY GROWING
 
   if (strongestInvestment && !biggestLeak) {
     const category = getActivityCategoryMeta(strongestInvestment.category);
@@ -56,9 +71,11 @@ function getSignal(
       message: `${category.label} is your strongest investment with ${formatDuration(
         strongestInvestment.servesDurationMinutes,
       )} of Growing time.`,
-      tone: "growing",
+      tone: ActivityClassification.Serves,
     };
   }
+
+  // ONLY LIFE LEAKS
 
   if (!strongestInvestment && biggestLeak) {
     const category = getActivityCategoryMeta(biggestLeak.category);
@@ -69,9 +86,11 @@ function getSignal(
       message: `${category.label} is your biggest Life Leak with ${formatDuration(
         biggestLeak.doesNotServeDurationMinutes,
       )}.`,
-      tone: "leaks",
+      tone: ActivityClassification.DoesNotServe,
     };
   }
+
+  // GROWING IS STRONGER THAN LIFE LEAKS
 
   if (
     strongestInvestment &&
@@ -87,34 +106,44 @@ function getSignal(
       message: `${category.label} is leading your day with ${formatDuration(
         strongestInvestment.servesDurationMinutes,
       )} of Growing time.`,
-      tone: "growing",
+      tone: ActivityClassification.Serves,
     };
   }
 
-  const category = getActivityCategoryMeta(biggestLeak!.category);
+  // LIFE LEAKS ARE STRONGER
+
+  if (biggestLeak) {
+    const category = getActivityCategoryMeta(biggestLeak.category);
+
+    return {
+      icon: "pulse-outline",
+      title: "Watch this pattern",
+      message: `${category.label} is your largest Life Leak today at ${formatDuration(
+        biggestLeak.doesNotServeDurationMinutes,
+      )}.`,
+      tone: ActivityClassification.DoesNotServe,
+    };
+  }
+
+  // FALLBACK
 
   return {
-    icon: "pulse-outline",
-    title: "Watch this pattern",
-    message: `${category.label} is your largest Life Leak today at ${formatDuration(
-      biggestLeak!.doesNotServeDurationMinutes,
-    )}.`,
-    tone: "leaks",
+    icon: "sparkles-outline",
+    title: "Your day is taking shape",
+    message: "Every traced moment helps reveal the patterns of your life.",
+    tone: "neutral",
   };
 }
 
 export function TodaySignal({ statistics }: TodaySignalProps) {
-  const signal = getSignal(
-    statistics.strongestInvestment,
-    statistics.biggestLeak,
-  );
+  const signal = getSignal(statistics);
+
+  // CENTRALIZED THEME
 
   const accent =
     signal.tone === "neutral"
       ? COLORS.gold
-      : signal.tone === "growing"
-        ? COLORS.growing
-        : COLORS.leaks;
+      : CLASSIFICATION_THEME[signal.tone].color;
 
   return (
     <View style={styles.container}>
@@ -126,6 +155,8 @@ export function TodaySignal({ statistics }: TodaySignalProps) {
         contentStyle={styles.content}
       >
         <View>
+          {/* TOP ROW */}
+
           <View style={styles.topRow}>
             <View style={styles.iconFrame}>
               <Ionicons name={signal.icon} size={18} color={accent} />
@@ -134,9 +165,15 @@ export function TodaySignal({ statistics }: TodaySignalProps) {
             <Text style={styles.systemLabel}>LIFE INTELLIGENCE</Text>
           </View>
 
+          {/* SIGNAL TITLE */}
+
           <Text style={styles.title}>{signal.title}</Text>
 
+          {/* SIGNAL MESSAGE */}
+
           <Text style={styles.message}>{signal.message}</Text>
+
+          {/* STATUS */}
 
           <View style={styles.bottomRow}>
             <View style={[styles.signalDot, { backgroundColor: accent }]} />
@@ -166,11 +203,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     color: COLORS.gold,
     marginBottom: 12,
-  },
-
-  panel: {
-    position: "relative",
-    minHeight: 145,
   },
 
   content: {
