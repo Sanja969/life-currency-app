@@ -17,12 +17,9 @@ import Svg, { Path } from "react-native-svg";
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
 
 import { COLORS } from "@/theme/colors";
-
 import { ActivityCategory } from "@/types/activity";
 
 import type { WeeklyIntentionProgress } from "@/types/weeklyIntention";
-
-import { formatDuration } from "@/utils/formatDuration";
 
 import { AddIntentionModal } from "./components/AddIntentionModal";
 import { WeeklyIntentionCard } from "./components/WeeklyIntentionCard";
@@ -43,35 +40,47 @@ const WEEK_ARROW_BACKGROUND = COLORS.goldBackground;
  */
 
 function formatWeekRange(weekStart: string): string {
-  const [year, month, day] = weekStart
-    .split("-")
-    .map(Number);
+  const [year, month, day] = weekStart.split("-").map(Number);
 
   const start = new Date(year, month - 1, day);
-
   const end = new Date(year, month - 1, day + 6);
 
-  const startLabel = start.toLocaleDateString(
-    "en-US",
-    {
-      month: "short",
-      day: "numeric",
-    },
-  );
+  const startLabel = start.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 
-  const endLabel = end.toLocaleDateString(
-    "en-US",
-    {
-      month: "short",
-      day: "numeric",
-    },
-  );
+  const endLabel = end.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 
   return `${startLabel} – ${endLabel}`;
 }
 
-function clampPercentage(value: number): number {
-  return Math.min(Math.max(value, 0), 100);
+/*
+ * ALIGNMENT STAT
+ */
+
+type AlignmentStatProps = {
+  label: string;
+  value: number;
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  color: string;
+};
+
+function AlignmentStat({ label, value, icon, color }: AlignmentStatProps) {
+  return (
+    <View style={styles.alignmentStat}>
+      <View style={styles.statHeader}>
+        <Ionicons name={icon} size={17} color={color} />
+
+        <Text style={styles.statValue}>{value}</Text>
+      </View>
+
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
 }
 
 /*
@@ -82,14 +91,16 @@ export default function PlanScreen() {
   const {
     weekStart,
     intentions,
+    intentionSummary,
+
     isLoading,
     isSaving,
     errorMessage,
-    totalTargetMinutes,
-    totalActualMinutes,
+
     previousWeek,
     nextWeek,
     goToCurrentWeek,
+
     saveIntention,
     deleteIntention,
     refresh,
@@ -99,47 +110,29 @@ export default function PlanScreen() {
    * LOCAL STATE
    */
 
-  const [modalVisible, setModalVisible] =
-    useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const [editingIntention, setEditingIntention] =
-    useState<WeeklyIntentionProgress | null>(
-      null,
-    );
+    useState<WeeklyIntentionProgress | null>(null);
 
-  const [isDeleting, setIsDeleting] =
-    useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   /*
    * DERIVED VALUES
    */
 
-  const isCurrentWeek =
-    weekStart === getWeekStart();
+  const isCurrentWeek = weekStart === getWeekStart();
 
-  const hasIntentions =
-    intentions.length > 0;
+  const hasIntentions = intentions.length > 0;
 
   const usedCategories = new Set(
     intentions.map((intention) => intention.category),
   );
 
   const allCategoriesUsed =
-    usedCategories.size >=
-    Object.values(ActivityCategory).length;
+    usedCategories.size >= Object.values(ActivityCategory).length;
 
   const isBusy = isSaving || isDeleting;
-
-  const totalProgressPercent =
-    totalTargetMinutes > 0
-      ? Math.round(
-          (totalActualMinutes / totalTargetMinutes) *
-            100,
-        )
-      : 0;
-
-  const progressBarPercent =
-    clampPercentage(totalProgressPercent);
 
   /*
    * MODAL ACTIONS
@@ -152,9 +145,7 @@ export default function PlanScreen() {
     setModalVisible(true);
   }
 
-  function openEditModal(
-    intention: WeeklyIntentionProgress,
-  ) {
+  function openEditModal(intention: WeeklyIntentionProgress) {
     if (isBusy) return;
 
     setEditingIntention(intention);
@@ -194,10 +185,7 @@ export default function PlanScreen() {
 
               await deleteIntention(category);
             } catch (error) {
-              console.error(
-                "Failed to delete intention:",
-                error,
-              );
+              console.error("Failed to delete intention:", error);
 
               Alert.alert(
                 "Unable to delete",
@@ -218,15 +206,10 @@ export default function PlanScreen() {
 
   return (
     <View style={styles.screen}>
-      <SafeAreaView
-        style={styles.safeArea}
-        edges={["top"]}
-      >
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={
-            styles.scrollContent
-          }
+          contentContainerStyle={styles.scrollContent}
         >
           {/* HEADER */}
 
@@ -234,18 +217,12 @@ export default function PlanScreen() {
             <View style={styles.eyebrowRow}>
               <View style={styles.goldDot} />
 
-              <Text style={styles.eyebrow}>
-                YOUR LIFE DIRECTION
-              </Text>
+              <Text style={styles.eyebrow}>YOUR LIFE DIRECTION</Text>
             </View>
 
-            <Text style={styles.title}>
-              Your Plan
-            </Text>
+            <Text style={styles.title}>Your Plan</Text>
 
-            <Text style={styles.subtitle}>
-              Make room for what matters.
-            </Text>
+            <Text style={styles.subtitle}>Make room for what matters.</Text>
           </View>
 
           {/* WEEK NAVIGATION */}
@@ -253,9 +230,7 @@ export default function PlanScreen() {
           <View style={styles.weekSection}>
             <View style={styles.weekLabelRow}>
               <Text style={styles.sectionLabel}>
-                {isCurrentWeek
-                  ? "THIS WEEK"
-                  : "SELECTED WEEK"}
+                {isCurrentWeek ? "THIS WEEK" : "SELECTED WEEK"}
               </Text>
 
               {!isCurrentWeek && (
@@ -266,11 +241,7 @@ export default function PlanScreen() {
                   accessibilityLabel="Back to this week"
                   hitSlop={8}
                 >
-                  <Text
-                    style={styles.backToCurrent}
-                  >
-                    Back to this week
-                  </Text>
+                  <Text style={styles.backToCurrent}>Back to this week</Text>
                 </Pressable>
               )}
             </View>
@@ -288,14 +259,10 @@ export default function PlanScreen() {
                   pressed && styles.pressed,
                 ]}
               >
-                <Ionicons
-                  name="chevron-back"
-                  size={20}
-                  color={COLORS.gold}
-                />
+                <Ionicons name="chevron-back" size={20} color={COLORS.gold} />
               </Pressable>
 
-              {/* CURRENT SELECTION */}
+              {/* WEEK RANGE */}
 
               <View style={styles.weekCenter}>
                 <Text style={styles.weekRange}>
@@ -334,9 +301,7 @@ export default function PlanScreen() {
 
           {isLoading && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator
-                color={COLORS.gold}
-              />
+              <ActivityIndicator color={COLORS.gold} />
             </View>
           )}
 
@@ -347,10 +312,9 @@ export default function PlanScreen() {
               variant="signal"
               accent={COLORS.leak}
               style={styles.errorPanel}
+              contentStyle={styles.errorContent}
             >
-              <Text style={styles.errorText}>
-                {errorMessage}
-              </Text>
+              <Text style={styles.errorText}>{errorMessage}</Text>
 
               <Pressable
                 onPress={() => void refresh()}
@@ -358,186 +322,128 @@ export default function PlanScreen() {
                 accessibilityLabel="Try loading intentions again"
                 style={styles.retryButton}
               >
-                <Text style={styles.retryText}>
-                  Try again
-                </Text>
+                <Text style={styles.retryText}>Try again</Text>
               </Pressable>
             </CosmicPanel>
           )}
 
-          {/* WEEKLY INVESTMENT */}
+          {/* WEEKLY ALIGNMENT */}
 
-          {!isLoading &&
-            !errorMessage &&
-            hasIntentions && (
-              <CosmicPanel
-                variant="default"
-                accent={COLORS.gold}
-                style={styles.investmentPanel}
-                contentStyle={
-                  styles.investmentContent
-                }
-              >
-                <View
-                  style={styles.investmentHeader}
-                >
-                  <Text
-                    style={styles.investmentLabel}
-                  >
-                    WEEKLY TIME INVESTMENT
-                  </Text>
+          {!isLoading && !errorMessage && hasIntentions && (
+            <CosmicPanel
+              variant="default"
+              accent={COLORS.gold}
+              style={styles.alignmentPanel}
+              contentStyle={styles.alignmentContent}
+            >
+              {/* PANEL HEADER */}
 
-                  <Ionicons
-                    name="hourglass-outline"
-                    size={18}
-                    color={COLORS.gold}
-                  />
-                </View>
+              <View style={styles.alignmentHeader}>
+                <View>
+                  <Text style={styles.alignmentLabel}>WEEKLY ALIGNMENT</Text>
 
-                {/* INVESTED / INTENDED */}
-
-                <View
-                  style={styles.investmentStats}
-                >
-                  <View>
-                    <Text
-                      style={styles.investedValue}
-                    >
-                      {formatDuration(
-                        totalActualMinutes,
-                      )}
-                    </Text>
-
-                    <Text
-                      style={styles.statCaption}
-                    >
-                      Invested
-                    </Text>
-                  </View>
-
-                  <View
-                    style={styles.intendedColumn}
-                  >
-                    <Text
-                      style={styles.intendedValue}
-                    >
-                      {formatDuration(
-                        totalTargetMinutes,
-                      )}
-                    </Text>
-
-                    <Text
-                      style={styles.statCaption}
-                    >
-                      Intended
-                    </Text>
-                  </View>
-                </View>
-
-                {/* PROGRESS BAR */}
-
-                <View
-                  style={styles.progressTrack}
-                  accessibilityRole="progressbar"
-                  accessibilityValue={{
-                    min: 0,
-                    max: 100,
-                    now: progressBarPercent,
-                  }}
-                >
-                  <View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width:
-                          `${progressBarPercent}%` as `${number}%`,
-                      },
-                    ]}
-                  />
-                </View>
-
-                {/* PROGRESS FOOTER */}
-
-                <View
-                  style={styles.progressFooter}
-                >
-                  <Text
-                    style={
-                      styles.progressDescription
-                    }
-                  >
-                    Of your weekly intention
-                  </Text>
-
-                  <Text
-                    style={
-                      styles.progressPercentage
-                    }
-                  >
-                    {totalProgressPercent}%
+                  <Text style={styles.alignmentSubtitle}>
+                    Your intentions at a glance
                   </Text>
                 </View>
-              </CosmicPanel>
-            )}
+
+                <Ionicons
+                  name="compass-outline"
+                  size={21}
+                  color={COLORS.gold}
+                />
+              </View>
+
+              {/* TOTAL INTENTIONS */}
+
+              <View style={styles.totalRow}>
+                <Text style={styles.totalValue}>{intentionSummary.total}</Text>
+
+                <View style={styles.totalDescription}>
+                  <Text style={styles.totalTitle}>
+                    {intentionSummary.total === 1
+                      ? "Weekly intention"
+                      : "Weekly intentions"}
+                  </Text>
+
+                  <Text style={styles.totalCaption}>
+                    Shaping how you spend your time
+                  </Text>
+                </View>
+              </View>
+
+              {/* DIVIDER */}
+
+              <View style={styles.alignmentDivider} />
+
+              {/* STATUS GRID */}
+
+              <View style={styles.statsGrid}>
+                <AlignmentStat
+                  label="Reached"
+                  value={intentionSummary.reached}
+                  icon="checkmark-circle-outline"
+                  color={COLORS.restoring}
+                />
+
+                <AlignmentStat
+                  label="In progress"
+                  value={intentionSummary.inProgress}
+                  icon="time-outline"
+                  color={COLORS.gold}
+                />
+
+                <AlignmentStat
+                  label="Within limit"
+                  value={intentionSummary.withinLimit}
+                  icon="shield-checkmark-outline"
+                  color={COLORS.growing}
+                />
+
+                <AlignmentStat
+                  label="Over limit"
+                  value={intentionSummary.overLimit}
+                  icon="alert-circle-outline"
+                  color={COLORS.leak}
+                />
+              </View>
+
+              {/* ALIGNMENT NOTE */}
+
+              <Text style={styles.alignmentNote}>
+                Based on the activities you've recorded. Your intentions are a
+                guide, not a judgment.
+              </Text>
+            </CosmicPanel>
+          )}
 
           {/* INTENTIONS HEADER */}
 
           {!isLoading && !errorMessage && (
-            <View
-              style={styles.intentionsHeader}
-            >
-              <Text
-                style={styles.sectionLabel}
-              >
-                YOUR WEEKLY INTENTIONS
-              </Text>
+            <View style={styles.intentionsHeader}>
+              <Text style={styles.sectionLabel}>YOUR WEEKLY INTENTIONS</Text>
 
-              <Text
-                style={styles.intentionCount}
-              >
+              <Text style={styles.intentionCount}>
                 {intentions.length}{" "}
-                {intentions.length === 1
-                  ? "intention"
-                  : "intentions"}
+                {intentions.length === 1 ? "intention" : "intentions"}
               </Text>
             </View>
           )}
 
           {/* EMPTY STATE */}
 
-          {!isLoading &&
-            !errorMessage &&
-            !hasIntentions && (
-              <CosmicPanel
-                variant="signal"
-                contentStyle={
-                  styles.emptyContent
-                }
-              >
-                <Ionicons
-                  name="compass-outline"
-                  size={30}
-                  color={COLORS.gold}
-                />
+          {!isLoading && !errorMessage && !hasIntentions && (
+            <CosmicPanel variant="signal" contentStyle={styles.emptyContent}>
+              <Ionicons name="compass-outline" size={30} color={COLORS.gold} />
 
-                <Text
-                  style={styles.emptyTitle}
-                >
-                  Start with an intention
-                </Text>
+              <Text style={styles.emptyTitle}>Start with an intention</Text>
 
-                <Text
-                  style={
-                    styles.emptyDescription
-                  }
-                >
-                  Choose where you want to
-                  invest your time this week.
-                  Small intentions can lead
-                  to meaningful changes.
-                </Text>
-              </CosmicPanel>
-            )}
+              <Text style={styles.emptyDescription}>
+                Choose where you want to dedicate more time or set a healthy
+                limit. Small intentions can lead to meaningful changes.
+              </Text>
+            </CosmicPanel>
+          )}
 
           {/* INTENTION LIST */}
 
@@ -547,14 +453,8 @@ export default function PlanScreen() {
               <WeeklyIntentionCard
                 key={intention.id}
                 intention={intention}
-                onEdit={() =>
-                  openEditModal(intention)
-                }
-                onDelete={() =>
-                  handleDelete(
-                    intention.category,
-                  )
-                }
+                onEdit={() => openEditModal(intention)}
+                onDelete={() => handleDelete(intention.category)}
               />
             ))}
 
@@ -562,51 +462,42 @@ export default function PlanScreen() {
 
           {!isLoading && !errorMessage && (
             <Text style={styles.footer}>
-              Progress is about intention,
-              not perfection.
+              Progress is about intention, not perfection.
             </Text>
           )}
         </ScrollView>
 
         {/* FLOATING ADD BUTTON */}
 
-        {!isLoading &&
-          !errorMessage &&
-          !allCategoriesUsed && (
-            <Pressable
-              onPress={openAddModal}
-              disabled={isBusy}
-              accessibilityRole="button"
-              accessibilityLabel="Add intention"
-              style={({ pressed }) => [
-                styles.floatingButton,
-                {
-                  opacity: isBusy ? 0.5 : 1,
-                  transform: [
-                    {
-                      scale: pressed
-                        ? 0.94
-                        : 1,
-                    },
-                  ],
-                  shadowOpacity: pressed
-                    ? 0.4
-                    : 0.2,
-                  shadowRadius: pressed
-                    ? 16
-                    : 10,
-                },
-              ]}
+        {!isLoading && !errorMessage && !allCategoriesUsed && (
+          <Pressable
+            onPress={openAddModal}
+            disabled={isBusy}
+            accessibilityRole="button"
+            accessibilityLabel="Add intention"
+            style={({ pressed }) => [
+              styles.floatingButton,
+              {
+                opacity: isBusy ? 0.5 : 1,
+                transform: [
+                  {
+                    scale: pressed ? 0.94 : 1,
+                  },
+                ],
+                shadowOpacity: pressed ? 0.4 : 0.2,
+                shadowRadius: pressed ? 16 : 10,
+              },
+            ]}
+          >
+            <Svg
+              width={FLOATING_BUTTON_SIZE}
+              height={FLOATING_BUTTON_SIZE}
+              viewBox="0 0 52 52"
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
             >
-              <Svg
-                width={FLOATING_BUTTON_SIZE}
-                height={FLOATING_BUTTON_SIZE}
-                viewBox="0 0 52 52"
-                style={StyleSheet.absoluteFill}
-                pointerEvents="none"
-              >
-                <Path
-                  d="
+              <Path
+                d="
                     M 12 0
                     L 52 0
                     L 52 40
@@ -615,34 +506,28 @@ export default function PlanScreen() {
                     L 0 12
                     Z
                   "
-                  fill={COLORS.gold}
-                  stroke={COLORS.lightGold}
-                  strokeWidth={1}
-                />
-
-                <Path
-                  d="M 12 0 L 31 0"
-                  stroke={COLORS.lightGold}
-                  strokeWidth={1.5}
-                />
-              </Svg>
-
-              <Ionicons
-                name="add"
-                size={27}
-                color={COLORS.background}
+                fill={COLORS.gold}
+                stroke={COLORS.lightGold}
+                strokeWidth={1}
               />
-            </Pressable>
-          )}
+
+              <Path
+                d="M 12 0 L 31 0"
+                stroke={COLORS.lightGold}
+                strokeWidth={1.5}
+              />
+            </Svg>
+
+            <Ionicons name="add" size={27} color={COLORS.background} />
+          </Pressable>
+        )}
 
         {/* ADD / EDIT MODAL */}
 
         <AddIntentionModal
           visible={modalVisible}
           intention={editingIntention}
-          existingCategories={intentions.map(
-            (item) => item.category,
-          )}
+          existingCategories={intentions.map((item) => item.category)}
           isSaving={isBusy}
           onClose={closeModal}
           onSave={saveIntention}
@@ -782,91 +667,113 @@ const styles = StyleSheet.create({
   },
 
   /*
-   * INVESTMENT
+   * WEEKLY ALIGNMENT
    */
 
-  investmentPanel: {
+  alignmentPanel: {
     marginBottom: 30,
   },
 
-  investmentContent: {
+  alignmentContent: {
     paddingHorizontal: 22,
     paddingTop: 23,
     paddingBottom: 22,
   },
 
-  investmentHeader: {
+  alignmentHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
   },
 
-  investmentLabel: {
+  alignmentLabel: {
     color: COLORS.gold,
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 1.5,
   },
 
-  investmentStats: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    marginTop: 23,
-  },
-
-  investedValue: {
-    color: COLORS.text,
-    fontSize: 34,
-    fontWeight: "600",
-    letterSpacing: -1,
-  },
-
-  intendedValue: {
-    color: COLORS.gold,
-    fontSize: 25,
-    fontWeight: "600",
-    letterSpacing: -0.5,
-  },
-
-  intendedColumn: {
-    alignItems: "flex-end",
-  },
-
-  statCaption: {
+  alignmentSubtitle: {
     color: COLORS.muted,
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 7,
   },
 
-  progressTrack: {
-    height: 5,
-    overflow: "hidden",
-    backgroundColor: COLORS.border,
-    marginTop: 25,
-  },
-
-  progressFill: {
-    height: "100%",
-    backgroundColor: COLORS.gold,
-  },
-
-  progressFooter: {
+  totalRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 11,
+    marginTop: 26,
+    gap: 15,
   },
 
-  progressDescription: {
+  totalValue: {
+    color: COLORS.text,
+    fontSize: 42,
+    fontWeight: "600",
+    letterSpacing: -1.3,
+  },
+
+  totalDescription: {
+    flex: 1,
+  },
+
+  totalTitle: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
+  totalCaption: {
     color: COLORS.muted,
     fontSize: 11,
+    marginTop: 5,
   },
 
-  progressPercentage: {
-    color: COLORS.gold,
-    fontSize: 12,
+  alignmentDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginTop: 23,
+    marginBottom: 20,
+  },
+
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+
+  alignmentStat: {
+    width: "47%",
+    backgroundColor: COLORS.goldBackground,
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+
+  statHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+
+  statValue: {
+    color: COLORS.text,
+    fontSize: 22,
     fontWeight: "600",
+  },
+
+  statLabel: {
+    color: COLORS.muted,
+    fontSize: 11,
+    marginTop: 9,
+  },
+
+  alignmentNote: {
+    color: COLORS.subtle,
+    fontSize: 11,
+    lineHeight: 18,
+    marginTop: 20,
   },
 
   /*
@@ -921,6 +828,10 @@ const styles = StyleSheet.create({
 
   errorPanel: {
     marginTop: 24,
+  },
+
+  errorContent: {
+    padding: 18,
   },
 
   errorText: {

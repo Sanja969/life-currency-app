@@ -19,7 +19,11 @@ import { CosmicPanel } from "@/components/ui/CosmicPanel";
 import { COLORS } from "@/theme/colors";
 
 import { ActivityCategory } from "@/types/activity";
-import type { WeeklyIntentionProgress } from "@/types/weeklyIntention";
+
+import type {
+  IntentionDirection,
+  WeeklyIntentionProgress,
+} from "@/types/weeklyIntention";
 
 type Props = {
   visible: boolean;
@@ -27,7 +31,11 @@ type Props = {
   existingCategories: ActivityCategory[];
   isSaving: boolean;
   onClose: () => void;
-  onSave: (category: ActivityCategory, targetMinutes: number) => Promise<void>;
+  onSave: (
+    category: ActivityCategory,
+    targetMinutes: number,
+    direction: IntentionDirection,
+  ) => Promise<void>;
 };
 
 function formatCategory(category: ActivityCategory): string {
@@ -47,6 +55,8 @@ export function AddIntentionModal({
 }: Props) {
   const [category, setCategory] = useState<ActivityCategory | null>(null);
 
+  const [direction, setDirection] = useState<IntentionDirection>("at_least");
+
   const [hours, setHours] = useState("");
   const [minutes, setMinutes] = useState("");
 
@@ -61,6 +71,8 @@ export function AddIntentionModal({
 
     setCategory(intention?.category ?? null);
 
+    setDirection(intention?.direction ?? "at_least");
+
     setHours(intention ? String(Math.floor(intention.targetMinutes / 60)) : "");
 
     setMinutes(intention ? String(intention.targetMinutes % 60) : "");
@@ -68,8 +80,6 @@ export function AddIntentionModal({
 
   /*
    * AVAILABLE CATEGORIES
-   *
-   * Prevent duplicate weekly intentions.
    */
 
   const availableCategories = Object.values(ActivityCategory).filter(
@@ -118,7 +128,7 @@ export function AddIntentionModal({
     }
 
     try {
-      await onSave(category, targetMinutes);
+      await onSave(category, targetMinutes, direction);
 
       onClose();
     } catch (error) {
@@ -131,15 +141,37 @@ export function AddIntentionModal({
     }
   }
 
+  /*
+   * DIRECTION OPTIONS
+   */
+
+  const directionOptions: {
+    value: IntentionDirection;
+    title: string;
+    description: string;
+    icon: "trending-up" | "shield-check-outline";
+  }[] = [
+    {
+      value: "at_least",
+      title: "At least",
+      description: "I want to dedicate more time to this.",
+      icon: "trending-up",
+    },
+    {
+      value: "at_most",
+      title: "At most",
+      description: "I want to limit my time in this area.",
+      icon: "shield-check-outline",
+    },
+  ];
+
   return (
     <Modal
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={() => {
-        if (!isSaving) {
-          onClose();
-        }
+        if (!isSaving) onClose();
       }}
     >
       <KeyboardAvoidingView
@@ -183,11 +215,9 @@ export function AddIntentionModal({
                 color: COLORS.muted,
               }}
             >
-              Invest your time with purpose.
+              Shape how you spend your time.
             </Text>
           </View>
-
-          {/* CLOSE */}
 
           <Pressable
             onPress={onClose}
@@ -247,7 +277,7 @@ export function AddIntentionModal({
               color: COLORS.muted,
             }}
           >
-            Choose where you want to invest your time.
+            Choose the area of life you want to focus on.
           </Text>
 
           {/* CATEGORY SELECTOR */}
@@ -308,6 +338,115 @@ export function AddIntentionModal({
             }}
           />
 
+          {/* INTENTION DIRECTION */}
+
+          <View className="mb-4 flex-row items-center">
+            <View
+              className="mr-2 h-[6px] w-[6px]"
+              style={{
+                backgroundColor: COLORS.gold,
+              }}
+            />
+
+            <Text
+              className="text-[10px] font-bold tracking-[1.8px]"
+              style={{
+                color: COLORS.muted,
+              }}
+            >
+              WHAT IS YOUR INTENTION?
+            </Text>
+          </View>
+
+          <Text
+            className="mb-5 text-[13px] leading-[21px]"
+            style={{
+              color: COLORS.muted,
+            }}
+          >
+            Do you want to dedicate more time or set a limit?
+          </Text>
+
+          <View className="gap-3">
+            {directionOptions.map((option) => {
+              const selected = direction === option.value;
+
+              return (
+                <Pressable
+                  key={option.value}
+                  onPress={() => setDirection(option.value)}
+                  disabled={isSaving}
+                  accessibilityRole="radio"
+                  accessibilityState={{
+                    checked: selected,
+                    disabled: isSaving,
+                  }}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingHorizontal: 16,
+                    paddingVertical: 16,
+                    borderWidth: 1,
+                    borderColor: selected ? COLORS.gold : COLORS.border,
+                    backgroundColor: selected
+                      ? COLORS.goldBackground
+                      : COLORS.surface,
+                    opacity: pressed ? 0.75 : 1,
+                  })}
+                >
+                  <MaterialCommunityIcons
+                    name={option.icon}
+                    size={23}
+                    color={selected ? COLORS.gold : COLORS.muted}
+                  />
+
+                  <View
+                    style={{
+                      flex: 1,
+                      marginLeft: 13,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: selected ? COLORS.lightGold : COLORS.text,
+                        fontSize: 14,
+                        fontWeight: "600",
+                      }}
+                    >
+                      {option.title}
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: COLORS.muted,
+                        fontSize: 12,
+                        lineHeight: 18,
+                        marginTop: 4,
+                      }}
+                    >
+                      {option.description}
+                    </Text>
+                  </View>
+
+                  <MaterialCommunityIcons
+                    name={selected ? "radiobox-marked" : "radiobox-blank"}
+                    size={21}
+                    color={selected ? COLORS.gold : COLORS.subtle}
+                  />
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* DIVIDER */}
+
+          <View
+            className="my-7 h-[1px]"
+            style={{
+              backgroundColor: COLORS.border,
+            }}
+          />
+
           {/* WEEKLY TIME INTENTION */}
 
           <View className="mb-5 flex-row items-center">
@@ -340,14 +479,14 @@ export function AddIntentionModal({
                 color: COLORS.muted,
               }}
             >
-              How much time would you like to invest in this area each week?
+              {direction === "at_least"
+                ? "How much time would you like to dedicate to this area each week?"
+                : "What is the maximum time you want to spend in this area each week?"}
             </Text>
 
             {/* HOURS / MINUTES */}
 
             <View className="flex-row gap-3">
-              {/* HOURS */}
-
               <View className="flex-1">
                 <Text
                   className="mb-2 text-[12px] font-medium"
@@ -380,8 +519,6 @@ export function AddIntentionModal({
                   }}
                 />
               </View>
-
-              {/* MINUTES */}
 
               <View className="flex-1">
                 <Text
@@ -432,8 +569,8 @@ export function AddIntentionModal({
                   color: COLORS.muted,
                 }}
               >
-                Progress is calculated automatically from activities marked as
-                Growing.
+                Time is calculated from all recorded activities in this
+                category, regardless of classification.
               </Text>
             </View>
           </CosmicPanel>

@@ -10,6 +10,7 @@ import { useFocusEffect } from "expo-router";
 import { ActivityCategory } from "@/types/activity";
 
 import type {
+    IntentionDirection,
     SaveWeeklyIntentionInput,
     WeeklyIntentionProgress,
 } from "@/types/weeklyIntention";
@@ -37,10 +38,6 @@ export function useWeeklyIntentions() {
         string | null
     >(null);
 
-    /*
-     * Each load receives a unique ID.
-     * Older requests cannot overwrite newer results.
-     */
     const loadRequestId = useRef(0);
 
     /*
@@ -85,8 +82,6 @@ export function useWeeklyIntentions() {
 
     /*
      * REFRESH WHEN SCREEN GAINS FOCUS
-     *
-     * Also refreshes when the selected week changes.
      */
 
     useFocusEffect(
@@ -94,7 +89,6 @@ export function useWeeklyIntentions() {
             void loadIntentions();
 
             return () => {
-                // Invalidate any unfinished request.
                 loadRequestId.current += 1;
             };
         }, [loadIntentions]),
@@ -105,15 +99,11 @@ export function useWeeklyIntentions() {
      */
 
     const previousWeek = useCallback(() => {
-        setWeekStart((current) =>
-            shiftWeek(current, -1),
-        );
+        setWeekStart((current) => shiftWeek(current, -1));
     }, []);
 
     const nextWeek = useCallback(() => {
-        setWeekStart((current) =>
-            shiftWeek(current, 1),
-        );
+        setWeekStart((current) => shiftWeek(current, 1));
     }, []);
 
     const goToCurrentWeek = useCallback(() => {
@@ -128,6 +118,7 @@ export function useWeeklyIntentions() {
         async (
             category: ActivityCategory,
             targetMinutes: number,
+            direction: IntentionDirection,
         ) => {
             if (isSaving) return;
 
@@ -138,11 +129,10 @@ export function useWeeklyIntentions() {
                     category,
                     weekStart,
                     targetMinutes,
+                    direction,
                 };
 
-                await weeklyIntentionService.saveIntention(
-                    input,
-                );
+                await weeklyIntentionService.saveIntention(input);
 
                 await loadIntentions();
             } finally {
@@ -178,27 +168,41 @@ export function useWeeklyIntentions() {
 
     /*
      * SUMMARY
+     *
+     * At least and at most targets must not be combined
+     * into one overall completion percentage.
      */
 
-    const totalTargetMinutes = useMemo(
-        () =>
-            intentions.reduce(
-                (sum, intention) =>
-                    sum + intention.targetMinutes,
-                0,
-            ),
-        [intentions],
-    );
+    const intentionSummary = useMemo(() => {
+        let reached = 0;
+        let inProgress = 0;
+        let overLimit = 0;
+        let withinLimit = 0;
 
-    const totalActualMinutes = useMemo(
-        () =>
-            intentions.reduce(
-                (sum, intention) =>
-                    sum + intention.actualMinutes,
-                0,
-            ),
-        [intentions],
-    );
+        for (const intention of intentions) {
+            if (intention.direction === "at_most") {
+                if (intention.actualMinutes > intention.targetMinutes) {
+                    overLimit += 1;
+                } else {
+                    withinLimit += 1;
+                }
+            } else {
+                if (intention.actualMinutes >= intention.targetMinutes) {
+                    reached += 1;
+                } else {
+                    inProgress += 1;
+                }
+            }
+        }
+
+        return {
+            total: intentions.length,
+            reached,
+            inProgress,
+            overLimit,
+            withinLimit,
+        };
+    }, [intentions]);
 
     return {
         weekStart,
@@ -208,8 +212,7 @@ export function useWeeklyIntentions() {
         isSaving,
         errorMessage,
 
-        totalTargetMinutes,
-        totalActualMinutes,
+        intentionSummary,
 
         previousWeek,
         nextWeek,

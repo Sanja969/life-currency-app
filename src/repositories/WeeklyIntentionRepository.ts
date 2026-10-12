@@ -5,6 +5,7 @@ import { ActivityCategory } from "@/types/activity";
 import type {
     WeeklyIntention,
     SaveWeeklyIntentionInput,
+    IntentionDirection,
 } from "@/types/weeklyIntention";
 
 type WeeklyIntentionRow = {
@@ -14,6 +15,7 @@ type WeeklyIntentionRow = {
     target_minutes: number;
     created_at: string;
     updated_at: string;
+    direction: IntentionDirection;
 };
 
 /**
@@ -40,16 +42,12 @@ function toWeeklyIntention(
 ): WeeklyIntention {
     return {
         id: row.id,
-
         category: row.category as ActivityCategory,
-
         weekStart: row.week_start,
-
         targetMinutes: row.target_minutes,
-
         createdAt: parseDatabaseDate(row.created_at),
-
         updatedAt: parseDatabaseDate(row.updated_at),
+        direction: row.direction,
     };
 }
 
@@ -86,19 +84,22 @@ export class WeeklyIntentionRepository {
 
         await database.runAsync(
             `INSERT INTO weekly_intentions (
-        category,
-        week_start,
-        target_minutes
-      )
-      VALUES (?, ?, ?)
-      ON CONFLICT(category, week_start)
-      DO UPDATE SET
-        target_minutes = excluded.target_minutes,
-        updated_at = CURRENT_TIMESTAMP`,
+            category,
+            week_start,
+            target_minutes,
+            direction
+          )
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(category, week_start)
+          DO UPDATE SET
+            target_minutes = excluded.target_minutes,
+            direction = excluded.direction,
+            updated_at = CURRENT_TIMESTAMP`,
             [
                 input.category,
                 input.weekStart,
                 input.targetMinutes,
+                input.direction,
             ],
         );
     }

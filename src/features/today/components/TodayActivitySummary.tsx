@@ -5,125 +5,84 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
 import { CLASSIFICATION_THEME } from "@/theme/classification";
 import { COLORS } from "@/theme/colors";
-
 import { ActivityClassification, ActivityStatistics } from "@/types/activity";
-
 import { formatDuration } from "@/utils/formatDuration";
 
 type TodayActivitySummaryProps = {
   statistics: ActivityStatistics;
 };
 
-type EnergyCardProps = {
+type ActivityRowProps = {
   title: string;
   count: number;
   duration: number;
-  percentage: number;
-  accent: string;
+  color: string;
   icon: keyof typeof Ionicons.glyphMap;
+  isLast?: boolean;
 };
 
-function EnergyCard({
+function ActivityRow({
   title,
   count,
   duration,
-  percentage,
-  accent,
+  color,
   icon,
-}: EnergyCardProps) {
-  const safePercentage = Math.max(0, Math.min(100, percentage));
-
+  isLast = false,
+}: ActivityRowProps) {
   return (
-    <CosmicPanel
-      variant="subtle"
-      accent={accent}
+    <Pressable
       onPress={() => router.push("/activities")}
-      style={styles.card}
-      contentStyle={styles.cardContent}
+      accessibilityRole="button"
+      accessibilityLabel={`View ${title} activities`}
+      style={({ pressed }) => [
+        styles.activityRow,
+        !isLast && styles.rowBorder,
+        pressed && styles.pressed,
+      ]}
     >
-      {/* CARD HEADER */}
-
-      <View style={styles.cardRow}>
-        <View
-          style={[
-            styles.iconContainer,
-            {
-              borderColor: `${accent}55`,
-              backgroundColor: `${accent}15`,
-            },
-          ]}
-        >
-          <Ionicons name={icon} size={20} color={accent} />
-        </View>
-
-        {/* ACTIVITY INFO */}
-
-        <View style={styles.cardInfo}>
-          <Text style={styles.cardTitle}>{title}</Text>
-
-          <Text style={styles.cardSubtitle}>
-            {count} {count === 1 ? "activity" : "activities"}
-          </Text>
-        </View>
-
-        {/* DURATION AND PERCENTAGE */}
-
-        <View style={styles.cardValues}>
-          <Text style={styles.duration}>{formatDuration(duration)}</Text>
-
-          <Text style={[styles.percentage, { color: accent }]}>
-            {Math.round(safePercentage)}%
-          </Text>
-        </View>
-
-        <Ionicons
-          name="chevron-forward"
-          size={17}
-          color={COLORS.subtle}
-          style={styles.chevron}
-        />
+      <View
+        style={[
+          styles.iconContainer,
+          {
+            backgroundColor: `${color}14`,
+            borderColor: `${color}40`,
+          },
+        ]}
+      >
+        <Ionicons name={icon} size={18} color={color} />
       </View>
 
-      {/* ENERGY BAR */}
+      <View style={styles.activityInfo}>
+        <Text style={styles.activityTitle}>{title}</Text>
 
-      <View style={styles.energyTrack}>
-        <View
-          style={[
-            styles.energyFill,
-            {
-              width: `${safePercentage}%`,
-              backgroundColor: accent,
-            },
-          ]}
-        />
+        <Text style={styles.activityCount}>
+          {count} {count === 1 ? "activity" : "activities"}
+        </Text>
       </View>
-    </CosmicPanel>
+
+      <Text style={styles.duration}>{formatDuration(duration)}</Text>
+
+      <Ionicons
+        name="chevron-forward"
+        size={16}
+        color={COLORS.subtle}
+        style={styles.chevron}
+      />
+    </Pressable>
   );
 }
 
 export function TodayActivitySummary({
   statistics,
 }: TodayActivitySummaryProps) {
-  // CENTRALIZED CLASSIFICATION THEMES
+  const growing = CLASSIFICATION_THEME[ActivityClassification.Serves];
 
-  const growingTheme = CLASSIFICATION_THEME[ActivityClassification.Serves];
+  const restoring = CLASSIFICATION_THEME[ActivityClassification.Restores];
 
-  const restoringTheme = CLASSIFICATION_THEME[ActivityClassification.Restores];
-
-  const leakTheme = CLASSIFICATION_THEME[ActivityClassification.DoesNotServe];
-
-  // STATISTICS
-
-  const growingPercent = statistics.servesPercentage;
-
-  const restoringPercent = statistics.restoresPercentage;
-
-  const leakPercent = statistics.doesNotServePercentage;
+  const leaks = CLASSIFICATION_THEME[ActivityClassification.DoesNotServe];
 
   return (
     <View style={styles.container}>
-      {/* HEADER */}
-
       <View style={styles.header}>
         <Text style={styles.sectionTitle}>TODAY'S ACTIVITIES</Text>
 
@@ -140,38 +99,36 @@ export function TodayActivitySummary({
         </Pressable>
       </View>
 
-      {/* GROWING */}
+      <CosmicPanel
+        variant="subtle"
+        accent={COLORS.gold}
+        contentStyle={styles.panelContent}
+      >
+        <ActivityRow
+          title={growing.label}
+          count={statistics.servesCount}
+          duration={statistics.servesDurationMinutes}
+          color={growing.color}
+          icon="leaf-outline"
+        />
 
-      <EnergyCard
-        title={growingTheme.label}
-        count={statistics.servesCount}
-        duration={statistics.servesDurationMinutes}
-        percentage={growingPercent}
-        accent={growingTheme.color}
-        icon="leaf-outline"
-      />
+        <ActivityRow
+          title={restoring.label}
+          count={statistics.restoresCount}
+          duration={statistics.restoresDurationMinutes}
+          color={restoring.color}
+          icon="water-outline"
+        />
 
-      {/* RESTORING */}
-
-      <EnergyCard
-        title={restoringTheme.label}
-        count={statistics.restoresCount}
-        duration={statistics.restoresDurationMinutes}
-        percentage={restoringPercent}
-        accent={restoringTheme.color}
-        icon="water-outline"
-      />
-
-      {/* LIFE LEAKS */}
-
-      <EnergyCard
-        title={leakTheme.label}
-        count={statistics.doesNotServeCount}
-        duration={statistics.doesNotServeDurationMinutes}
-        percentage={leakPercent}
-        accent={leakTheme.color}
-        icon="flame-outline"
-      />
+        <ActivityRow
+          title={leaks.label}
+          count={statistics.doesNotServeCount}
+          duration={statistics.doesNotServeDurationMinutes}
+          color={leaks.color}
+          icon="flame-outline"
+          isLast
+        />
+      </CosmicPanel>
     </View>
   );
 }
@@ -181,8 +138,6 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
 
-  // HEADER
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -191,10 +146,10 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
+    color: COLORS.gold,
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 1.4,
-    color: COLORS.gold,
   },
 
   viewAll: {
@@ -204,92 +159,65 @@ const styles = StyleSheet.create({
   },
 
   viewAllText: {
+    color: COLORS.lightGold,
     fontSize: 12,
     fontWeight: "600",
-    color: COLORS.lightGold,
   },
 
-  // CARDS
-
-  card: {
-    marginBottom: 11,
-  },
-
-  cardContent: {
+  panelContent: {
     paddingHorizontal: 15,
-    paddingTop: 17,
-    paddingBottom: 14,
+    paddingVertical: 2,
   },
 
-  cardRow: {
+  activityRow: {
     flexDirection: "row",
     alignItems: "center",
+    minHeight: 73,
+    paddingVertical: 12,
   },
 
-  // ICON
+  rowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: `${COLORS.gold}15`,
+  },
+
+  pressed: {
+    opacity: 0.65,
+  },
 
   iconContainer: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 37,
+    height: 37,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  // ACTIVITY INFO
-
-  cardInfo: {
+  activityInfo: {
     flex: 1,
     marginLeft: 12,
   },
 
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: "600",
+  activityTitle: {
     color: COLORS.text,
+    fontSize: 14,
+    fontWeight: "600",
   },
 
-  cardSubtitle: {
-    marginTop: 4,
-    fontSize: 11,
+  activityCount: {
     color: COLORS.muted,
-  },
-
-  // VALUES
-
-  cardValues: {
-    alignItems: "flex-end",
+    fontSize: 11,
+    marginTop: 4,
   },
 
   duration: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: COLORS.text,
-  },
-
-  percentage: {
-    marginTop: 4,
-    fontSize: 12,
+    color: COLORS.lightGold,
+    fontSize: 14,
     fontWeight: "600",
   },
 
   chevron: {
     marginLeft: 8,
-  },
-
-  // ENERGY BAR
-
-  energyTrack: {
-    height: 3,
-    backgroundColor: "#252530",
-    marginTop: 14,
-    overflow: "hidden",
-    borderRadius: 2,
-  },
-
-  energyFill: {
-    height: "100%",
-    borderRadius: 2,
   },
 });

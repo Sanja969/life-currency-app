@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
 import { CLASSIFICATION_THEME } from "@/theme/classification";
@@ -7,345 +7,249 @@ import { COLORS } from "@/theme/colors";
 
 import { ActivityClassification, ActivityStatistics } from "@/types/activity";
 
-import { formatDuration } from "@/utils/formatDuration";
-
 type TodaySignalProps = {
   statistics: ActivityStatistics;
+  onReflect?: (question: string) => void;
 };
 
-type SignalTone = "neutral" | ActivityClassification;
-
-type Signal = {
-  icon: keyof typeof Ionicons.glyphMap;
+type ReflectionTheme = {
   title: string;
-  message: string;
-  tone: SignalTone;
+  description: string;
+  question: string;
+  color: string;
+  icon: keyof typeof Ionicons.glyphMap;
 };
 
-/*
- * GENERATE TODAY'S INSIGHT
- *
- * Insights are based on recorded activities,
- * not assumptions about the user's emotions
- * or the objective quality of their day.
- */
+function getReflectionTheme(statistics: ActivityStatistics): ReflectionTheme {
+  const growing = CLASSIFICATION_THEME[ActivityClassification.Serves];
 
-function getSignal(statistics: ActivityStatistics): Signal {
-  const {
-    servesDurationMinutes,
-    restoresDurationMinutes,
-    doesNotServeDurationMinutes,
-    totalDurationMinutes,
-  } = statistics;
+  const restoring = CLASSIFICATION_THEME[ActivityClassification.Restores];
 
-  const growing = servesDurationMinutes;
-  const restoring = restoresDurationMinutes;
-  const leaks = doesNotServeDurationMinutes;
+  const leaks = CLASSIFICATION_THEME[ActivityClassification.DoesNotServe];
 
-  const intentionalTime = growing + restoring;
-
-  /*
-   * NO ACTIVITIES
-   */
-
-  if (totalDurationMinutes === 0) {
+  if (statistics.totalDurationMinutes === 0) {
     return {
+      title: "The beginning of awareness",
+      description:
+        "Understanding your life begins with noticing how you spend your moments.",
+      question: "What would you like to make more room for today?",
+      color: COLORS.gold,
       icon: "sparkles-outline",
-      title: "Every moment has meaning",
-      message:
-        "Start tracing your day to discover what helps you grow, what restores you, and where your time goes.",
-      tone: "neutral",
     };
   }
 
-  /*
-   * ONLY RESTORING
-   */
+  const durations = [
+    {
+      classification: ActivityClassification.Serves,
+      duration: statistics.servesDurationMinutes,
+    },
+    {
+      classification: ActivityClassification.Restores,
+      duration: statistics.restoresDurationMinutes,
+    },
+    {
+      classification: ActivityClassification.DoesNotServe,
+      duration: statistics.doesNotServeDurationMinutes,
+    },
+  ];
 
-  if (restoring > 0 && growing === 0 && leaks === 0) {
+  durations.sort((a, b) => b.duration - a.duration);
+
+  if (durations[0].duration === durations[1].duration) {
     return {
-      icon: "leaf-outline",
-      title: "Making space to recharge",
-      message: `You've dedicated ${formatDuration(
-        restoring,
-      )} to restoration today. Rest is an important part of a meaningful life.`,
-      tone: ActivityClassification.Restores,
+      title: "The many sides of your day",
+      description:
+        "A meaningful life can hold growth, rest, and moments of uncertainty at the same time.",
+      question: "Which moments felt most aligned with what matters to you?",
+      color: COLORS.gold,
+      icon: "planet-outline",
     };
   }
 
-  /*
-   * ONLY GROWING
-   */
+  switch (durations[0].classification) {
+    case ActivityClassification.Serves:
+      return {
+        title: "Becoming",
+        description:
+          "Growth isn't always about achievement. Sometimes it's about discovering who you want to become.",
+        question:
+          "What part of yourself are you developing through your choices?",
+        color: growing.color,
+        icon: "leaf-outline",
+      };
 
-  if (growing > 0 && restoring === 0 && leaks === 0) {
-    return {
-      icon: "sparkles-outline",
-      title: "Time invested in yourself",
-      message: `You've spent ${formatDuration(
-        growing,
-      )} on activities you've classified as supporting your growth.`,
-      tone: ActivityClassification.Serves,
-    };
+    case ActivityClassification.Restores:
+      return {
+        title: "The art of restoration",
+        description:
+          "Rest can be more than a pause. It can create space to reconnect with yourself.",
+        question: "What genuinely restores you, beyond simply taking a break?",
+        color: restoring.color,
+        icon: "water-outline",
+      };
+
+    case ActivityClassification.DoesNotServe:
+      return {
+        title: "The unexamined moments",
+        description:
+          "Some habits happen almost automatically. Noticing them can be the beginning of understanding.",
+        question: "What might you have been looking for in those moments?",
+        color: leaks.color,
+        icon: "moon-outline",
+      };
   }
-
-  /*
-   * ONLY LIFE LEAKS
-   */
-
-  if (leaks > 0 && intentionalTime === 0) {
-    return {
-      icon: "compass-outline",
-      title: "Noticing where time goes",
-      message: `${formatDuration(
-        leaks,
-      )} of your recorded time went toward activities you've marked as Life Leaks. Awareness gives you space to decide what matters next.`,
-      tone: ActivityClassification.DoesNotServe,
-    };
-  }
-
-  /*
-   * GROWING AND RESTORING ARE
-   * APPROXIMATELY BALANCED
-   *
-   * This is an observation, not an
-   * ideal ratio the user should achieve.
-   */
-
-  if (
-    growing > 0 &&
-    restoring > 0 &&
-    Math.abs(growing - restoring) <= intentionalTime * 0.2 &&
-    intentionalTime >= leaks
-  ) {
-    return {
-      icon: "infinite-outline",
-      title: "Growth and restoration",
-      message:
-        "You've made room for both personal growth and recovery today. Both deserve a place in your life.",
-      tone: "neutral",
-    };
-  }
-
-  /*
-   * RESTORING IS DOMINANT
-   */
-
-  if (restoring > growing && restoring >= leaks) {
-    return {
-      icon: "leaf-outline",
-      title: "Restoration is leading",
-      message: `You've spent ${formatDuration(
-        restoring,
-      )} on activities you've marked as Restoring today. Making space for recovery can be just as meaningful as pursuing a goal.`,
-      tone: ActivityClassification.Restores,
-    };
-  }
-
-  /*
-   * GROWING IS DOMINANT
-   */
-
-  if (growing >= restoring && growing >= leaks) {
-    return {
-      icon: "sparkles-outline",
-      title: "Investing in what matters",
-      message: `You've dedicated ${formatDuration(
-        growing,
-      )} to activities you've marked as Growing today. This is where much of your recorded time has been going.`,
-      tone: ActivityClassification.Serves,
-    };
-  }
-
-  /*
-   * LIFE LEAKS ARE DOMINANT
-   */
-
-  if (leaks > growing && leaks > restoring) {
-    return {
-      icon: "compass-outline",
-      title: "A moment of awareness",
-      message: `${formatDuration(
-        leaks,
-      )} of your recorded time went toward Life Leaks. Does this reflect how you wanted to spend your time today?`,
-      tone: ActivityClassification.DoesNotServe,
-    };
-  }
-
-  /*
-   * FALLBACK
-   */
-
-  return {
-    icon: "sparkles-outline",
-    title: "Your day is taking shape",
-    message:
-      "Every moment you record helps you understand how you're spending your time and what matters to you.",
-    tone: "neutral",
-  };
 }
 
-/*
- * TODAY'S INSIGHT COMPONENT
- */
-
-export function TodaySignal({ statistics }: TodaySignalProps) {
-  const signal = getSignal(statistics);
-
-  const accent =
-    signal.tone === "neutral"
-      ? COLORS.gold
-      : CLASSIFICATION_THEME[signal.tone].color;
-
-  const hasActivities = statistics.totalDurationMinutes > 0;
+export function TodaySignal({ statistics, onReflect }: TodaySignalProps) {
+  const theme = getReflectionTheme(statistics);
 
   return (
     <View style={styles.container}>
-      {/* SECTION TITLE */}
-
-      <Text style={styles.sectionLabel}>TODAY'S INSIGHT</Text>
-
-      {/* COSMIC PANEL */}
+      <Text style={styles.sectionTitle}>A MOMENT OF INSIGHT</Text>
 
       <CosmicPanel
-        variant="signal"
-        accent={accent}
-        contentStyle={styles.content}
+        variant="subtle"
+        accent={theme.color}
+        contentStyle={styles.panelContent}
       >
-        <View>
-          {/* TOP ROW */}
-
-          <View style={styles.topRow}>
-            <View
-              style={[
-                styles.iconFrame,
-                {
-                  borderColor: `${accent}33`,
-                  backgroundColor: `${accent}0E`,
-                },
-              ]}
-            >
-              <Ionicons name={signal.icon} size={18} color={accent} />
-            </View>
-
-            <Text style={styles.systemLabel}>YOUR TIME PATTERNS</Text>
+        <View style={styles.topRow}>
+          <View
+            style={[
+              styles.iconContainer,
+              {
+                backgroundColor: `${theme.color}14`,
+                borderColor: `${theme.color}40`,
+              },
+            ]}
+          >
+            <Ionicons name={theme.icon} size={19} color={theme.color} />
           </View>
 
-          {/* INSIGHT TITLE */}
-
-          <Text style={styles.title}>{signal.title}</Text>
-
-          {/* INSIGHT MESSAGE */}
-
-          <Text style={styles.message}>{signal.message}</Text>
-
-          {/* STATUS */}
-
-          <View style={styles.bottomRow}>
-            <View
-              style={[
-                styles.signalDot,
-                {
-                  backgroundColor: accent,
-                },
-              ]}
-            />
-
-            <Text style={styles.statusText}>
-              {hasActivities ? "BASED ON YOUR ACTIVITIES" : "AWAITING ACTIVITY"}
-            </Text>
-
-            <View style={styles.bottomLine} />
-          </View>
+          <Text style={styles.eyebrow}>A QUESTION FOR YOUR INNER WORLD</Text>
         </View>
+
+        <Text style={styles.title}>{theme.title}</Text>
+
+        <Text style={styles.description}>{theme.description}</Text>
+
+        <View style={styles.questionContainer}>
+          <Ionicons name="sparkles-outline" size={15} color={theme.color} />
+
+          <Text style={styles.question}>{theme.question}</Text>
+        </View>
+
+        {onReflect && (
+          <Pressable
+            onPress={() => onReflect(theme.question)}
+            accessibilityRole="button"
+            accessibilityLabel="Reflect on this question"
+            style={({ pressed }) => [
+              styles.reflectButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={styles.reflectButtonText}>Reflect on this</Text>
+
+            <Ionicons name="arrow-forward" size={16} color={COLORS.gold} />
+          </Pressable>
+        )}
       </CosmicPanel>
     </View>
   );
 }
 
-/*
- * STYLES
- */
-
 const styles = StyleSheet.create({
   container: {
-    marginTop: 26,
+    marginTop: 24,
   },
 
-  sectionLabel: {
+  sectionTitle: {
+    color: COLORS.gold,
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 1.5,
-    color: COLORS.gold,
-    marginBottom: 12,
+    letterSpacing: 1.4,
+    marginBottom: 13,
   },
 
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 18,
+  panelContent: {
+    paddingHorizontal: 18,
+    paddingVertical: 19,
   },
 
   topRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 12,
   },
 
-  iconFrame: {
-    width: 34,
-    height: 34,
+  iconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
-    borderWidth: 1,
   },
 
-  systemLabel: {
-    fontSize: 9,
-    fontWeight: "700",
-    letterSpacing: 1.5,
+  eyebrow: {
     color: COLORS.subtle,
-  },
-
-  title: {
-    marginTop: 10,
-    fontSize: 15,
-    fontWeight: "600",
-    color: COLORS.text,
-  },
-
-  message: {
-    marginTop: 6,
-    fontSize: 12,
-    lineHeight: 18,
-    color: COLORS.muted,
-  },
-
-  bottomRow: {
-    marginTop: 14,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  signalDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-  },
-
-  statusText: {
-    marginLeft: 7,
     fontSize: 9,
     fontWeight: "700",
     letterSpacing: 1.1,
-    color: COLORS.subtle,
+    flexShrink: 1,
+    textAlign: "right",
   },
 
-  bottomLine: {
+  title: {
+    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 17,
+  },
+
+  description: {
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 20,
+    marginTop: 9,
+  },
+
+  questionContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    marginTop: 19,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: `${COLORS.gold}20`,
+  },
+
+  question: {
+    color: COLORS.lightGold,
+    fontSize: 13,
+    lineHeight: 20,
+    fontStyle: "italic",
     flex: 1,
-    height: 1,
-    marginLeft: 12,
-    backgroundColor: COLORS.goldBorder,
-    opacity: 0.5,
+  },
+
+  reflectButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-end",
+    gap: 8,
+    marginTop: 17,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+
+  reflectButtonText: {
+    color: COLORS.gold,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  pressed: {
+    opacity: 0.65,
   },
 });

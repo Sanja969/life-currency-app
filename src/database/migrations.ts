@@ -338,6 +338,32 @@ export async function initializeDatabase(): Promise<void> {
       "Weekly intentions database migration completed.",
     );
   }
+
+  // ============================================
+  // WEEKLY INTENTION DIRECTION MIGRATION
+  // ============================================
+
+  const weeklyColumns = await database.getAllAsync<{
+    name: string;
+  }>("PRAGMA table_info(weekly_intentions);");
+
+  const hasDirectionColumn = weeklyColumns.some(
+    (column) => column.name === "direction",
+  );
+
+  if (!hasDirectionColumn) {
+    await database.execAsync(`
+    ALTER TABLE weekly_intentions
+    ADD COLUMN direction TEXT NOT NULL
+      DEFAULT 'at_least'
+      CHECK (direction IN ('at_least', 'at_most'));
+  `);
+
+    console.log(
+      "Weekly intention direction migration completed.",
+    );
+  }
+
   // ============================================
   // DAILY REFLECTIONS
   // ============================================

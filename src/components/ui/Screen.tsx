@@ -1,15 +1,19 @@
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, Ref } from "react";
 import { ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { fa } from "zod/v4/locales";
 
 type ScreenProps = PropsWithChildren<{
   scrollable?: boolean;
+  scrollRef?: Ref<ScrollView>;
 }>;
 
 const BACKGROUND = "#080A10";
 
-export function Screen({ children, scrollable = false }: ScreenProps) {
+export function Screen({
+  children,
+  scrollable = false,
+  scrollRef,
+}: ScreenProps) {
   if (scrollable) {
     return (
       <SafeAreaView
@@ -18,6 +22,7 @@ export function Screen({ children, scrollable = false }: ScreenProps) {
         edges={["top", "left", "right", "bottom"]}
       >
         <ScrollView
+          ref={scrollRef}
           style={{
             flex: 1,
             backgroundColor: BACKGROUND,
@@ -28,6 +33,7 @@ export function Screen({ children, scrollable = false }: ScreenProps) {
             paddingBottom: 120,
           }}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           showsVerticalScrollIndicator={false}
         >
           {children}

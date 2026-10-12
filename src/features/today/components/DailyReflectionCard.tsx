@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { router } from "expo-router";
-
+import { CosmicPanel } from "@/components/ui/CosmicPanel";
 import {
   ActivityIndicator,
   Pressable,
@@ -16,7 +16,15 @@ import { useDailyReflection } from "../hooks/useDailyReflection";
 
 const MAX_LENGTH = 2000;
 
-export function DailyReflectionCard() {
+type DailyReflectionCardProps = {
+  suggestedQuestion?: string | null;
+  openRequestId?: number;
+};
+
+export function DailyReflectionCard({
+  suggestedQuestion,
+  openRequestId = 0,
+}: DailyReflectionCardProps) {
   const {
     reflection,
     content,
@@ -34,12 +42,25 @@ export function DailyReflectionCard() {
 
   const hasReflection = reflection !== null;
 
-  // Keep the editor closed after saving or cancelling.
   useEffect(() => {
     if (hasReflection && !isEditing) {
       setIsExpanded(false);
     }
   }, [hasReflection, isEditing]);
+
+  useEffect(() => {
+    if (openRequestId === 0 || isLoading) {
+      return;
+    }
+
+    if (hasReflection) {
+      startEditing();
+    }
+
+    setIsExpanded(true);
+    // The request ID changes only when the user explicitly asks to reflect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openRequestId, isLoading]);
 
   const showEditor = isExpanded || isEditing;
 
@@ -68,25 +89,23 @@ export function DailyReflectionCard() {
 
   return (
     <View style={styles.container}>
-      {/* SECTION HEADER */}
-
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <View style={styles.goldDot} />
 
-          <Text style={styles.sectionTitle}>A MOMENT OF REFLECTION</Text>
+          <Text style={styles.sectionTitle}>DAILY REFLECTION</Text>
         </View>
 
         <Text style={styles.subtitle}>
-          A little space to notice what matters.
+          Beyond the time you spent, what stayed with you?
         </Text>
       </View>
 
-      {/* REFLECTION CARD */}
-
-      <View style={styles.card}>
-        <View style={styles.topAccent} />
-
+      <CosmicPanel
+        variant="default"
+        accent={COLORS.gold}
+        contentStyle={styles.cardContent}
+      >
         {isLoading ? (
           <ActivityIndicator
             size="small"
@@ -95,7 +114,17 @@ export function DailyReflectionCard() {
           />
         ) : (
           <>
-            {/* QUESTION */}
+            {hasReflection && !showEditor && (
+              <View style={styles.completedBadge}>
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={15}
+                  color={COLORS.gold}
+                />
+
+                <Text style={styles.completedText}>REFLECTED TODAY</Text>
+              </View>
+            )}
 
             <View style={styles.promptRow}>
               <View style={styles.iconContainer}>
@@ -107,7 +136,11 @@ export function DailyReflectionCard() {
               </View>
 
               <View style={styles.promptTextContainer}>
-                <Text style={styles.question}>What made today meaningful?</Text>
+                <Text style={styles.question}>
+                  {showEditor && suggestedQuestion
+                    ? suggestedQuestion
+                    : "What made today meaningful?"}
+                </Text>
 
                 {!showEditor && !hasReflection && (
                   <Text style={styles.hint}>
@@ -116,8 +149,6 @@ export function DailyReflectionCard() {
                 )}
               </View>
             </View>
-
-            {/* EMPTY COLLAPSED STATE */}
 
             {!hasReflection && !showEditor && (
               <Pressable
@@ -141,12 +172,8 @@ export function DailyReflectionCard() {
               </Pressable>
             )}
 
-            {/* SAVED REFLECTION */}
-
             {hasReflection && !showEditor && (
               <View style={styles.savedContainer}>
-                <View style={styles.savedAccent} />
-
                 <Text style={styles.savedText}>{reflection.content}</Text>
 
                 <Pressable
@@ -166,19 +193,17 @@ export function DailyReflectionCard() {
               </View>
             )}
 
-            {/* EXPANDED EDITOR */}
-
             {showEditor && (
               <View style={styles.editorContainer}>
                 <Text style={styles.editorHint}>
-                  It doesn't have to be something extraordinary. Sometimes the
-                  smallest moments matter most.
+                  Write whatever feels meaningful to you. There is no right or
+                  wrong answer.
                 </Text>
 
                 <TextInput
                   value={content}
                   onChangeText={setContent}
-                  placeholder="Today, I appreciated..."
+                  placeholder="Today, I noticed..."
                   placeholderTextColor={COLORS.subtle}
                   multiline
                   maxLength={MAX_LENGTH}
@@ -239,11 +264,10 @@ export function DailyReflectionCard() {
               </View>
             )}
 
-            {/* ERROR */}
-
             {errorMessage && (
               <Text style={styles.errorText}>{errorMessage}</Text>
             )}
+
             <Pressable
               onPress={() => router.push("/reflections")}
               accessibilityRole="button"
@@ -260,7 +284,7 @@ export function DailyReflectionCard() {
             </Pressable>
           </>
         )}
-      </View>
+      </CosmicPanel>
     </View>
   );
 }
@@ -288,44 +312,22 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    color: COLORS.muted,
-    fontSize: 10,
+    color: COLORS.gold,
+    fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 1.8,
+    letterSpacing: 1.5,
   },
 
   subtitle: {
-    color: COLORS.subtle,
+    color: COLORS.muted,
     fontSize: 12,
     lineHeight: 18,
     marginTop: 8,
   },
 
-  card: {
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    padding: 18,
-    position: "relative",
-  },
-
-  topAccent: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: 52,
-    height: 2,
-    backgroundColor: COLORS.gold,
-  },
-
-  loader: {
-    paddingVertical: 28,
-  },
-
-  promptRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 13,
+  cardContent: {
+    paddingHorizontal: 18,
+    paddingVertical: 20,
   },
 
   iconContainer: {
@@ -336,6 +338,68 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.goldBackground,
     borderWidth: 1,
     borderColor: COLORS.goldBorder,
+    borderRadius: 0,
+  },
+
+  writeButton: {
+    marginTop: 20,
+    minHeight: 45,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: COLORS.goldBackground,
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+    borderRadius: 0,
+  },
+
+  input: {
+    minHeight: 125,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 0,
+    color: COLORS.text,
+    fontSize: 14,
+    lineHeight: 22,
+    padding: 14,
+  },
+
+  saveButton: {
+    backgroundColor: COLORS.gold,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingHorizontal: 15,
+    minHeight: 42,
+    borderRadius: 0,
+  },
+
+  loader: {
+    paddingVertical: 28,
+  },
+
+  completedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginBottom: 16,
+  },
+
+  completedText: {
+    color: COLORS.gold,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+  },
+
+  promptRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 13,
   },
 
   promptTextContainer: {
@@ -356,19 +420,6 @@ const styles = StyleSheet.create({
     marginTop: 9,
   },
 
-  writeButton: {
-    marginTop: 20,
-    minHeight: 45,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    backgroundColor: COLORS.goldBackground,
-    borderWidth: 1,
-    borderColor: COLORS.goldBorder,
-  },
-
   writeButtonText: {
     color: COLORS.gold,
     fontSize: 13,
@@ -384,10 +435,6 @@ const styles = StyleSheet.create({
     paddingLeft: 15,
     borderLeftWidth: 2,
     borderLeftColor: COLORS.gold,
-  },
-
-  savedAccent: {
-    display: "none",
   },
 
   savedText: {
@@ -422,17 +469,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
 
-  input: {
-    minHeight: 125,
-    backgroundColor: COLORS.background,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    color: COLORS.text,
-    fontSize: 14,
-    lineHeight: 22,
-    padding: 14,
-  },
-
   characterCount: {
     color: COLORS.subtle,
     fontSize: 11,
@@ -460,16 +496,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  saveButton: {
-    backgroundColor: COLORS.gold,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    paddingHorizontal: 15,
-    minHeight: 42,
-  },
-
   saveButtonDisabled: {
     opacity: 0.45,
   },
@@ -486,6 +512,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 15,
   },
+
   historyButton: {
     flexDirection: "row",
     alignItems: "center",
