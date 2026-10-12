@@ -23,13 +23,11 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { ScreenHeader } from "@/components/layout/ScreenHeader";
+
 import { COLORS } from "@/theme/colors";
 
 import type { ProgressPeriod } from "../hooks/useProgress";
-
-/*
- * TYPES
- */
 
 type ProgressHeaderProps = {
   period: ProgressPeriod;
@@ -38,10 +36,6 @@ type ProgressHeaderProps = {
 
 type TimeUnit = "week" | "month";
 type TimePosition = "current" | "previous";
-
-/*
- * CONSTANTS
- */
 
 const PERIOD_MAP: Record<TimeUnit, Record<TimePosition, ProgressPeriod>> = {
   week: {
@@ -64,10 +58,6 @@ const PERIOD_LABELS: Record<ProgressPeriod, string> = {
 const WARM_WHITE = "#EAE4DC";
 const STAR_GOLD = "#F5DDA0";
 
-/*
- * HELPERS
- */
-
 function getTimeUnit(period: ProgressPeriod): TimeUnit {
   return period === "thisWeek" || period === "lastWeek" ? "week" : "month";
 }
@@ -78,10 +68,6 @@ function getTimePosition(period: ProgressPeriod): TimePosition {
     : "previous";
 }
 
-/*
- * TWINKLING STAR
- */
-
 function TwinklingStar({
   size = 3,
   duration = 2800,
@@ -90,6 +76,7 @@ function TwinklingStar({
   duration?: number;
 }) {
   const reduceMotion = useReducedMotion();
+
   const glow = useSharedValue(0.3);
 
   useEffect(() => {
@@ -135,12 +122,9 @@ function TwinklingStar({
   );
 }
 
-/*
- * ENERGY THREAD
- */
-
 function EnergyThread() {
   const reduceMotion = useReducedMotion();
+
   const [width, setWidth] = useState(0);
 
   const travel = useSharedValue(0);
@@ -233,10 +217,6 @@ function EnergyThread() {
   );
 }
 
-/*
- * QUOTE
- */
-
 function CosmicQuote() {
   return (
     <View style={styles.quoteContainer}>
@@ -263,10 +243,6 @@ function CosmicQuote() {
     </View>
   );
 }
-
-/*
- * TIME UNIT SELECTOR
- */
 
 function TimeUnitSelector({
   selectedUnit,
@@ -309,10 +285,6 @@ function TimeUnitSelector({
   );
 }
 
-/*
- * PERIOD NAVIGATION
- */
-
 function PeriodNavigation({
   period,
   selectedUnit,
@@ -349,6 +321,7 @@ function PeriodNavigation({
         disabled={!isPrevious}
         accessibilityRole="button"
         accessibilityLabel={`Show current ${selectedUnit}`}
+        style={[styles.navArrow, !isPrevious && styles.navArrowDisabled]}
       >
         <Ionicons
           name="chevron-forward"
@@ -360,15 +333,12 @@ function PeriodNavigation({
   );
 }
 
-/*
- * MAIN COMPONENT
- */
-
 export function ProgressHeader({
   period,
   onPeriodChange,
 }: ProgressHeaderProps) {
   const selectedUnit = getTimeUnit(period);
+
   const selectedPosition = getTimePosition(period);
 
   function handleUnitChange(unit: TimeUnit) {
@@ -377,29 +347,21 @@ export function ProgressHeader({
 
   return (
     <View style={styles.container}>
-      {/* EYEBROW */}
+      {/* SHARED HEADER */}
 
-      <View style={styles.eyebrowRow}>
-        <View style={styles.goldDot} />
+      <ScreenHeader
+        eyebrow="LIFE PATTERNS"
+        title="THE SHAPE OF YOUR "
+        highlightedTitle="TIME"
+        variant="editorial"
+        eyebrowAccessory={<TwinklingStar size={3} duration={3400} />}
+      />
 
-        <Text style={styles.eyebrow}>LIFE PATTERNS</Text>
-
-        <View style={styles.eyebrowStar}>
-          <TwinklingStar size={3} duration={3400} />
-        </View>
-      </View>
-
-      {/* TITLE */}
-
-      <Text style={styles.title} accessibilityRole="header">
-        THE SHAPE OF YOUR <Text style={styles.titleHighlight}>TIME</Text>
-      </Text>
-
-      {/* QUOTE */}
+      {/* COSMIC QUOTE */}
 
       <CosmicQuote />
 
-      {/* NAVIGATION */}
+      {/* PERIOD CONTROLS */}
 
       <View style={styles.controlsRow}>
         <TimeUnitSelector
@@ -417,65 +379,10 @@ export function ProgressHeader({
   );
 }
 
-/*
- * STYLES
- */
-
 const styles = StyleSheet.create({
   container: {
     paddingBottom: 6,
   },
-
-  /*
-   * EYEBROW
-   */
-
-  eyebrowRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-  },
-
-  goldDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: COLORS.gold,
-  },
-
-  eyebrow: {
-    color: COLORS.gold,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.8,
-  },
-
-  eyebrowStar: {
-    marginLeft: "auto",
-    marginRight: 5,
-  },
-
-  /*
-   * TITLE
-   */
-
-  title: {
-    color: WARM_WHITE,
-    fontSize: 17,
-    lineHeight: 25,
-    fontWeight: "500",
-    letterSpacing: 1.1,
-    marginTop: 16,
-  },
-
-  titleHighlight: {
-    color: COLORS.lightGold,
-    fontWeight: "700",
-  },
-
-  /*
-   * QUOTE
-   */
 
   quoteContainer: {
     position: "relative",
@@ -521,10 +428,6 @@ const styles = StyleSheet.create({
     bottom: 13,
   },
 
-  /*
-   * ENERGY THREAD
-   */
-
   threadContainer: {
     width: "76%",
     height: 14,
@@ -552,10 +455,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF9E9",
   },
 
-  /*
-   * CONTROLS
-   */
-
   controlsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -563,10 +462,6 @@ const styles = StyleSheet.create({
     marginTop: 18,
     gap: 8,
   },
-
-  /*
-   * WEEK / MONTH
-   */
 
   unitSelector: {
     flexDirection: "row",
@@ -606,10 +501,6 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: COLORS.gold,
   },
-
-  /*
-   * PERIOD NAVIGATION
-   */
 
   periodNavigation: {
     flexDirection: "row",

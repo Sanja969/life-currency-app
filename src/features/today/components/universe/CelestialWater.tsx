@@ -22,12 +22,18 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import {
+  getUniverseVisualEvolution,
+  type UniverseVisualMode,
+} from "./universeVisualEvolution";
+
 type CelestialWaterProps = {
   color: string;
   duration: number;
   percentage: number;
   activityCount: number;
   size?: number;
+  mode?: UniverseVisualMode;
 };
 
 type Particle = {
@@ -75,22 +81,52 @@ export function CelestialWater({
   percentage,
   activityCount,
   size = 160,
+  mode = "daily",
 }: CelestialWaterProps) {
   const reducedMotion = useReducedMotion();
 
   const count = Math.max(0, activityCount);
   const minutes = Math.max(0, duration);
 
-  const intensity = clamp(minutes / 360, 0, 1);
+  const lifetime = mode === "lifetime";
+
+  const evolution = getUniverseVisualEvolution(
+    activityCount,
+    duration,
+    percentage,
+  );
+
+  const intensity = lifetime ? evolution.energy : clamp(minutes / 360, 0, 1);
+
   const dominance = clamp(percentage / 100, 0, 1);
 
-  const rippleCount = count === 0 ? 0 : Math.min(MAX_RIPPLES, count + 1);
+  const rippleCount =
+    count === 0
+      ? 0
+      : lifetime
+        ? Math.min(MAX_RIPPLES, 1 + Math.floor(evolution.structure * 6))
+        : Math.min(MAX_RIPPLES, count + 1);
 
-  const particleCount = count === 0 ? 0 : Math.min(MAX_PARTICLES, count * 3);
+  const particleCount =
+    count === 0
+      ? 0
+      : lifetime
+        ? Math.min(MAX_PARTICLES, 3 + Math.floor(evolution.structure * 27))
+        : Math.min(MAX_PARTICLES, count * 3);
 
-  const innerStarCount = count === 0 ? 0 : Math.min(MAX_INNER_STARS, count + 2);
+  const innerStarCount =
+    count === 0
+      ? 0
+      : lifetime
+        ? Math.min(MAX_INNER_STARS, 2 + Math.floor(evolution.structure * 10))
+        : Math.min(MAX_INNER_STARS, count + 2);
 
-  const waterWidth = count === 0 ? 17 : clamp(29 + count * 4, 29, 67);
+  const waterWidth =
+    count === 0
+      ? 17
+      : lifetime
+        ? 29 + evolution.structure * 38
+        : clamp(29 + count * 4, 29, 67);
 
   const particles = useMemo(
     () => createParticles(particleCount),
@@ -220,9 +256,13 @@ export function CelestialWater({
             opacity={count === 0 ? 0.2 : 1}
           />
 
+          {/* WATER RIPPLES */}
+
           {Array.from({ length: rippleCount }, (_, index) => {
             const progress = (index + 1) / (MAX_RIPPLES + 1);
+
             const rx = 10 + progress * waterWidth;
+
             const ry = 3 + progress * waterWidth * 0.22;
 
             return (
@@ -255,6 +295,8 @@ export function CelestialWater({
               </G>
             );
           })}
+
+          {/* WATER PARTICLES */}
 
           {particles.map((particle, index) => (
             <G key={`water-particle-${index}`}>
@@ -318,7 +360,7 @@ export function CelestialWater({
               </RadialGradient>
             </Defs>
 
-            {/* Soft surrounding glow */}
+            {/* Surrounding glow */}
 
             <Ellipse
               cx={80}
@@ -328,7 +370,7 @@ export function CelestialWater({
               fill="url(#crystalOuterGlow)"
             />
 
-            {/* Main crystal silhouette */}
+            {/* Crystal silhouette */}
 
             <Path
               d="
@@ -345,7 +387,7 @@ export function CelestialWater({
               strokeOpacity={0.8}
             />
 
-            {/* Dark translucent inner chamber */}
+            {/* Translucent chamber */}
 
             <Path
               d="
@@ -360,7 +402,7 @@ export function CelestialWater({
               fillOpacity={0.34}
             />
 
-            {/* Inner magical light */}
+            {/* Inner light */}
 
             <Ellipse
               cx={80}
@@ -371,7 +413,7 @@ export function CelestialWater({
               opacity={0.6 + intensity * 0.4}
             />
 
-            {/* Left crystal reflection */}
+            {/* Left reflection */}
 
             <Path
               d="M77 42 C71 53 67 62 68 71"
@@ -382,7 +424,7 @@ export function CelestialWater({
               strokeLinecap="round"
             />
 
-            {/* Right internal reflection */}
+            {/* Right reflection */}
 
             <Path
               d="M87 58 C92 67 90 76 85 81"
@@ -403,7 +445,7 @@ export function CelestialWater({
               strokeOpacity={0.2}
             />
 
-            {/* Stars captured inside the drop */}
+            {/* Inner stars */}
 
             {innerStars.map((star, index) => (
               <G key={`inner-star-${index}`}>
@@ -435,7 +477,7 @@ export function CelestialWater({
               fillOpacity={0.85}
             />
 
-            {/* Reflection beneath the crystal */}
+            {/* Reflection below crystal */}
 
             <Ellipse
               cx={80}

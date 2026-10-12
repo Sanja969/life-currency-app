@@ -160,7 +160,7 @@ export function TodaySignal({ statistics, onReflect }: TodaySignalProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 24,
+    marginTop: 0,
   },
 
   sectionTitle: {

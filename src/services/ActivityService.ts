@@ -427,6 +427,10 @@ export class ActivityService {
       .slice(0, Math.max(0, limit))
       .map(({ mostRecentDate, ...suggestion }) => suggestion);
   }
+
+  async getUniverseStats(untilDate: Date) {
+    return activityRepository.getUniverseStats(untilDate);
+  }
 }
 
 export const activityService = new ActivityService();

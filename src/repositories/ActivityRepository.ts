@@ -102,7 +102,7 @@ export class ActivityRepository {
 
     return rows.map(toActivity);
   }
-  
+
   async getById(id: number): Promise<Activity | null> {
     const database = await getDatabase();
 
@@ -414,6 +414,136 @@ export class ActivityRepository {
     );
 
     return rows.map(toActivity);
+  }
+
+
+  async getUniverseStats(untilDate: Date): Promise<{
+    growingCount: number;
+    restoringCount: number;
+    leaksCount: number;
+
+    growingMinutes: number;
+    restoringMinutes: number;
+    leaksMinutes: number;
+
+    intentionalDays: number;
+
+    firstActivityDate: string | null;
+    lastActivityDate: string | null;
+  }> {
+    const database = await getDatabase();
+
+    const until = untilDate.getTime();
+
+    if (!Number.isFinite(until)) {
+      throw new Error("Invalid universe end date.");
+    }
+
+    const rows = await database.getAllAsync<ActivityRow>(
+      `
+      SELECT *
+      FROM activities
+      WHERE activity_date < ?
+      ORDER BY activity_date ASC
+      `,
+      [untilDate.toISOString()],
+    );
+
+    const stats = {
+      growingCount: 0,
+      restoringCount: 0,
+      leaksCount: 0,
+
+      growingMinutes: 0,
+      restoringMinutes: 0,
+      leaksMinutes: 0,
+
+      intentionalDays: 0,
+
+      firstActivityDate: null as string | null,
+      lastActivityDate: null as string | null,
+    };
+
+    const intentionalDates = new Set<string>();
+
+    for (const row of rows) {
+      const activity = toActivity(row);
+
+      const start = activity.activityDate.getTime();
+      const duration = Math.max(0, activity.durationMinutes);
+
+      if (!Number.isFinite(start) || !Number.isFinite(duration)) {
+        continue;
+      }
+
+      const end = start + duration * 60_000;
+
+      // Only count the portion that occurred before untilDate.
+      const clippedEnd = Math.min(end, until);
+
+      const clippedMinutes = Math.max(
+        0,
+        (clippedEnd - start) / 60_000,
+      );
+
+      if (clippedMinutes <= 0) {
+        continue;
+      }
+
+      const activityDate = activity.activityDate.toISOString();
+
+      if (
+        stats.firstActivityDate === null ||
+        activityDate < stats.firstActivityDate
+      ) {
+        stats.firstActivityDate = activityDate;
+      }
+
+      if (
+        stats.lastActivityDate === null ||
+        activityDate > stats.lastActivityDate
+      ) {
+        stats.lastActivityDate = activityDate;
+      }
+
+      switch (activity.classification) {
+        case "serves":
+          stats.growingCount += 1;
+          stats.growingMinutes += clippedMinutes;
+          break;
+
+        case "restores":
+          stats.restoringCount += 1;
+          stats.restoringMinutes += clippedMinutes;
+          break;
+
+        case "does_not_serve":
+          stats.leaksCount += 1;
+          stats.leaksMinutes += clippedMinutes;
+          break;
+      }
+
+      if (
+        activity.classification === "serves" ||
+        activity.classification === "restores"
+      ) {
+        // Count intentional activity days in local time.
+        const year = activity.activityDate.getFullYear();
+        const month = String(
+          activity.activityDate.getMonth() + 1,
+        ).padStart(2, "0");
+
+        const day = String(
+          activity.activityDate.getDate(),
+        ).padStart(2, "0");
+
+        intentionalDates.add(`${year}-${month}-${day}`);
+      }
+    }
+
+    stats.intentionalDays = intentionalDates.size;
+
+    return stats;
   }
 }
 

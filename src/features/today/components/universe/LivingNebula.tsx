@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+
 import Svg, {
   Circle,
   Defs,
@@ -9,12 +10,18 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 
+import {
+  getUniverseVisualEvolution,
+  type UniverseVisualMode,
+} from "./universeVisualEvolution";
+
 type LivingNebulaProps = {
   color: string;
   duration: number;
   percentage: number;
   activityCount: number;
   size?: number;
+  mode?: UniverseVisualMode;
 };
 
 type Branch = {
@@ -34,14 +41,9 @@ const MAX_BRANCHES = 18;
 const MAX_STARS = 36;
 const FULL_GLOW_MINUTES = 360;
 
-/**
- * Deterministic pseudo-random number.
- *
- * The same index always produces the same value,
- * so existing stars never jump to new positions.
- */
 function seededValue(index: number, seed: number) {
   const value = Math.sin(index * 127.1 + seed * 311.7) * 43758.5453;
+
   return value - Math.floor(value);
 }
 
@@ -99,37 +101,50 @@ export function LivingNebula({
   percentage,
   activityCount,
   size = 160,
+  mode = "daily",
 }: LivingNebulaProps) {
   const count = Math.max(0, activityCount);
   const minutes = Math.max(0, duration);
 
+  const lifetime = mode === "lifetime";
+
+  const evolution = getUniverseVisualEvolution(
+    activityCount,
+    duration,
+    percentage,
+  );
+
+  // DAILY: original development.
+  // LIFETIME: gradual long-term structural growth.
+
   const branchCount =
-    count === 0 ? 0 : Math.min(MAX_BRANCHES, 2 + count * 2);
+    count === 0
+      ? 0
+      : lifetime
+        ? Math.min(MAX_BRANCHES, 2 + Math.floor(evolution.structure * 16))
+        : Math.min(MAX_BRANCHES, 2 + count * 2);
 
   const starCount =
-    count === 0 ? 0 : Math.min(MAX_STARS, 2 + count * 3);
+    count === 0
+      ? 0
+      : lifetime
+        ? Math.min(MAX_STARS, 2 + Math.floor(evolution.structure * 34))
+        : Math.min(MAX_STARS, 2 + count * 3);
 
-  const glowStrength = clamp(minutes / FULL_GLOW_MINUTES, 0, 1);
+  const glowStrength = lifetime
+    ? evolution.energy
+    : clamp(minutes / FULL_GLOW_MINUTES, 0, 1);
+
   const dominance = clamp(percentage / 100, 0, 1);
 
-  const branches = useMemo(
-    () => createBranches(branchCount),
-    [branchCount],
-  );
+  const branches = useMemo(() => createBranches(branchCount), [branchCount]);
 
-  const stars = useMemo(
-    () => createStars(starCount),
-    [starCount],
-  );
+  const stars = useMemo(() => createStars(starCount), [starCount]);
 
   const hasActivity = count > 0;
 
   return (
-    <Svg
-      width={size}
-      height={size}
-      viewBox="0 0 160 160"
-    >
+    <Svg width={size} height={size} viewBox="0 0 160 160">
       <Defs>
         <RadialGradient id="livingNebulaAura">
           <Stop
@@ -144,61 +159,38 @@ export function LivingNebula({
             stopOpacity={0.04 + dominance * 0.12}
           />
 
-          <Stop
-            offset="100%"
-            stopColor={color}
-            stopOpacity={0}
-          />
+          <Stop offset="100%" stopColor={color} stopOpacity={0} />
         </RadialGradient>
 
         <RadialGradient id="livingNebulaCore">
           <Stop offset="0%" stopColor="#FFE6BB" />
           <Stop offset="35%" stopColor={color} />
-          <Stop
-            offset="100%"
-            stopColor={color}
-            stopOpacity={0}
-          />
+          <Stop offset="100%" stopColor={color} stopOpacity={0} />
         </RadialGradient>
       </Defs>
 
-      {/* Cosmic atmosphere */}
+      {/* COSMIC ATMOSPHERE */}
 
       {hasActivity && (
-        <Circle
-          cx={80}
-          cy={78}
-          r={62}
-          fill="url(#livingNebulaAura)"
-        />
+        <Circle cx={80} cy={78} r={62} fill="url(#livingNebulaAura)" />
       )}
 
-      {/* Dormant cosmic seed */}
+      {/* DORMANT COSMIC SEED */}
 
       {!hasActivity && (
         <G>
-          <Circle
-            cx={80}
-            cy={102}
-            r={11}
-            fill={color}
-            fillOpacity={0.045}
-          />
+          <Circle cx={80} cy={102} r={11} fill={color} fillOpacity={0.045} />
 
-          <Circle
-            cx={80}
-            cy={102}
-            r={2.4}
-            fill={color}
-            fillOpacity={0.4}
-          />
+          <Circle cx={80} cy={102} r={2.4} fill={color} fillOpacity={0.4} />
         </G>
       )}
 
-      {/* Main cosmic trunk */}
+      {/* LIVING COSMIC TREE */}
 
       {hasActivity && (
         <G>
+          {/* Trunk glow */}
+
           <Path
             d="M80 124 C78 106 83 92 80 74 C77 60 81 46 80 33"
             fill="none"
@@ -207,6 +199,8 @@ export function LivingNebula({
             strokeOpacity={0.06 + glowStrength * 0.08}
             strokeLinecap="round"
           />
+
+          {/* Main trunk */}
 
           <Path
             d="M80 124 C78 106 83 92 80 74 C77 60 81 46 80 33"
@@ -217,7 +211,7 @@ export function LivingNebula({
             strokeLinecap="round"
           />
 
-          {/* New branches appear as activity count increases */}
+          {/* Branches */}
 
           {branches.map((branch, index) => (
             <G key={`branch-${index}`}>
@@ -251,7 +245,7 @@ export function LivingNebula({
             opacity={0.45 + glowStrength * 0.4}
           />
 
-          {/* Stars accumulated through activities */}
+          {/* Accumulated stars */}
 
           {stars.map((star, index) => (
             <G key={`star-${index}`}>
@@ -268,9 +262,7 @@ export function LivingNebula({
                 cy={star.y}
                 r={star.radius}
                 fill={index % 5 === 0 ? "#FFE8C1" : color}
-                fillOpacity={
-                  star.opacity * (0.6 + glowStrength * 0.4)
-                }
+                fillOpacity={star.opacity * (0.6 + glowStrength * 0.4)}
               />
             </G>
           ))}
