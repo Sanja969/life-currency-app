@@ -21,6 +21,7 @@ import { activityService } from "@/services/ActivityService";
 import { CLASSIFICATION_THEME } from "@/theme/classification";
 import { COLORS } from "@/theme/colors";
 import { Activity } from "@/types/activity";
+import { ScreenTopBar } from "@/components/layout/ScreenTopBar";
 
 // HELPERS
 
@@ -249,15 +250,23 @@ export default function ActivityDetailScreen() {
     return (
       <View style={styles.screen}>
         <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-          <View style={styles.header}>
-            <AppButton
-              variant="icon"
-              tone="secondary"
-              icon="chevron-back"
-              accessibilityLabel="Go back"
-              onPress={() => router.back()}
-            />
-          </View>
+          <ScreenTopBar
+            title="LIFE TRACE"
+            rightAction={
+              <Pressable
+                onPress={handleEdit}
+                accessibilityRole="button"
+                accessibilityLabel="Edit activity"
+                hitSlop={10}
+                style={({ pressed }) => [
+                  styles.headerEdit,
+                  { opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <Ionicons name="pencil-outline" size={19} color={COLORS.gold} />
+              </Pressable>
+            }
+          />
 
           <View style={styles.errorContainer}>
             <Ionicons

@@ -19,6 +19,7 @@ import { activityService } from "@/services/ActivityService";
 import { COLORS } from "@/theme/colors";
 import { Activity } from "@/types/activity";
 import { ActivityFormOutput } from "@/validation/activitySchema";
+import { ScreenTopBar } from "@/components/layout/ScreenTopBar";
 
 function normalizeParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
@@ -122,19 +123,11 @@ export default function EditActivityScreen() {
   if (isLoading) {
     return (
       <View style={styles.screen}>
-        <SafeAreaView
-          style={styles.safeArea}
-          edges={["top", "left", "right"]}
-        >
+        <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator
-              size="large"
-              color={COLORS.gold}
-            />
+            <ActivityIndicator size="large" color={COLORS.gold} />
 
-            <Text style={styles.loadingText}>
-              Loading activity...
-            </Text>
+            <Text style={styles.loadingText}>Loading activity...</Text>
           </View>
         </SafeAreaView>
       </View>
@@ -146,10 +139,7 @@ export default function EditActivityScreen() {
   if (!activity || errorMessage) {
     return (
       <View style={styles.screen}>
-        <SafeAreaView
-          style={styles.safeArea}
-          edges={["top", "left", "right"]}
-        >
+        <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
           <View style={styles.topBar}>
             <AppButton
               variant="icon"
@@ -162,9 +152,7 @@ export default function EditActivityScreen() {
             <View style={styles.topBarLabel}>
               <View style={styles.goldDot} />
 
-              <Text style={styles.headerTitle}>
-                EDIT ACTIVITY
-              </Text>
+              <Text style={styles.headerTitle}>EDIT ACTIVITY</Text>
             </View>
 
             <View style={styles.backButtonPlaceholder} />
@@ -179,9 +167,7 @@ export default function EditActivityScreen() {
               />
             </View>
 
-            <Text style={styles.errorTitle}>
-              Activity unavailable
-            </Text>
+            <Text style={styles.errorTitle}>Activity unavailable</Text>
 
             <Text style={styles.errorDescription}>
               {errorMessage ?? "This activity could not be found."}
@@ -203,9 +189,7 @@ export default function EditActivityScreen() {
                 color={COLORS.gold}
               />
 
-              <Text style={styles.errorButtonText}>
-                Back to activities
-              </Text>
+              <Text style={styles.errorButtonText}>Back to activities</Text>
             </Pressable>
           </View>
         </SafeAreaView>
@@ -217,31 +201,10 @@ export default function EditActivityScreen() {
 
   return (
     <View style={styles.screen}>
-      <SafeAreaView
-        style={styles.safeArea}
-        edges={["top", "left", "right"]}
-      >
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         {/* TOP BAR */}
 
-        <View style={styles.topBar}>
-          <AppButton
-            variant="icon"
-            tone="secondary"
-            icon="chevron-back"
-            accessibilityLabel="Go back"
-            onPress={() => router.back()}
-          />
-
-          <View style={styles.topBarLabel}>
-            <View style={styles.goldDot} />
-
-            <Text style={styles.eyebrow}>
-              EDIT ACTIVITY
-            </Text>
-          </View>
-
-          <View style={styles.backButtonPlaceholder} />
-        </View>
+        <ScreenTopBar title="EDIT ACTIVITY" />
 
         {/* FORM */}
 
@@ -255,9 +218,7 @@ export default function EditActivityScreen() {
           {/* PAGE HEADER */}
 
           <View style={styles.pageHeader}>
-            <Text style={styles.pageTitle}>
-              Edit your trace
-            </Text>
+            <Text style={styles.pageTitle}>Edit your trace</Text>
 
             <Text style={styles.pageDescription}>
               Refine the details of how you spent your time.

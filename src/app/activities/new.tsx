@@ -28,6 +28,7 @@ import {
   ActivityClassification,
   ActivityInput,
 } from "@/types/activity";
+import { ScreenTopBar } from "@/components/layout/ScreenTopBar";
 
 export default function CreateActivityScreen() {
   const router = useRouter();
@@ -345,15 +346,7 @@ export default function CreateActivityScreen() {
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         {/* BACK BUTTON */}
 
-        <View style={styles.header}>
-          <AppButton
-            variant="icon"
-            tone="secondary"
-            icon="chevron-back"
-            accessibilityLabel="Go back"
-            onPress={() => router.back()}
-          />
-        </View>
+        <ScreenTopBar title="ADD ACTIVITY" />
 
         {/* ACTIVITY FORM */}
 
