@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   Modal,
@@ -15,24 +15,17 @@ import { Ionicons } from "@expo/vector-icons";
 import Svg, {
   Circle,
   Defs,
+  Ellipse,
   G,
-  Line,
+  LinearGradient,
   Path,
   RadialGradient,
   Stop,
 } from "react-native-svg";
 
-import Animated, {
-  Easing,
-  cancelAnimation,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from "react-native-reanimated";
+import { UniverseArtwork } from "./universe/UniverseArtwork";
+import { UniverseBlackHole } from "./universe/UniverseBlackHole";
 
-import { CosmicPanel } from "@/components/ui/CosmicPanel";
 import { CLASSIFICATION_THEME } from "@/theme/classification";
 import { COLORS } from "@/theme/colors";
 
@@ -40,795 +33,594 @@ import { Activity, ActivityClassification } from "@/types/activity";
 
 import { formatDuration } from "@/utils/formatDuration";
 
+/* -------------------------------------------------------------------------- */
+/* TYPES                                                                      */
+/* -------------------------------------------------------------------------- */
+
 type LifeMandalaProps = {
   activities: Activity[];
 };
 
-type MandalaSector = {
+type UniverseCategory = {
   classification: ActivityClassification;
   title: string;
-  color: string;
-  startAngle: number;
-  endAngle: number;
-  activities: Activity[];
   duration: number;
+  percentage: number;
+  color: string;
+  activities: Activity[];
   question: string;
 };
 
-type MandalaStar = {
-  activity: Activity;
-  x: number;
-  y: number;
-  radius: number;
-  color: string;
+type ArtworkType = "tree" | "lotus" | "vortex";
+
+type WorldPosition = {
+  top: number;
+  left: number;
 };
 
-type Selection =
-  | { type: "activity"; activity: Activity }
-  | { type: "sector"; sector: MandalaSector }
-  | { type: "overview" }
-  | null;
+/* -------------------------------------------------------------------------- */
+/* CONSTANTS                                                                  */
+/* -------------------------------------------------------------------------- */
 
-const SIZE = 320;
-const CENTER = SIZE / 2;
+const UNIVERSE_WIDTH = 340;
+const UNIVERSE_HEIGHT = 420;
 
-const INNER_RADIUS = 76;
-const OUTER_RADIUS = 140;
+const WORLD_WIDTH = 140;
+const ARTWORK_SIZE = 112;
 
-const SECTOR_DEFINITIONS = [
+const DEFINITIONS = [
   {
     classification: ActivityClassification.Serves,
     title: "Growing",
-    startAngle: -150,
-    endAngle: -30,
+    type: "tree" as ArtworkType,
     question:
       "What part of yourself are you nurturing through these activities?",
   },
   {
     classification: ActivityClassification.Restores,
     title: "Restoring",
-    startAngle: -30,
-    endAngle: 90,
+    type: "lotus" as ArtworkType,
     question: "What helps you feel genuinely restored?",
   },
   {
     classification: ActivityClassification.DoesNotServe,
     title: "Life Leaks",
-    startAngle: 90,
-    endAngle: 210,
+    type: "vortex" as ArtworkType,
     question: "What might you be seeking in these moments?",
   },
 ] as const;
 
-function polarPoint(radius: number, angleDegrees: number) {
-  const radians = (angleDegrees * Math.PI) / 180;
+/* -------------------------------------------------------------------------- */
+/* DATA                                                                       */
+/* -------------------------------------------------------------------------- */
 
-  return {
-    x: CENTER + Math.cos(radians) * radius,
-    y: CENTER + Math.sin(radians) * radius,
-  };
-}
-
-function createSectorPath(
-  startAngle: number,
-  endAngle: number,
-  innerRadius: number,
-  outerRadius: number,
-) {
-  const outerStart = polarPoint(outerRadius, startAngle);
-  const outerEnd = polarPoint(outerRadius, endAngle);
-  const innerEnd = polarPoint(innerRadius, endAngle);
-  const innerStart = polarPoint(innerRadius, startAngle);
-
-  return [
-    `M ${outerStart.x} ${outerStart.y}`,
-    `A ${outerRadius} ${outerRadius} 0 0 1 ${outerEnd.x} ${outerEnd.y}`,
-    `L ${innerEnd.x} ${innerEnd.y}`,
-    `A ${innerRadius} ${innerRadius} 0 0 0 ${innerStart.x} ${innerStart.y}`,
-    "Z",
-  ].join(" ");
-}
-
-function getStarRadius(duration: number) {
-  return Math.min(7.5, 3.5 + Math.sqrt(Math.max(0, duration) / 15));
-}
-
-function buildSectors(activities: Activity[]): MandalaSector[] {
-  return SECTOR_DEFINITIONS.map((definition) => {
-    const sectorActivities = activities
-      .filter(
-        (activity) => activity.classification === definition.classification,
-      )
-      .sort((a, b) => {
-        const difference =
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-
-        return difference || a.id - b.id;
-      });
-
-    return {
-      ...definition,
-      color: CLASSIFICATION_THEME[definition.classification].color,
-      activities: sectorActivities,
-      duration: sectorActivities.reduce(
-        (sum, activity) => sum + Math.max(0, activity.durationMinutes),
-        0,
-      ),
-    };
-  });
-}
-
-/**
- * Each activity gets one star.
- *
- * Angle:
- *   Position in the classification's recorded sequence.
- *
- * Radius:
- *   Relative duration, distributed across multiple radial levels.
- *
- * Small alternating offsets:
- *   Help separate nearby stars without introducing randomness.
- */
-function buildStars(sectors: MandalaSector[]): MandalaStar[] {
-  const maxDuration = Math.max(
-    1,
-    ...sectors.flatMap((sector) =>
-      sector.activities.map((activity) =>
-        Math.max(0, activity.durationMinutes),
-      ),
-    ),
-  );
-
-  return sectors.flatMap((sector) => {
-    const count = sector.activities.length;
-
-    return sector.activities.map((activity, index) => {
-      const fraction = (index + 1) / (count + 1);
-
-      const angle =
-        sector.startAngle +
-        10 +
-        fraction * (sector.endAngle - sector.startAngle - 20);
-
-      const normalizedDuration = Math.sqrt(
-        Math.max(0, activity.durationMinutes) / maxDuration,
-      );
-
-      const durationRadius = INNER_RADIUS + 15 + normalizedDuration * 35;
-
-      const radialOffset = [-7, 5, 0, 8, -3][index % 5];
-
-      const radius = Math.max(
-        INNER_RADIUS + 9,
-        Math.min(OUTER_RADIUS - 9, durationRadius + radialOffset),
-      );
-
-      const point = polarPoint(radius, angle);
-
-      return {
-        activity,
-        x: point.x,
-        y: point.y,
-        radius: getStarRadius(activity.durationMinutes),
-        color: sector.color,
-      };
-    });
-  });
-}
-
-function getDailyInsight(sectors: MandalaSector[]) {
-  const total = sectors.reduce((sum, sector) => sum + sector.duration, 0);
-
-  if (total === 0) {
-    return "Your story begins with a single moment.";
-  }
-
-  const sorted = [...sectors].sort((a, b) => b.duration - a.duration);
-
-  if (sorted[0].duration === sorted[1].duration) {
-    return "Your recorded time is shared across different parts of life.";
-  }
-
-  const insights: Record<ActivityClassification, string> = {
-    [ActivityClassification.Serves]:
-      "Growth shaped most of your recorded time today.",
-
-    [ActivityClassification.Restores]:
-      "Restoration shaped most of your recorded time today.",
-
-    [ActivityClassification.DoesNotServe]:
-      "Life Leaks occupied the largest share of your recorded time today.",
-  };
-
-  return insights[sorted[0].classification];
-}
-
-export function LifeMandala({ activities }: LifeMandalaProps) {
-  const [selection, setSelection] = useState<Selection>(null);
-
-  const { width } = useWindowDimensions();
-
-  const visualSize = Math.min(SIZE, Math.max(240, width - 64));
-
-  const sectors = useMemo(() => buildSectors(activities), [activities]);
-
-  const stars = useMemo(() => buildStars(sectors), [sectors]);
-
-  const insight = useMemo(() => getDailyInsight(sectors), [sectors]);
-
-  const totalDuration = sectors.reduce(
-    (sum, sector) => sum + sector.duration,
+function buildCategories(activities: Activity[]): UniverseCategory[] {
+  const total = activities.reduce(
+    (sum, activity) => sum + Math.max(0, activity.durationMinutes),
     0,
   );
 
-  const totalActivities = activities.length;
-
-  const reducedMotion = useReducedMotion();
-
-  const pulse = useSharedValue(1);
-
-  useEffect(() => {
-    if (reducedMotion) {
-      pulse.value = 1;
-      return;
-    }
-
-    pulse.value = withRepeat(
-      withTiming(1.045, {
-        duration: 2800,
-        easing: Easing.inOut(Easing.ease),
-      }),
-      -1,
-      true,
+  return DEFINITIONS.map((definition) => {
+    const categoryActivities = activities.filter(
+      (activity) => activity.classification === definition.classification,
     );
 
-    return () => {
-      cancelAnimation(pulse);
+    const duration = categoryActivities.reduce(
+      (sum, activity) => sum + Math.max(0, activity.durationMinutes),
+      0,
+    );
+
+    return {
+      classification: definition.classification,
+      title: definition.title,
+      question: definition.question,
+      activities: categoryActivities,
+      duration,
+      percentage: total > 0 ? (duration / total) * 100 : 0,
+      color: CLASSIFICATION_THEME[definition.classification].color,
     };
-  }, [pulse, reducedMotion]);
+  });
+}
 
-  const animatedCoreStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulse.value }],
-  }));
+/* -------------------------------------------------------------------------- */
+/* COSMIC BACKGROUND                                                          */
+/* -------------------------------------------------------------------------- */
 
-  const selectedActivity =
-    selection?.type === "activity" ? selection.activity : null;
+function UniverseBackground() {
+  return (
+    <Svg
+      width="100%"
+      height="100%"
+      viewBox={`0 0 ${UNIVERSE_WIDTH} ${UNIVERSE_HEIGHT}`}
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+    >
+      <Defs>
+        <RadialGradient id="universeAtmosphere">
+          <Stop offset="0%" stopColor="#202044" stopOpacity={0.28} />
+          <Stop offset="65%" stopColor="#101629" stopOpacity={0.1} />
+          <Stop offset="100%" stopColor="#050812" stopOpacity={0} />
+        </RadialGradient>
 
-  const selectedSector = selection?.type === "sector" ? selection.sector : null;
+        <LinearGradient id="subtleOrbit">
+          <Stop offset="0%" stopColor={COLORS.gold} stopOpacity={0} />
+          <Stop offset="45%" stopColor={COLORS.gold} stopOpacity={0.18} />
+          <Stop offset="100%" stopColor={COLORS.gold} stopOpacity={0} />
+        </LinearGradient>
+      </Defs>
 
-  const selectedColor = selectedActivity
-    ? CLASSIFICATION_THEME[selectedActivity.classification].color
-    : (selectedSector?.color ?? COLORS.gold);
+      {/* Atmospheric depth */}
+
+      <Ellipse
+        cx={170}
+        cy={195}
+        rx={158}
+        ry={185}
+        fill="url(#universeAtmosphere)"
+      />
+
+      {/* One broad orbital field */}
+
+      <Ellipse
+        cx={170}
+        cy={194}
+        rx={133}
+        ry={164}
+        fill="none"
+        stroke="url(#subtleOrbit)"
+        strokeWidth={0.8}
+        transform="rotate(-18 170 194)"
+      />
+
+      {/* A secondary, barely visible gravitational curve */}
+
+      <Path
+        d="M38 234 C83 123 250 120 304 226"
+        fill="none"
+        stroke={COLORS.gold}
+        strokeOpacity={0.075}
+        strokeWidth={0.8}
+      />
+
+      {/* Sparse stars */}
+
+      {Array.from({ length: 30 }, (_, index) => {
+        const x = (index * 79 + 19) % UNIVERSE_WIDTH;
+        const y = (index * 137 + 31) % UNIVERSE_HEIGHT;
+
+        return (
+          <G key={index}>
+            <Circle
+              cx={x}
+              cy={y}
+              r={index % 8 === 0 ? 1.3 : 0.6}
+              fill={index % 4 === 0 ? COLORS.gold : "#C8D9FF"}
+              fillOpacity={0.18 + (index % 5) * 0.1}
+            />
+          </G>
+        );
+      })}
+    </Svg>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* ENERGY CONNECTIONS                                                        */
+/* -------------------------------------------------------------------------- */
+
+function UniverseEnergyConnections() {
+  return (
+    <Svg
+      width="100%"
+      height="100%"
+      viewBox={`0 0 ${UNIVERSE_WIDTH} ${UNIVERSE_HEIGHT}`}
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+    >
+      <Defs>
+        <LinearGradient id="growingEnergy">
+          <Stop offset="0%" stopColor="#B38CFF" stopOpacity={0} />
+          <Stop offset="50%" stopColor="#B38CFF" stopOpacity={0.25} />
+          <Stop offset="100%" stopColor="#F4C979" stopOpacity={0} />
+        </LinearGradient>
+
+        <LinearGradient id="restoringEnergy">
+          <Stop offset="0%" stopColor="#7EFFF0" stopOpacity={0} />
+          <Stop offset="50%" stopColor="#7EFFF0" stopOpacity={0.3} />
+          <Stop offset="100%" stopColor="#F4C979" stopOpacity={0} />
+        </LinearGradient>
+
+        <LinearGradient id="leaksEnergy">
+          <Stop offset="0%" stopColor="#FFD08A" stopOpacity={0} />
+          <Stop offset="50%" stopColor="#FFD08A" stopOpacity={0.25} />
+          <Stop offset="100%" stopColor="#F4C979" stopOpacity={0} />
+        </LinearGradient>
+      </Defs>
+
+      {/* Growing */}
+
+      <Path
+        d="M170 117 C165 135 166 147 170 158"
+        stroke="url(#growingEnergy)"
+        strokeWidth={1.2}
+        fill="none"
+      />
+
+      {/* Restoring */}
+
+      <Path
+        d="M103 291 C119 267 128 247 145 227"
+        stroke="url(#restoringEnergy)"
+        strokeWidth={1.2}
+        fill="none"
+      />
+
+      {/* Life Leaks */}
+
+      <Path
+        d="M237 291 C221 267 212 247 195 227"
+        stroke="url(#leaksEnergy)"
+        strokeWidth={1.2}
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* UNIVERSE WORLD                                                             */
+/* -------------------------------------------------------------------------- */
+
+function UniverseWorld({
+  category,
+  type,
+  position,
+  onPress,
+}: {
+  category: UniverseCategory;
+  type: ArtworkType;
+  position: WorldPosition;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Explore ${category.title}`}
+      style={[styles.world, position]}
+    >
+      <Text style={[styles.worldTitle, { color: category.color }]}>
+        {category.title.toUpperCase()}
+      </Text>
+
+      <UniverseArtwork
+        type={type}
+        color={category.color}
+        duration={category.duration}
+        percentage={category.percentage}
+        activityCount={category.activities.length}
+        size={ARTWORK_SIZE}
+      />
+
+      <View style={styles.worldStatistics}>
+        <Text style={styles.worldDuration}>
+          {formatDuration(category.duration)}
+        </Text>
+
+        <Text style={styles.worldPercentage}>
+          {Math.round(category.percentage)}%
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* DETAIL MODAL                                                               */
+/* -------------------------------------------------------------------------- */
+
+function UniverseDetails({
+  category,
+  onClose,
+}: {
+  category: UniverseCategory | null;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      visible={category !== null}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+
+        <View style={styles.sheet}>
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetEyebrow}>EXPLORE YOUR UNIVERSE</Text>
+
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close details"
+            >
+              <Ionicons name="close" size={24} color={COLORS.muted} />
+            </Pressable>
+          </View>
+
+          {category && (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={[styles.sheetTitle, { color: category.color }]}>
+                {category.title}
+              </Text>
+
+              <Text style={styles.sheetDuration}>
+                {formatDuration(category.duration)}
+              </Text>
+
+              <Text style={styles.sheetPercentage}>
+                {Math.round(category.percentage)}% of recorded time
+              </Text>
+
+              <View style={styles.divider} />
+
+              <Text style={styles.sheetSection}>MOMENTS TRACED</Text>
+
+              {category.activities.length === 0 ? (
+                <Text style={styles.emptyText}>
+                  No activities recorded here today.
+                </Text>
+              ) : (
+                category.activities.map((activity) => (
+                  <View key={activity.id} style={styles.activityRow}>
+                    <Text style={styles.activityTitle}>{activity.title}</Text>
+
+                    <Text style={styles.activityDuration}>
+                      {formatDuration(activity.durationMinutes)}
+                    </Text>
+                  </View>
+                ))
+              )}
+
+              <View style={styles.reflectionCard}>
+                <Text style={styles.reflectionLabel}>
+                  A QUESTION WORTH EXPLORING
+                </Text>
+
+                <Text style={styles.reflectionQuestion}>
+                  {category.question}
+                </Text>
+              </View>
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* MAIN COMPONENT                                                             */
+/* -------------------------------------------------------------------------- */
+
+export function LifeMandala({ activities }: LifeMandalaProps) {
+  const [selectedCategory, setSelectedCategory] =
+    useState<UniverseCategory | null>(null);
+
+  const { width } = useWindowDimensions();
+
+  const visualSize = Math.min(UNIVERSE_WIDTH, width - 48);
+  const scale = visualSize / UNIVERSE_WIDTH;
+
+  const categories = useMemo(() => buildCategories(activities), [activities]);
+
+  const totalDuration = categories.reduce(
+    (sum, category) => sum + category.duration,
+    0,
+  );
+
+  const dominant = categories.reduce<UniverseCategory | null>(
+    (current, category) =>
+      !current || category.duration > current.duration ? category : current,
+    null,
+  );
 
   return (
     <View style={styles.container}>
       {/* HEADER */}
 
       <View style={styles.header}>
-        <Text style={styles.title}>YOUR LIFE MANDALA</Text>
+        <Text style={styles.eyebrow}>YOUR LIFE UNIVERSE</Text>
 
-        <Text style={styles.subtitle}>Every moment leaves a trace.</Text>
+        <Text style={styles.subtitle}>Every moment shapes your universe.</Text>
       </View>
 
-      {/* MAIN MANDALA */}
+      {/* COSMIC SCENE */}
 
-      <CosmicPanel
-        variant="default"
-        accent={COLORS.gold}
-        contentStyle={styles.panel}
+      <View
+        style={[
+          styles.universe,
+          {
+            width: visualSize,
+            height: UNIVERSE_HEIGHT * scale,
+          },
+        ]}
       >
+        <UniverseBackground />
+        <UniverseEnergyConnections />
+
         <View
           style={[
-            styles.visual,
+            styles.worldLayer,
             {
-              width: visualSize,
-              height: visualSize,
+              width: UNIVERSE_WIDTH,
+              height: UNIVERSE_HEIGHT,
+              left: (visualSize - UNIVERSE_WIDTH) / 2,
+              top: (UNIVERSE_HEIGHT * scale - UNIVERSE_HEIGHT) / 2,
+              transform: [{ scale }],
             },
           ]}
         >
-          <Svg
-            width={visualSize}
-            height={visualSize}
-            viewBox={`0 0 ${SIZE} ${SIZE}`}
-          >
-            <Defs>
-              <RadialGradient id="mandalaCenterGlow">
-                <Stop offset="0%" stopColor={COLORS.gold} stopOpacity={0.2} />
-
-                <Stop offset="100%" stopColor={COLORS.gold} stopOpacity={0} />
-              </RadialGradient>
-            </Defs>
-
-            {/* ORBITAL GUIDES */}
-
-            {[76, 108, 140].map((radius) => (
-              <Circle
-                key={radius}
-                cx={CENTER}
-                cy={CENTER}
-                r={radius}
-                fill="none"
-                stroke={COLORS.gold}
-                strokeOpacity={0.09}
-                strokeWidth={0.8}
-              />
-            ))}
-
-            {/* CLASSIFICATION SECTORS */}
-
-            {sectors.map((sector) => {
-              const share =
-                totalDuration > 0 ? sector.duration / totalDuration : 0;
-
-              return (
-                <Path
-                  key={sector.classification}
-                  d={createSectorPath(
-                    sector.startAngle,
-                    sector.endAngle,
-                    INNER_RADIUS,
-                    OUTER_RADIUS,
-                  )}
-                  fill={sector.color}
-                  fillOpacity={0.025 + share * 0.13}
-                  stroke={sector.color}
-                  strokeOpacity={0.1 + share * 0.2}
-                  strokeWidth={1}
-                  onPress={() =>
-                    setSelection({
-                      type: "sector",
-                      sector,
-                    })
-                  }
-                />
-              );
-            })}
-
-            {/* CONNECTIONS */}
-
-            {sectors.map((sector) => {
-              const sectorStars = stars.filter(
-                (star) =>
-                  star.activity.classification === sector.classification,
-              );
-
-              return (
-                <G key={sector.classification}>
-                  {sectorStars.slice(0, -1).map((star, index) => {
-                    const next = sectorStars[index + 1];
-
-                    return (
-                      <Line
-                        key={star.activity.id}
-                        x1={star.x}
-                        y1={star.y}
-                        x2={next.x}
-                        y2={next.y}
-                        stroke={sector.color}
-                        strokeOpacity={0.24}
-                        strokeWidth={0.9}
-                      />
-                    );
-                  })}
-                </G>
-              );
-            })}
-
-            {/* ACTIVITY STARS */}
-
-            {stars.map((star) => (
-              <G
-                key={star.activity.id}
-                onPress={() =>
-                  setSelection({
-                    type: "activity",
-                    activity: star.activity,
-                  })
-                }
-              >
-                {/* SOFT HALO */}
-
-                <Circle
-                  cx={star.x}
-                  cy={star.y}
-                  r={star.radius * 3}
-                  fill={star.color}
-                  fillOpacity={0.045}
-                />
-
-                <Circle
-                  cx={star.x}
-                  cy={star.y}
-                  r={star.radius * 1.7}
-                  fill={star.color}
-                  fillOpacity={0.1}
-                />
-
-                {/* STAR */}
-
-                <Circle
-                  cx={star.x}
-                  cy={star.y}
-                  r={star.radius}
-                  fill={star.color}
-                  fillOpacity={0.95}
-                />
-
-                <Circle
-                  cx={star.x}
-                  cy={star.y}
-                  r={star.radius * 0.32}
-                  fill="#FFFFFF"
-                  fillOpacity={0.75}
-                />
-              </G>
-            ))}
-
-            {/* CENTER GLOW */}
-
-            <Circle
-              cx={CENTER}
-              cy={CENTER}
-              r={72}
-              fill="url(#mandalaCenterGlow)"
-              pointerEvents="none"
-            />
-
-            {/* CENTER BACKGROUND */}
-
-            <Circle
-              cx={CENTER}
-              cy={CENTER}
-              r={57}
-              fill={COLORS.background}
-              fillOpacity={0.97}
-              stroke={COLORS.gold}
-              strokeOpacity={0.38}
-              strokeWidth={1}
-            />
-          </Svg>
-
-          {/* INTERACTIVE CENTER */}
-
-          <Pressable
-            onPress={() => setSelection({ type: "overview" })}
-            accessibilityRole="button"
-            accessibilityLabel="Explore today's recorded time"
-            style={[
-              styles.centerContent,
-              {
-                width: visualSize * (114 / SIZE),
-                height: visualSize * (114 / SIZE),
-                left: visualSize / 2 - visualSize * (57 / SIZE),
-                top: visualSize / 2 - visualSize * (57 / SIZE),
-              },
-            ]}
-          >
-            <Animated.View style={animatedCoreStyle}>
-              <Text
-                style={styles.centerTime}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
-                {formatDuration(totalDuration)}
-              </Text>
-            </Animated.View>
-
-            <Text style={styles.centerLabel}>TIME OBSERVED</Text>
-          </Pressable>
-        </View>
-
-        {/* INTERACTIVE LEGEND */}
-
-        <View style={styles.sectorButtons}>
-          {sectors.map((sector) => (
-            <Pressable
-              key={sector.classification}
-              onPress={() =>
-                setSelection({
-                  type: "sector",
-                  sector,
-                })
-              }
-              style={styles.sectorButton}
-              accessibilityRole="button"
-              accessibilityLabel={`Explore ${sector.title}`}
-            >
-              <View
-                style={[styles.sectorDot, { backgroundColor: sector.color }]}
-              />
-
-              <Text style={styles.sectorLabel}>{sector.title}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* COMPACT ACTIVITY SUMMARY */}
-
-        <Text style={styles.activityCount}>
-          {totalActivities === 0
-            ? "Your universe begins with a moment"
-            : `${totalActivities} ${
-                totalActivities === 1 ? "moment" : "moments"
-              } traced · Tap to explore`}
-        </Text>
-
-        {/* INLINE INSIGHT */}
-
-        <View style={styles.inlineInsight}>
-          <Ionicons name="sparkles-outline" size={14} color={COLORS.gold} />
-
-          <Text style={styles.inlineInsightText}>{insight}</Text>
-        </View>
-      </CosmicPanel>
-
-      {/* DETAIL MODAL */}
-
-      <Modal
-        visible={selection !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelection(null)}
-      >
-        <View style={styles.overlay}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setSelection(null)}
+          {/* GROWING */}
+          <UniverseWorld
+            category={categories[0]}
+            type="tree"
+            position={{ top: 14, left: 100 }}
+            onPress={() => setSelectedCategory(categories[0])}
           />
 
-          <View style={styles.sheet}>
-            <View style={styles.sheetHeader}>
-              <View
-                style={[styles.sheetDot, { backgroundColor: selectedColor }]}
-              />
+          {/* RESTORING */}
+          <UniverseWorld
+            category={categories[1]}
+            type="lotus"
+            position={{ top: 202, left: 4 }}
+            onPress={() => setSelectedCategory(categories[1])}
+          />
 
-              <Pressable
-                onPress={() => setSelection(null)}
-                accessibilityRole="button"
-                accessibilityLabel="Close details"
-              >
-                <Ionicons name="close" size={24} color={COLORS.muted} />
-              </Pressable>
-            </View>
+          {/* LIFE LEAKS */}
+          <UniverseWorld
+            category={categories[2]}
+            type="vortex"
+            position={{ top: 202, left: 196 }}
+            onPress={() => setSelectedCategory(categories[2])}
+          />
 
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              style={styles.sheetScroll}
-            >
-              {selection?.type === "overview" ? (
-                <>
-                  <Text style={styles.sheetEyebrow}>TODAY'S TRACE</Text>
+          {/* CENTRAL GRAVITATIONAL CORE */}
 
-                  <Text style={styles.sheetTitle}>Your recorded day</Text>
-
-                  <Text style={styles.sheetDuration}>
-                    {formatDuration(totalDuration)}
-                  </Text>
-
-                  <Text style={styles.sheetDescription}>
-                    {totalActivities}{" "}
-                    {totalActivities === 1 ? "activity" : "activities"} traced
-                    today
-                  </Text>
-
-                  <View style={styles.overviewBreakdown}>
-                    {sectors.map((sector) => (
-                      <View
-                        key={sector.classification}
-                        style={styles.overviewRow}
-                      >
-                        <View style={styles.overviewLabel}>
-                          <View
-                            style={[
-                              styles.sectorDot,
-                              {
-                                backgroundColor: sector.color,
-                              },
-                            ]}
-                          />
-
-                          <Text style={styles.overviewText}>
-                            {sector.title}
-                          </Text>
-                        </View>
-
-                        <Text style={styles.overviewValue}>
-                          {formatDuration(sector.duration)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </>
-              ) : selectedActivity ? (
-                <>
-                  <Text style={styles.sheetEyebrow}>A MOMENT IN YOUR LIFE</Text>
-
-                  <Text style={styles.sheetTitle}>
-                    {selectedActivity.title}
-                  </Text>
-
-                  <Text
-                    style={[
-                      styles.sheetClassification,
-                      { color: selectedColor },
-                    ]}
-                  >
-                    {
-                      CLASSIFICATION_THEME[selectedActivity.classification]
-                        .label
-                    }
-                  </Text>
-
-                  <Text style={styles.sheetDuration}>
-                    {formatDuration(selectedActivity.durationMinutes)}
-                  </Text>
-
-                  <View style={styles.reflectionCard}>
-                    <Text style={styles.reflectionLabel}>
-                      A MOMENT OF REFLECTION
-                    </Text>
-
-                    <Text style={styles.reflectionQuestion}>
-                      What did this moment contribute to your day?
-                    </Text>
-                  </View>
-                </>
-              ) : selectedSector ? (
-                <>
-                  <Text style={styles.sheetEyebrow}>EXPLORE YOUR PATTERN</Text>
-
-                  <Text style={styles.sheetTitle}>{selectedSector.title}</Text>
-
-                  <Text style={styles.sheetDuration}>
-                    {formatDuration(selectedSector.duration)}
-                  </Text>
-
-                  <Text style={styles.sheetDescription}>
-                    {selectedSector.activities.length}{" "}
-                    {selectedSector.activities.length === 1
-                      ? "activity"
-                      : "activities"}{" "}
-                    recorded in this classification today.
-                  </Text>
-
-                  <View style={styles.reflectionCard}>
-                    <Text style={styles.reflectionLabel}>
-                      A QUESTION WORTH EXPLORING
-                    </Text>
-
-                    <Text style={styles.reflectionQuestion}>
-                      {selectedSector.question}
-                    </Text>
-                  </View>
-                </>
-              ) : null}
-            </ScrollView>
+          <View style={styles.blackHolePosition}>
+            <UniverseBlackHole duration={totalDuration} size={140} />
           </View>
         </View>
-      </Modal>
+      </View>
+
+      {/* COSMIC INSIGHT — NO CARD */}
+
+      <View style={styles.insight}>
+        <Ionicons name="sparkles-outline" size={13} color={COLORS.gold} />
+
+        <Text style={styles.insightLabel}>YOUR UNIVERSE SPEAKS</Text>
+      </View>
+
+      <Text style={styles.insightText}>
+        {totalDuration === 0
+          ? "Your universe begins with a single moment."
+          : `Most of your observed time flowed into ${dominant?.title.toLowerCase()}.`}
+      </Text>
+
+      {/* DETAILS */}
+
+      <UniverseDetails
+        category={selectedCategory}
+        onClose={() => setSelectedCategory(null)}
+      />
     </View>
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* STYLES                                                                     */
+/* -------------------------------------------------------------------------- */
+
 const styles = StyleSheet.create({
   container: {
-    marginTop: 8,
     width: "100%",
+    marginTop: 25,
   },
 
   header: {
-    marginBottom: 13,
+    marginBottom: 8,
   },
 
-  title: {
+  eyebrow: {
     color: COLORS.gold,
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 1.6,
+    letterSpacing: 1.5,
   },
 
   subtitle: {
     color: COLORS.muted,
     fontSize: 12,
-    marginTop: 7,
+    marginTop: 6,
   },
 
-  panel: {
-    paddingHorizontal: 0,
-    paddingTop: 6,
-    paddingBottom: 20,
-    alignItems: "center",
-  },
-
-  visual: {
+  universe: {
     alignSelf: "center",
     position: "relative",
+    overflow: "hidden",
   },
 
-  centerContent: {
+  worldLayer: {
     position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 100,
   },
 
-  centerTime: {
+  world: {
+    position: "absolute",
+    width: WORLD_WIDTH,
+    alignItems: "center",
+  },
+
+  worldTitle: {
     color: COLORS.lightGold,
-    fontSize: 23,
+    fontSize: 10,
     fontWeight: "700",
-    letterSpacing: -0.8,
-    textAlign: "center",
+    letterSpacing: 1.2,
   },
 
-  centerLabel: {
-    color: COLORS.gold,
-    fontSize: 8,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    marginTop: 5,
-  },
-
-  sectorButtons: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "100%",
-    paddingHorizontal: 8,
-    marginTop: 1,
-  },
-
-  sectorButton: {
-    flexDirection: "row",
+  worldStatistics: {
     alignItems: "center",
-    gap: 5,
-    paddingVertical: 8,
-    paddingHorizontal: 3,
+    marginTop: -5,
   },
 
-  sectorDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+  worldDuration: {
+    color: COLORS.lightGold,
+    fontSize: 16,
+    fontWeight: "700",
   },
 
-  sectorLabel: {
+  worldPercentage: {
     color: COLORS.muted,
     fontSize: 10,
-    fontWeight: "600",
+    marginTop: 3,
   },
 
-  activityCount: {
-    color: COLORS.muted,
-    fontSize: 11,
-    marginTop: 5,
-    textAlign: "center",
+  blackHolePosition: {
+    position: "absolute",
+    top: 126,
+    left: 100,
+    zIndex: 2,
   },
 
-  inlineInsight: {
+  insight: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: `${COLORS.gold}20`,
-    width: "100%",
+    alignItems: "center",
     justifyContent: "center",
+    gap: 8,
+    marginTop: 3,
   },
 
-  inlineInsightText: {
+  insightLabel: {
+    color: COLORS.gold,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+  },
+
+  insightText: {
     color: COLORS.lightGold,
-    fontSize: 11,
-    lineHeight: 17,
-    flexShrink: 1,
+    fontSize: 12,
+    lineHeight: 19,
     textAlign: "center",
+    marginTop: 9,
+    paddingHorizontal: 24,
+    opacity: 0.8,
   },
 
   overlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.72)",
+    backgroundColor: "rgba(0,0,0,0.75)",
   },
 
   sheet: {
@@ -837,10 +629,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 26,
     borderTopWidth: 1,
     borderColor: `${COLORS.gold}55`,
-    paddingHorizontal: 24,
+    paddingHorizontal: 23,
     paddingTop: 22,
-    paddingBottom: 40,
-    maxHeight: "80%",
+    paddingBottom: 35,
+    maxHeight: "85%",
   },
 
   sheetHeader: {
@@ -849,86 +641,79 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  sheetDot: {
-    width: 15,
-    height: 15,
-    borderRadius: 8,
-  },
-
-  sheetScroll: {
-    flexGrow: 0,
-  },
-
   sheetEyebrow: {
     color: COLORS.gold,
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 1.4,
-    marginTop: 24,
   },
 
   sheetTitle: {
-    color: COLORS.text,
-    fontSize: 25,
-    fontWeight: "600",
-    marginTop: 9,
-  },
-
-  sheetClassification: {
-    fontSize: 13,
-    fontWeight: "600",
-    marginTop: 12,
+    fontSize: 26,
+    fontWeight: "700",
+    marginTop: 25,
   },
 
   sheetDuration: {
     color: COLORS.lightGold,
-    fontSize: 26,
-    fontWeight: "600",
-    marginTop: 23,
+    fontSize: 29,
+    fontWeight: "700",
+    marginTop: 18,
   },
 
-  sheetDescription: {
+  sheetPercentage: {
     color: COLORS.muted,
     fontSize: 13,
-    lineHeight: 20,
-    marginTop: 10,
+    marginTop: 6,
   },
 
-  overviewBreakdown: {
-    marginTop: 23,
-    gap: 16,
+  divider: {
+    height: 1,
+    backgroundColor: `${COLORS.gold}25`,
+    marginVertical: 23,
   },
 
-  overviewRow: {
+  sheetSection: {
+    color: COLORS.gold,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+  },
+
+  activityRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: `${COLORS.gold}15`,
   },
 
-  overviewLabel: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-
-  overviewText: {
+  activityTitle: {
     color: COLORS.text,
     fontSize: 13,
+    flex: 1,
   },
 
-  overviewValue: {
+  activityDuration: {
     color: COLORS.lightGold,
+    fontSize: 12,
+    marginLeft: 12,
+  },
+
+  emptyText: {
+    color: COLORS.muted,
     fontSize: 13,
-    fontWeight: "600",
+    marginTop: 16,
   },
 
   reflectionCard: {
-    backgroundColor: `${COLORS.gold}10`,
+    backgroundColor: `${COLORS.gold}0D`,
     borderWidth: 1,
-    borderColor: `${COLORS.gold}35`,
-    padding: 18,
-    marginTop: 25,
+    borderColor: `${COLORS.gold}30`,
     borderRadius: 12,
+    padding: 17,
+    marginTop: 25,
+    marginBottom: 20,
   },
 
   reflectionLabel: {
@@ -940,8 +725,8 @@ const styles = StyleSheet.create({
 
   reflectionQuestion: {
     color: COLORS.text,
-    fontSize: 16,
-    lineHeight: 25,
+    fontSize: 15,
+    lineHeight: 24,
     marginTop: 12,
   },
 });

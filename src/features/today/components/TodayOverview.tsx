@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
 import { AppButton } from "@/components/ui/AppButton";
+import { DailyThought } from "./DailyThought";
 import { COLORS } from "@/theme/colors";
 
 export function TodayOverview() {
@@ -30,11 +31,11 @@ export function TodayOverview() {
         <Text style={styles.dateText}>TODAY · {formattedDate}</Text>
       </View>
 
-      <Text style={styles.title}>Your life, today</Text>
-
-      <Text style={styles.subtitle}>
-        Not about doing more. About living more intentionally.
+      <Text style={styles.title}>
+        Your life, <Text style={styles.titleAccent}>today</Text>
       </Text>
+
+      <DailyThought />
 
       <AppButton
         variant="secondary"
@@ -77,24 +78,22 @@ const styles = StyleSheet.create({
 
   title: {
     color: COLORS.text,
-    fontSize: 34,
-    lineHeight: 42,
+    fontSize: 27,
+    lineHeight: 34,
     fontWeight: "600",
-    letterSpacing: -1.1,
-    marginTop: 15,
+    letterSpacing: -0.7,
+    marginTop: 10,
   },
 
-  subtitle: {
-    color: COLORS.muted,
-    fontSize: 14,
-    lineHeight: 23,
-    marginTop: 9,
-    maxWidth: 420,
+  titleAccent: {
+    color: COLORS.lightGold,
   },
 
   traceButton: {
     alignSelf: "flex-start",
-    marginTop: 23,
-    marginBottom: 4,
+    marginTop: 13,
+    marginBottom: 0,
+    borderWidth: 1,
+    borderColor: `${COLORS.gold}35`,
   },
 });

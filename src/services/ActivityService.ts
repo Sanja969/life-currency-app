@@ -32,6 +32,20 @@ export class ActivityService {
     return activityRepository.getByDateRange(start, end);
   }
 
+  /**
+ * Returns activities that overlap the requested
+ * time range, including those that started earlier.
+ */
+  async getOverlappingActivities(
+    start: Date,
+    end: Date,
+  ): Promise<Activity[]> {
+    return activityRepository.getOverlappingDateRange(
+      start,
+      end,
+    );
+  }
+
   async getActivityById(id: number): Promise<Activity | null> {
     return activityRepository.getById(id);
   }

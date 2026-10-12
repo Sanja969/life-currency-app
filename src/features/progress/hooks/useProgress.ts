@@ -1,304 +1,432 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { useFocusEffect } from "expo-router";
-
-import { activityService } from "@/services/ActivityService";
-
 import {
+    useCallback,
+    useMemo,
+    useRef,
+    useState,
+  } from "react";
+  
+  import { useFocusEffect } from "expo-router";
+  
+  import { activityService } from "@/services/ActivityService";
+  
+  import {
     Activity,
     ActivityCategory,
-} from "@/types/activity";
-
-import {
-    buildLast7DaysStats,
+  } from "@/types/activity";
+  
+  import {
+    buildWeeklyStats,
     calculateCategoryTrends,
     calculateProgressComparison,
     calculateProgressStatistics,
-    getEndOfToday,
-    getPeriodStart,
+    getPeriodRange,
     getPreviousPeriodRange,
-} from "../utils/progressStatistics";
-
-export type ProgressPeriod = "7days" | "30days";
-
-/*
- * CATEGORY STATISTICS
- */
-
-export type ProgressCategoryStat = {
+  } from "../utils/progressStatistics";
+  
+  import {
+    clipActivitiesToRange,
+  } from "../utils/activityTimeUtils";
+  
+  /*
+   * TYPES
+   */
+  
+  export type ProgressPeriod =
+    | "thisWeek"
+    | "lastWeek"
+    | "thisMonth"
+    | "lastMonth";
+  
+  export type ProgressCategoryStat = {
     category: ActivityCategory;
-
+  
     totalMinutes: number;
-
+  
     growingMinutes: number;
     restoringMinutes: number;
     leakMinutes: number;
-
+  
     percentage: number;
-};
-
-/*
- * DAILY STATISTICS
- */
-
-export type DailyProgressStat = {
+  };
+  
+  export type DailyProgressStat = {
     date: Date;
-
+  
     growingMinutes: number;
     restoringMinutes: number;
     leakMinutes: number;
-
+  
     totalMinutes: number;
-};
-
-/*
- * PROGRESS STATISTICS
- */
-
-export type ProgressStatistics = {
+  };
+  
+  export type ProgressStatistics = {
     totalMinutes: number;
-
+  
     growingMinutes: number;
     restoringMinutes: number;
     leakMinutes: number;
-
+  
     growingPercent: number;
     restoringPercent: number;
     leakPercent: number;
-
+  
     categoryStats: ProgressCategoryStat[];
     dailyStats: DailyProgressStat[];
-
+  
     strongestInvestment: ProgressCategoryStat | null;
     biggestLeak: ProgressCategoryStat | null;
-};
-
-/*
- * PERIOD COMPARISON
- */
-
-export type ProgressComparison = {
+  };
+  
+  export type ProgressComparison = {
     previousTotalMinutes: number;
-
+  
     previousGrowingMinutes: number;
     previousRestoringMinutes: number;
     previousLeakMinutes: number;
-
+  
     previousGrowingPercent: number;
     previousRestoringPercent: number;
     previousLeakPercent: number;
-
+  
     totalMinutesChangePercent: number | null;
-
+  
     growingPercentagePointChange: number | null;
     restoringPercentagePointChange: number | null;
     leakPercentagePointChange: number | null;
-};
-
-/*
- * CATEGORY TRENDS
- */
-
-export type ProgressCategoryTrend = {
+  };
+  
+  export type ProgressCategoryTrend = {
     category: ActivityCategory;
-
+  
     currentTotalMinutes: number;
     previousTotalMinutes: number;
     totalMinutesChange: number;
-
+  
     currentGrowingMinutes: number;
     previousGrowingMinutes: number;
     growingMinutesChange: number;
-
+  
     currentRestoringMinutes: number;
     previousRestoringMinutes: number;
     restoringMinutesChange: number;
-
+  
     currentLeakMinutes: number;
     previousLeakMinutes: number;
     leakMinutesChange: number;
-};
-
-/*
- * PROGRESS HOOK
- */
-
-export function useProgress() {
+  };
+  
+  /*
+   * HOOK
+   */
+  
+  export function useProgress() {
+    /*
+     * SELECTED PERIOD
+     */
+  
     const [period, setPeriod] =
-        useState<ProgressPeriod>("7days");
-
+      useState<ProgressPeriod>("thisWeek");
+  
+    /*
+     * ACTIVITIES
+     */
+  
     const [activities, setActivities] =
-        useState<Activity[]>([]);
-
+      useState<Activity[]>([]);
+  
+    /*
+     * LOADING STATE
+     */
+  
     const [isLoading, setIsLoading] =
-        useState(true);
-
+      useState(true);
+  
     const [errorMessage, setErrorMessage] =
-        useState<string | null>(null);
-
+      useState<string | null>(null);
+  
+    /*
+     * Avoid full-screen loading on every focus.
+     */
+  
     const hasLoadedRef = useRef(false);
-
+  
+    /*
+     * REFERENCE DATE
+     *
+     * All period calculations use the same
+     * reference date.
+     */
+  
+    const [referenceDate, setReferenceDate] =
+      useState(() => new Date());
+  
+    /*
+     * DATE RANGES
+     */
+  
+    const currentRange = useMemo(
+      () =>
+        getPeriodRange(
+          period,
+          referenceDate,
+        ),
+      [period, referenceDate],
+    );
+  
+    const previousRange = useMemo(
+      () =>
+        getPreviousPeriodRange(
+          period,
+          referenceDate,
+        ),
+      [period, referenceDate],
+    );
+  
     /*
      * LOAD ACTIVITIES
      *
-     * Refreshes whenever the Progress screen
+     * Load enough historical data to support:
+     *
+     * - This Week
+     * - Last Week
+     * - This Month
+     * - Last Month
+     *
+     * Including their comparison periods.
+     *
+     * Data is reloaded whenever Progress
      * receives focus.
      */
-
+  
     useFocusEffect(
-        useCallback(() => {
-            let active = true;
-
-            async function load() {
-                try {
-                    if (!hasLoadedRef.current) {
-                        setIsLoading(true);
-                    }
-
-                    setErrorMessage(null);
-
-                    // End is exclusive: midnight tomorrow.
-
-                    const end = getEndOfToday();
-
-                    // Fetch 60 calendar days:
-                    // 30 current + 30 previous.
-
-                    const start = new Date(end);
-
-                    start.setDate(start.getDate() - 60);
-
-                    const result =
-                        await activityService.getActivitiesByDateRange(
-                            start,
-                            end,
-                        );
-
-                    if (!active) return;
-
-                    setActivities(result);
-
-                    hasLoadedRef.current = true;
-                } catch (error) {
-                    if (!active) return;
-
-                    setErrorMessage(
-                        error instanceof Error
-                            ? error.message
-                            : "Unable to load progress.",
-                    );
-                } finally {
-                    if (active) {
-                        setIsLoading(false);
-                    }
-                }
+      useCallback(() => {
+        let active = true;
+  
+        async function load() {
+          try {
+            if (!hasLoadedRef.current) {
+              setIsLoading(true);
             }
-
-            void load();
-
-            return () => {
-                active = false;
-            };
-        }, []),
+  
+            setErrorMessage(null);
+  
+            const now = new Date();
+  
+            /*
+             * Determine the earliest required
+             * start date.
+             */
+  
+            const periods: ProgressPeriod[] = [
+              "thisWeek",
+              "lastWeek",
+              "thisMonth",
+              "lastMonth",
+            ];
+  
+            const ranges = periods.flatMap(
+              (selectedPeriod) => [
+                getPeriodRange(
+                  selectedPeriod,
+                  now,
+                ),
+  
+                getPreviousPeriodRange(
+                  selectedPeriod,
+                  now,
+                ),
+              ],
+            );
+  
+            const earliestStart = new Date(
+              Math.min(
+                ...ranges.map(
+                  (range) =>
+                    range.start.getTime(),
+                ),
+              ),
+            );
+  
+            /*
+             * One-day buffer for activities
+             * crossing the start boundary.
+             */
+  
+            const queryStart = new Date(
+              earliestStart,
+            );
+  
+            queryStart.setDate(
+              queryStart.getDate() - 1,
+            );
+  
+            /*
+             * Query up to the current moment.
+             */
+  
+            const result =
+              await activityService.getOverlappingActivities(
+                queryStart,
+                now,
+              );
+  
+            if (!active) {
+              return;
+            }
+  
+            setActivities(result);
+  
+            setReferenceDate(now);
+  
+            hasLoadedRef.current = true;
+          } catch (error) {
+            if (!active) {
+              return;
+            }
+  
+            setErrorMessage(
+              error instanceof Error
+                ? error.message
+                : "Unable to load progress.",
+            );
+          } finally {
+            if (active) {
+              setIsLoading(false);
+            }
+          }
+        }
+  
+        void load();
+  
+        return () => {
+          active = false;
+        };
+      }, []),
     );
-
+  
     /*
      * CURRENT PERIOD ACTIVITIES
      */
-
-    const periodActivities = useMemo(() => {
-        const start = getPeriodStart(period);
-        const end = getEndOfToday();
-
-        return activities.filter(
-            (activity) =>
-                activity.activityDate >= start &&
-                activity.activityDate < end,
-        );
-    }, [activities, period]);
-
+  
+    const periodActivities = useMemo(
+      () =>
+        clipActivitiesToRange(
+          activities,
+          currentRange,
+        ),
+      [activities, currentRange],
+    );
+  
     /*
-     * CURRENT STATISTICS
+     * CURRENT PERIOD STATISTICS
      */
-
+  
     const statistics = useMemo(() => {
-        const result =
-            calculateProgressStatistics(periodActivities);
-
-        if (period === "7days") {
-            return {
-                ...result,
-                dailyStats:
-                    buildLast7DaysStats(periodActivities),
-            };
-        }
-
-        return result;
-    }, [periodActivities, period]);
-
+      const result =
+        calculateProgressStatistics(
+          periodActivities,
+        );
+  
+      /*
+       * Weekly periods always contain
+       * Monday through Sunday.
+       */
+  
+      if (
+        period === "thisWeek" ||
+        period === "lastWeek"
+      ) {
+        return {
+          ...result,
+  
+          dailyStats: buildWeeklyStats(
+            result.dailyStats,
+            currentRange.start,
+          ),
+        };
+      }
+  
+      return result;
+    }, [
+      periodActivities,
+      period,
+      currentRange,
+    ]);
+  
     /*
      * PREVIOUS PERIOD ACTIVITIES
      */
-
-    const previousPeriodActivities = useMemo(() => {
-        const { start, end } =
-            getPreviousPeriodRange(period);
-
-        return activities.filter(
-            (activity) =>
-                activity.activityDate >= start &&
-                activity.activityDate < end,
-        );
-    }, [activities, period]);
-
+  
+    const previousPeriodActivities = useMemo(
+      () =>
+        clipActivitiesToRange(
+          activities,
+          previousRange,
+        ),
+      [activities, previousRange],
+    );
+  
     /*
      * PREVIOUS PERIOD STATISTICS
      */
-
+  
     const previousStatistics = useMemo(
-        () =>
-            calculateProgressStatistics(
-                previousPeriodActivities,
-            ),
-        [previousPeriodActivities],
+      () =>
+        calculateProgressStatistics(
+          previousPeriodActivities,
+        ),
+      [previousPeriodActivities],
     );
-
+  
     /*
      * PERIOD COMPARISON
      */
-
+  
     const comparison = useMemo(
-        () =>
-            calculateProgressComparison(
-                statistics,
-                previousStatistics,
-            ),
-        [statistics, previousStatistics],
+      () =>
+        calculateProgressComparison(
+          statistics,
+          previousStatistics,
+        ),
+      [
+        statistics,
+        previousStatistics,
+      ],
     );
-
+  
     /*
      * CATEGORY TRENDS
      */
-
+  
     const categoryTrends = useMemo(
-        () =>
-            calculateCategoryTrends(
-                statistics,
-                previousStatistics,
-            ),
-        [statistics, previousStatistics],
-    );
-
-    return {
-        period,
-        setPeriod,
-
-        activities: periodActivities,
-
+      () =>
+        calculateCategoryTrends(
+          statistics,
+          previousStatistics,
+        ),
+      [
         statistics,
-        comparison,
-        categoryTrends,
-
-        isLoading,
-        errorMessage,
+        previousStatistics,
+      ],
+    );
+  
+    /*
+     * RETURN
+     */
+  
+    return {
+      period,
+      setPeriod,
+  
+      currentRange,
+  
+      activities: periodActivities,
+  
+      statistics,
+      comparison,
+      categoryTrends,
+  
+      isLoading,
+      errorMessage,
     };
-}
+  }

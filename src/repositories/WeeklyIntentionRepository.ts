@@ -77,6 +77,54 @@ export class WeeklyIntentionRepository {
      * an existing intention for the same
      * category and week.
      */
+
+    /**
+ * Carries selected intentions from a previous week
+ * into a new week without overwriting existing ones.
+ *
+ * Existing intentions and historical records
+ * remain unchanged.
+ */
+    async carryForward(
+        previousWeekStart: string,
+        currentWeekStart: string,
+        categories: ActivityCategory[],
+    ): Promise<void> {
+        if (categories.length === 0) {
+            return;
+        }
+
+        const database = await getDatabase();
+
+        const placeholders = categories
+            .map(() => "?")
+            .join(", ");
+
+        await database.runAsync(
+            `INSERT INTO weekly_intentions (
+        category,
+        week_start,
+        target_minutes,
+        direction
+      )
+      SELECT
+        category,
+        ?,
+        target_minutes,
+        direction
+      FROM weekly_intentions
+      WHERE week_start = ?
+        AND category IN (${placeholders})
+      ON CONFLICT(category, week_start)
+      DO NOTHING`,
+            [
+                currentWeekStart,
+                previousWeekStart,
+                ...categories,
+            ],
+        );
+    }
+
     async save(
         input: SaveWeeklyIntentionInput,
     ): Promise<void> {

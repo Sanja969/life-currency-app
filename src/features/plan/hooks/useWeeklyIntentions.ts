@@ -21,6 +21,7 @@ import {
     getWeekStart,
     shiftWeek,
 } from "../utils/weekUtils";
+import { getIntentionSummary } from "../utils/intentionStatus";
 
 export function useWeeklyIntentions() {
     const [weekStart, setWeekStart] = useState(
@@ -173,36 +174,10 @@ export function useWeeklyIntentions() {
      * into one overall completion percentage.
      */
 
-    const intentionSummary = useMemo(() => {
-        let reached = 0;
-        let inProgress = 0;
-        let overLimit = 0;
-        let withinLimit = 0;
-
-        for (const intention of intentions) {
-            if (intention.direction === "at_most") {
-                if (intention.actualMinutes > intention.targetMinutes) {
-                    overLimit += 1;
-                } else {
-                    withinLimit += 1;
-                }
-            } else {
-                if (intention.actualMinutes >= intention.targetMinutes) {
-                    reached += 1;
-                } else {
-                    inProgress += 1;
-                }
-            }
-        }
-
-        return {
-            total: intentions.length,
-            reached,
-            inProgress,
-            overLimit,
-            withinLimit,
-        };
-    }, [intentions]);
+    const intentionSummary = useMemo(
+        () => getIntentionSummary(intentions),
+        [intentions],
+    );
 
     return {
         weekStart,

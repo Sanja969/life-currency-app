@@ -1,10 +1,16 @@
 export function formatDuration(minutes: number): string {
-  if (minutes <= 0) {
+  if (!Number.isFinite(minutes) || minutes <= 0) {
     return "0m";
   }
 
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
+  const totalMinutes = Math.round(minutes);
+
+  if (totalMinutes === 0) {
+    return "0m";
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
 
   if (hours === 0) {
     return `${remainingMinutes}m`;

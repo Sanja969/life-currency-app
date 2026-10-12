@@ -1,28 +1,29 @@
 import { useMemo } from "react";
+
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ProgressBalance } from "@/features/progress/components/ProgressBalance";
 import { ProgressHeader } from "@/features/progress/components/ProgressHeader";
-import { WeeklyPattern } from "@/features/progress/components/WeeklyPattern";
-import { LifeAreaBreakdown } from "@/features/progress/components/LifeAreaBreakdown";
-import { ProgressInsights } from "@/features/progress/components/ProgressInsights";
-import { ThirtyDayPattern } from "@/features/progress/components/ThirtyDayPattern";
-import { ProgressComparisonCard } from "@/features/progress/components/ProgressComparisonCard";
-import { NotableShifts } from "@/features/progress/components/NotableShifts";
+import { LifeFlow } from "@/features/progress/components/LifeFlow";
+import { IntentionAlignment } from "@/features/progress/components/IntentionAlignment";
+import { ProgressEvolution } from "@/features/progress/components/ProgressEvolution";
 import { ProgressEmptyState } from "@/features/progress/components/ProgressEmptyState";
 
 import { useProgress } from "@/features/progress/hooks/useProgress";
 
-import { buildLast30DaysPeriods } from "@/features/progress/utils/progressStatistics";
+import { buildMonthlyPeriods } from "@/features/progress/utils/progressStatistics";
+import { getWeekStart } from "@/features/plan/utils/weekUtils";
 
 import { COLORS } from "@/theme/colors";
+import { MonthlyPattern } from "@/features/progress/components/MonthlyPattern";
+import { WeeklyFlames } from "@/features/progress/components/WeeklyFlames";
 
 export default function ProgressScreen() {
   const {
     period,
     setPeriod,
-    activities,
+    currentRange,
     statistics,
     comparison,
     categoryTrends,
@@ -31,17 +32,59 @@ export default function ProgressScreen() {
   } = useProgress();
 
   /*
-   * Build 30-day chart data only when
-   * the 30-day period is selected.
+   * PERIOD TYPE
    */
 
-  const thirtyDayPeriods = useMemo(
-    () => (period === "30days" ? buildLast30DaysPeriods(activities) : []),
-    [activities, period],
+  const isWeeklyPeriod = period === "thisWeek" || period === "lastWeek";
+
+  const isMonthlyPeriod = period === "thisMonth" || period === "lastMonth";
+
+  const isCurrentWeek = period === "thisWeek";
+
+  /*
+   * WEEK START
+   *
+   * Used to load intentions for
+   * the selected calendar week.
+   */
+
+  const weekStart = useMemo(
+    () => (isWeeklyPeriod ? getWeekStart(currentRange.start) : null),
+    [isWeeklyPeriod, currentRange.start],
   );
 
   /*
-   * LOADING STATE
+   * MONTHLY PATTERN
+   *
+   * Group days into calendar weeks
+   * within the selected month.
+   *
+   * Example:
+   *
+   * October 2026:
+   * Oct 1–4
+   * Oct 5–11
+   * Oct 12–18
+   * Oct 19–25
+   * Oct 26–31
+   */
+
+  const monthlyPeriods = useMemo(
+    () =>
+      isMonthlyPeriod
+        ? buildMonthlyPeriods(statistics.dailyStats, currentRange.start)
+        : [],
+    [isMonthlyPeriod, statistics.dailyStats, currentRange.start],
+  );
+
+  /*
+   * ACTIVITY STATE
+   */
+
+  const hasRecordedActivities = statistics.totalMinutes > 0;
+
+  /*
+   * LOADING
    */
 
   if (isLoading) {
@@ -67,7 +110,7 @@ export default function ProgressScreen() {
   }
 
   /*
-   * ERROR STATE
+   * ERROR
    */
 
   if (errorMessage) {
@@ -81,7 +124,7 @@ export default function ProgressScreen() {
         <Text
           className="text-center text-[14px] leading-6"
           style={{
-            color: COLORS.danger,
+            color: COLORS.leak,
           }}
         >
           {errorMessage}
@@ -91,7 +134,7 @@ export default function ProgressScreen() {
   }
 
   /*
-   * PROGRESS DASHBOARD
+   * SCREEN
    */
 
   return (
@@ -111,56 +154,52 @@ export default function ProgressScreen() {
             paddingBottom: 130,
           }}
         >
-          {/* PERIOD SELECTOR */}
+          {/* HEADER */}
 
           <ProgressHeader period={period} onPeriodChange={setPeriod} />
 
-          {/* EMPTY STATE */}
+          {/* LIFE FLOW */}
 
-          {statistics.totalMinutes === 0 ? (
+          {hasRecordedActivities && (
+            <LifeFlow statistics={statistics} period={period} />
+          )}
+
+          {/* WEEKLY INTENTIONS */}
+
+          {isWeeklyPeriod && weekStart && (
+            <IntentionAlignment
+              key={weekStart}
+              weekStart={weekStart}
+              isCurrentWeek={isCurrentWeek}
+            />
+          )}
+
+          {/* EMPTY STATE OR ANALYTICS */}
+
+          {!hasRecordedActivities ? (
             <ProgressEmptyState />
           ) : (
             <>
-              {/* OVERALL BALANCE */}
+              {/* TIME PATTERN */}
 
-              <ProgressBalance statistics={statistics} period={period} />
-
-              {/* PERIOD COMPARISON */}
-
-              <ProgressComparisonCard comparison={comparison} period={period} />
-
-              {/* TIME DISTRIBUTION */}
-
-              {period === "7days" ? (
-                <WeeklyPattern days={statistics.dailyStats} />
+              {isWeeklyPeriod ? (
+                <WeeklyFlames
+                  days={statistics.dailyStats}
+                  period={period === "lastWeek" ? "lastWeek" : "thisWeek"}
+                />
               ) : (
-                <ThirtyDayPattern periods={thirtyDayPeriods} />
+                <MonthlyPattern
+                  periods={monthlyPeriods}
+                  period={period === "lastMonth" ? "lastMonth" : "thisMonth"}
+                />
               )}
 
-              {/* LIFE AREAS */}
+              {/* EVOLUTION */}
 
-              <LifeAreaBreakdown categories={statistics.categoryStats} />
-
-              {/* NOTABLE SHIFTS */}
-
-              {comparison.previousTotalMinutes > 0 && (
-                <NotableShifts trends={categoryTrends} period={period} />
-              )}
-
-              {/* INSIGHTS */}
-
-              <ProgressInsights
-                strongestInvestment={statistics.strongestInvestment}
-                strongestRestoration={
-                  [...statistics.categoryStats]
-
-                    .filter((category) => category.restoringMinutes > 0)
-
-                    .sort(
-                      (a, b) => b.restoringMinutes - a.restoringMinutes,
-                    )[0] ?? null
-                }
-                biggestLeak={statistics.biggestLeak}
+              <ProgressEvolution
+                statistics={statistics}
+                comparison={comparison}
+                trends={categoryTrends}
                 period={period}
               />
             </>

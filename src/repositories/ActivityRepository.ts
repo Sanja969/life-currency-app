@@ -61,6 +61,48 @@ export class ActivityRepository {
     return rows.map(toActivity);
   }
 
+  /**
+ * Returns all activities whose time intervals overlap
+ * the requested range.
+ *
+ * Both activity and range use half-open intervals:
+ * [start, end).
+ *
+ * Includes activities that started before the range
+ * but continue into it.
+ */
+  async getOverlappingDateRange(
+    start: Date,
+    end: Date,
+  ): Promise<Activity[]> {
+    const database = await getDatabase();
+
+    if (
+      !Number.isFinite(start.getTime()) ||
+      !Number.isFinite(end.getTime()) ||
+      start >= end
+    ) {
+      return [];
+    }
+
+    const rows = await database.getAllAsync<ActivityRow>(
+      `SELECT *
+     FROM activities
+     WHERE activity_date < ?
+       AND (
+         julianday(activity_date) +
+         duration_minutes / 1440.0
+       ) > julianday(?)
+     ORDER BY activity_date DESC`,
+      [
+        end.toISOString(),
+        start.toISOString(),
+      ],
+    );
+
+    return rows.map(toActivity);
+  }
+  
   async getById(id: number): Promise<Activity | null> {
     const database = await getDatabase();
 

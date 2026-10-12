@@ -41,8 +41,8 @@
             "image": "./assets/splash-icon.png"
           }
         }
-      ]
-      
+      ],
+      "expo-asset"
     ]
   }
 }
