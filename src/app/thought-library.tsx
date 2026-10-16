@@ -10,9 +10,12 @@ import {
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
+import { Stack } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import { ScreenTopBar } from "@/components/layout/ScreenTopBar";
+
 import { ThoughtDetails } from "@/features/today/components/ThoughtDetails";
 
 import {
@@ -21,7 +24,6 @@ import {
 } from "@/features/today/data/dailyThoughts";
 
 import { COLORS } from "@/theme/colors";
-import { Stack } from "expo-router";
 
 type Category = DailyThought["category"] | "all";
 
@@ -35,7 +37,9 @@ const CATEGORIES: { label: string; value: Category }[] = [
 
 export default function ThoughtLibraryScreen() {
   const [category, setCategory] = useState<Category>("all");
+
   const [search, setSearch] = useState("");
+
   const [selectedThought, setSelectedThought] = useState<DailyThought | null>(
     null,
   );
@@ -68,7 +72,10 @@ export default function ThoughtLibraryScreen() {
   return (
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
+
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        {/* SHARED NAVIGATION HEADER */}
+
         <ScreenTopBar title="THOUGHT LIBRARY" />
 
         <FlatList
@@ -79,13 +86,21 @@ export default function ThoughtLibraryScreen() {
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={
             <>
+              {/* SHARED EDITORIAL HEADER */}
+
               <View style={styles.pageHeader}>
-                <Text style={styles.title}>Thought Library</Text>
+                <ScreenHeader
+                  eyebrow="A LIBRARY OF IDEAS"
+                  title="Thought "
+                  highlightedTitle="Library"
+                />
 
                 <Text style={styles.subtitle}>
                   Ideas worth spending time with.
                 </Text>
               </View>
+
+              {/* SEARCH */}
 
               <View style={styles.searchContainer}>
                 <Ionicons
@@ -103,6 +118,8 @@ export default function ThoughtLibraryScreen() {
                   autoCorrect={false}
                 />
               </View>
+
+              {/* CATEGORY FILTERS */}
 
               <FlatList
                 horizontal
@@ -131,6 +148,8 @@ export default function ThoughtLibraryScreen() {
                 }}
               />
 
+              {/* SURPRISE ME */}
+
               <Pressable
                 onPress={surpriseMe}
                 style={styles.surpriseButton}
@@ -146,6 +165,8 @@ export default function ThoughtLibraryScreen() {
 
                 <Ionicons name="arrow-forward" size={16} color={COLORS.gold} />
               </Pressable>
+
+              {/* RESULTS */}
 
               <Text style={styles.resultsLabel}>
                 {filteredThoughts.length} THOUGHTS
@@ -177,6 +198,8 @@ export default function ThoughtLibraryScreen() {
         />
       </SafeAreaView>
 
+      {/* THOUGHT DETAILS */}
+
       <ThoughtDetails
         thought={selectedThought}
         visible={selectedThought !== null}
@@ -204,14 +227,6 @@ const styles = StyleSheet.create({
   pageHeader: {
     marginTop: 20,
     marginBottom: 24,
-  },
-
-  title: {
-    color: COLORS.text,
-    fontSize: 34,
-    lineHeight: 42,
-    fontWeight: "600",
-    letterSpacing: -1.1,
   },
 
   subtitle: {

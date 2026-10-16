@@ -20,11 +20,15 @@ import { FormDatePicker } from "./form/FormDatePicker";
 import { AppButton } from "./ui/AppButton";
 
 import { CategorySelector } from "@/features/activities/components/CategorySelector";
+import { QuickAddSection } from "@/features/activities/components/QuickAddSection";
+import { useQuickAddSuggestions } from "@/features/activities/hooks/useQuickAddSuggestions";
 
 import { COLORS } from "@/theme/colors";
 import { CLASSIFICATION_THEME } from "@/theme/classification";
 
 import { Activity, ActivityClassification } from "@/types/activity";
+
+import type { QuickAddSuggestion } from "@/services/ActivityService";
 
 import {
   activitySchema,
@@ -33,6 +37,8 @@ import {
 } from "@/validation/activitySchema";
 
 import { activitiesOverlap, getActivityEndTime } from "@/utils/activityOverlap";
+
+import { useEffect } from "react";
 
 type ActivityFormProps = {
   initialValues?: Partial<ActivityFormInput>;
@@ -116,9 +122,7 @@ function DurationOption({ minutes, selected, onPress }: DurationOptionProps) {
       onPress={onPress}
       onLayout={handleLayout}
       accessibilityRole="radio"
-      accessibilityState={{
-        checked: selected,
-      }}
+      accessibilityState={{ checked: selected }}
       accessibilityLabel={`${minutes} minutes`}
       style={({ pressed }) => [
         styles.durationOption,
@@ -256,6 +260,16 @@ export function ActivityForm({
 
   const [showNote, setShowNote] = useState(Boolean(initialValues?.description));
 
+  /*
+   * QUICK ADD
+   */
+
+  const suggestions = useQuickAddSuggestions(mode === "create");
+
+  /*
+   * FORM
+   */
+
   const {
     control,
     handleSubmit,
@@ -289,6 +303,44 @@ export function ActivityForm({
     control,
     name: "category",
   });
+
+  /*
+   * APPLY QUICK ADD SUGGESTION
+   *
+   * Only fills the form.
+   * Does not create an activity.
+   */
+
+  function handleQuickAdd(suggestion: QuickAddSuggestion) {
+    if (mode !== "create") return;
+
+    setValue("title", suggestion.title, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    setValue("classification", suggestion.classification, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    setValue("category", suggestion.category, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    setValue("durationMinutes", suggestion.durationMinutes, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    setValue("description", suggestion.description ?? "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    setShowNote(Boolean(suggestion.description));
+  }
 
   /*
    * CHECK OVERLAPPING ACTIVITIES
@@ -348,6 +400,17 @@ export function ActivityForm({
           Every moment leaves a trace. Make this one count.
         </Text>
       </View>
+
+      {/* QUICK ADD — CREATE ONLY */}
+
+      {mode === "create" && suggestions.length > 0 && (
+        <View style={styles.quickAddSection}>
+          <QuickAddSection
+            suggestions={suggestions}
+            onSelect={handleQuickAdd}
+          />
+        </View>
+      )}
 
       {/* TITLE */}
 
@@ -505,6 +568,12 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     fontSize: 14,
     lineHeight: 23,
+  },
+
+  quickAddSection: {
+    marginHorizontal: -20,
+    marginTop: -8,
+    marginBottom: -4,
   },
 
   fieldGroup: {

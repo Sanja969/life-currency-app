@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { ScrollView, StyleSheet, Text, Pressable, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { CosmicPanel } from "@/components/ui/CosmicPanel";
 import { QuickAddSuggestion } from "@/services/ActivityService";
 import { CLASSIFICATION_THEME } from "@/theme/classification";
 import { COLORS } from "@/theme/colors";
@@ -41,44 +42,43 @@ export function QuickAddSection({
           const theme = CLASSIFICATION_THEME[suggestion.classification];
 
           return (
-            <Pressable
+            <CosmicPanel
               key={suggestion.key}
+              variant="subtle"
+              accent={theme.color}
+              style={styles.card}
+              contentStyle={styles.cardContent}
               onPress={() => onSelect(suggestion)}
-              accessibilityRole="button"
-              accessibilityLabel={`Quick add ${suggestion.title}`}
-              style={({ pressed }) => [
-                styles.card,
-                {
-                  borderColor: `${theme.color}55`,
-                  opacity: pressed ? 0.75 : 1,
-                },
-              ]}
             >
-              <View style={[styles.accent, { backgroundColor: theme.color }]} />
+              <View style={styles.cardBody}>
+                <View
+                  style={[styles.accent, { backgroundColor: theme.color }]}
+                />
 
-              <Text style={styles.title} numberOfLines={1}>
-                {suggestion.title}
-              </Text>
-
-              <Text style={styles.duration}>
-                {formatDuration(suggestion.durationMinutes)}
-              </Text>
-
-              <View style={styles.cardFooter}>
-                <Text
-                  numberOfLines={1}
-                  style={[styles.classification, { color: theme.color }]}
-                >
-                  {theme.shortLabel}
+                <Text style={styles.title} numberOfLines={1}>
+                  {suggestion.title}
                 </Text>
 
-                <Ionicons
-                  name="add-circle-outline"
-                  size={18}
-                  color={COLORS.gold}
-                />
+                <Text style={styles.duration}>
+                  {formatDuration(suggestion.durationMinutes)}
+                </Text>
+
+                <View style={styles.cardFooter}>
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.classification, { color: theme.color }]}
+                  >
+                    {theme.shortLabel}
+                  </Text>
+
+                  <Ionicons
+                    name="add-circle-outline"
+                    size={18}
+                    color={COLORS.gold}
+                  />
+                </View>
               </View>
-            </Pressable>
+            </CosmicPanel>
           );
         })}
       </ScrollView>
@@ -120,18 +120,22 @@ const styles = StyleSheet.create({
 
   card: {
     width: 158,
+  },
+
+  cardContent: {
     padding: 14,
-    borderWidth: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    overflow: "hidden",
+  },
+
+  cardBody: {
+    minHeight: 88,
+    justifyContent: "space-between",
   },
 
   accent: {
     width: 22,
     height: 3,
-    borderRadius: 2,
-    marginBottom: 13,
+    backgroundColor: COLORS.gold,
+    marginBottom: 12,
   },
 
   title: {

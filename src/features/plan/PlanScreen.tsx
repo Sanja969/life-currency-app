@@ -26,6 +26,7 @@ import { WeeklyIntentionCard } from "./components/WeeklyIntentionCard";
 
 import { useWeeklyIntentions } from "./hooks/useWeeklyIntentions";
 import { getWeekStart } from "./utils/weekUtils";
+import { ScreenHeader } from "@/components/layout/ScreenHeader";
 
 /*
  * CONSTANTS
@@ -214,15 +215,12 @@ export default function PlanScreen() {
           {/* HEADER */}
 
           <View style={styles.header}>
-            <View style={styles.eyebrowRow}>
-              <View style={styles.goldDot} />
-
-              <Text style={styles.eyebrow}>YOUR LIFE DIRECTION</Text>
-            </View>
-
-            <Text style={styles.title}>Your Plan</Text>
-
-            <Text style={styles.subtitle}>Make room for what matters.</Text>
+            <ScreenHeader
+              eyebrow="YOUR LIFE DIRECTION"
+              title="Your "
+              highlightedTitle="Plan"
+              subtitle="Make room for what matters."
+            />
           </View>
 
           {/* WEEK NAVIGATION */}
@@ -563,42 +561,6 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: 12,
     paddingBottom: 30,
-  },
-
-  eyebrowRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-  },
-
-  goldDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORS.gold,
-  },
-
-  eyebrow: {
-    color: COLORS.gold,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.8,
-  },
-
-  title: {
-    color: COLORS.text,
-    fontSize: 34,
-    lineHeight: 42,
-    fontWeight: "600",
-    letterSpacing: -1.1,
-    marginTop: 15,
-  },
-
-  subtitle: {
-    color: COLORS.muted,
-    fontSize: 14,
-    lineHeight: 22,
-    marginTop: 8,
   },
 
   /*

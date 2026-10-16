@@ -7,8 +7,6 @@ import { AppButton } from "@/components/ui/AppButton";
 
 import { DailyThought } from "./DailyThought";
 
-import { COLORS } from "@/theme/colors";
-
 export function TodayOverview() {
   const formattedDate = new Date()
     .toLocaleDateString("en-US", {

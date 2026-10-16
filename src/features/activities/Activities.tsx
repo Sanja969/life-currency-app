@@ -1,35 +1,46 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 
-import { FlatList, Pressable, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 
-import { Activity } from "@/types/activity";
+import type { Activity } from "@/types/activity";
 
 import { COLORS } from "@/theme/colors";
 import { CLASSIFICATION_THEME } from "@/theme/classification";
+
+import { ScreenHeader } from "@/components/layout/ScreenHeader";
 
 import { ActivitiesBackground } from "./components/ActivitiesBackground";
 import { ActivityTrace } from "./components/ActivityTrace";
 import { EmptyField } from "./components/EmptyField";
 import { ActivitiesHeader } from "./components/ActivitiesHeader";
 
-import { QuickAddSection } from "./components/QuickAddSection";
-import { QuickAddModal } from "./components/QuickAddModal";
+import {
+  ActivityViewSwitcher,
+  type ActivityView,
+} from "./components/ActivityViewSwitcher";
+
+import { ActivityDateNavigator } from "./components/ActivityDateNavigator";
+import { ActivityDayTimeline } from "./components/ActivityDayTimeline";
 
 import { useActivities } from "./hooks/useActivities";
+import { useCalendarActivities } from "./hooks/useCalendarActivities";
 import { useActivityArrival } from "./hooks/useActivityArrival";
-import { useQuickAdd } from "./hooks/useQuickAdd";
 
 import { isSameDay } from "./utils/activityDate";
-
-/*
- * CONSTANTS
- */
 
 const VIEWABILITY_CONFIG = {
   itemVisiblePercentThreshold: 60,
@@ -37,30 +48,17 @@ const VIEWABILITY_CONFIG = {
 
 const FLOATING_BUTTON_SIZE = 52;
 
-/*
- * HELPERS
- */
-
-function calculatePercentage(minutes: number, totalMinutes: number): number {
-  if (totalMinutes <= 0) {
-    return 0;
-  }
-
-  return Math.round((minutes / totalMinutes) * 100);
-}
-
-/*
- * ACTIVITIES SCREEN
- */
-
 export function Activities() {
+  const [view, setView] = useState<ActivityView>("calendar");
+
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+
   /*
-   * ACTIVITIES DATA
+   * LIST DATA
    */
 
   const {
     activities,
-    counts,
     searchQuery,
     filter,
     errorMessage,
@@ -68,26 +66,21 @@ export function Activities() {
     hasMore,
     setSearchQuery,
     setFilter,
-    reload,
     loadMore,
     pendingArrival,
     completeArrival,
   } = useActivities();
 
   /*
-   * QUICK ADD
+   * CALENDAR DATA
    */
 
   const {
-    suggestions,
-    selectedSuggestion,
-    isSaving,
-    errorMessage: quickAddError,
-    loadSuggestions,
-    openSuggestion,
-    closeSuggestion,
-    addActivity,
-  } = useQuickAdd();
+    activities: calendarActivities,
+    isLoading: isCalendarLoading,
+    error: calendarError,
+    reload: reloadCalendar,
+  } = useCalendarActivities(selectedDate);
 
   /*
    * ARRIVAL ANIMATION
@@ -103,57 +96,39 @@ export function Activities() {
     isArrivingActivity,
   } = useActivityArrival(activities, pendingArrival, completeArrival);
 
-  /*
-   * NAVIGATION GUARD
-   */
-
   const isOpeningNewActivity = useRef(false);
 
   /*
-   * CLASSIFICATION STATISTICS
+   * SCREEN FOCUS
    */
 
-  const { growingPercent, restoringPercent, leaksPercent } = useMemo(() => {
-    const growingMinutes = counts.growingMinutes ?? 0;
-    const restoringMinutes = counts.restoringMinutes ?? 0;
-    const leaksMinutes = counts.leaksMinutes ?? 0;
+  useFocusEffect(
+    useCallback(() => {
+      isOpeningNewActivity.current = false;
+    }, []),
+  );
 
-    const totalMinutes = growingMinutes + restoringMinutes + leaksMinutes;
+  /*
+   * OPEN NEW ACTIVITY
+   */
 
-    if (totalMinutes <= 0) {
-      return {
-        growingPercent: 0,
-        restoringPercent: 0,
-        leaksPercent: 0,
-      };
+  function openNewActivity() {
+    if (isOpeningNewActivity.current) {
+      return;
     }
 
-    const growingPercent = calculatePercentage(growingMinutes, totalMinutes);
+    isOpeningNewActivity.current = true;
 
-    const restoringPercent = calculatePercentage(
-      restoringMinutes,
-      totalMinutes,
-    );
-
-    const leaksPercent = 100 - growingPercent - restoringPercent;
-
-    return {
-      growingPercent,
-      restoringPercent,
-      leaksPercent,
-    };
-  }, [counts.growingMinutes, counts.restoringMinutes, counts.leaksMinutes]);
+    router.push({
+      pathname: "/activities/new",
+      params: {
+        source: "activities",
+      },
+    });
+  }
 
   /*
-   * ARRIVAL PARTICLE THEME
-   */
-
-  const arrivalTheme = arrival
-    ? CLASSIFICATION_THEME[arrival.classification]
-    : null;
-
-  /*
-   * RENDER ACTIVITY
+   * LIST ITEM
    */
 
   const renderActivity = useCallback(
@@ -178,131 +153,128 @@ export function Activities() {
   );
 
   /*
-   * SCREEN FOCUS
+   * SHARED HEADER
    */
 
-  useFocusEffect(
-    useCallback(() => {
-      isOpeningNewActivity.current = false;
+  const renderPageHeader = () => (
+    <View style={styles.pageHeader}>
+      <ScreenHeader
+        eyebrow="YOUR LIFE JOURNAL"
+        title="Your Life "
+        highlightedTitle="Trace"
+        subtitle="Every moment leaves a trace."
+      />
 
-      void loadSuggestions();
-    }, [loadSuggestions]),
+      <ActivityViewSwitcher value={view} onChange={setView} />
+    </View>
   );
 
   /*
-   * OPEN NEW ACTIVITY
+   * CALENDAR VIEW
    */
 
-  function openNewActivity() {
-    if (isOpeningNewActivity.current) {
-      return;
-    }
+  const renderCalendarView = () => (
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.calendarContent}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      {renderPageHeader()}
 
-    isOpeningNewActivity.current = true;
+      <View style={styles.calendarSection}>
+        <ActivityDateNavigator
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+        />
 
-    router.push({
-      pathname: "/activities/new",
-      params: {
-        source: "activities",
-      },
-    });
-  }
+        {isCalendarLoading ? (
+          <ActivityIndicator style={styles.loading} color={COLORS.gold} />
+        ) : calendarError ? (
+          <View style={styles.errorContainer}>
+            <Ionicons
+              name="alert-circle-outline"
+              size={18}
+              color={COLORS.danger}
+            />
+
+            <Text style={styles.errorText}>{calendarError}</Text>
+
+            <Pressable
+              onPress={() => {
+                void reloadCalendar();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading calendar"
+            >
+              <Text style={styles.retryText}>RETRY</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <ActivityDayTimeline
+            selectedDate={selectedDate}
+            activities={calendarActivities}
+          />
+        )}
+      </View>
+    </ScrollView>
+  );
 
   /*
-   * QUICK ADD CONFIRMATION
+   * LIST VIEW
    */
 
-  async function handleQuickAdd(durationMinutes: number, activityDate: Date) {
-    const created = await addActivity(durationMinutes, activityDate);
+  const renderListView = () => (
+    <FlatList
+      ref={listRef}
+      style={styles.list}
+      data={activities}
+      ListHeaderComponent={
+        <>
+          {renderPageHeader()}
 
-    if (!created) {
-      return;
-    }
-
-    /*
-     * Refresh suggestions because
-     * the newly added activity may
-     * change their frequency.
-     */
-
-    void loadSuggestions();
-
-    /*
-     * Refresh timeline and global
-     * statistics without navigation.
-     *
-     * Pass the new activity as an
-     * arrival so its particle animation
-     * can play on the current screen.
-     */
-
-    await reload({
-      activityDate: created.activityDate.toISOString(),
-      classification: created.classification,
-    });
-  }
-
-  /*
-   * RENDER
-   */
+          <ActivitiesHeader
+            searchQuery={searchQuery}
+            filter={filter}
+            errorMessage={errorMessage}
+            setSearchQuery={setSearchQuery}
+            setFilter={setFilter}
+          />
+        </>
+      }
+      keyExtractor={(item) => String(item.id)}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      onViewableItemsChanged={onViewableItemsChanged}
+      viewabilityConfig={VIEWABILITY_CONFIG}
+      onScrollToIndexFailed={handleScrollToIndexFailed}
+      onMomentumScrollEnd={handleMomentumScrollEnd}
+      contentContainerStyle={styles.listContent}
+      renderItem={renderActivity}
+      ListEmptyComponent={
+        !errorMessage ? (
+          <EmptyField
+            isFiltered={filter !== "all" || searchQuery.trim().length > 0}
+          />
+        ) : null
+      }
+      onEndReached={() => {
+        if (hasMore && !isLoadingMore) {
+          void loadMore();
+        }
+      }}
+      onEndReachedThreshold={0.5}
+    />
+  );
 
   return (
     <View style={styles.screen}>
-      {/* COSMIC BACKGROUND */}
-
       <ActivitiesBackground />
 
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
-        {/* ACTIVITY TIMELINE */}
+        {view === "calendar" ? renderCalendarView() : renderListView()}
 
-        <FlatList
-          ref={listRef}
-          style={styles.list}
-          data={activities}
-          ListHeaderComponent={
-            <>
-              <ActivitiesHeader
-                growingPercent={growingPercent}
-                restoringPercent={restoringPercent}
-                leaksPercent={leaksPercent}
-                searchQuery={searchQuery}
-                filter={filter}
-                errorMessage={errorMessage}
-                setSearchQuery={setSearchQuery}
-                setFilter={setFilter}
-              />
-
-              <QuickAddSection
-                suggestions={suggestions}
-                onSelect={openSuggestion}
-              />
-            </>
-          }
-          keyExtractor={(item) => String(item.id)}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={VIEWABILITY_CONFIG}
-          onScrollToIndexFailed={handleScrollToIndexFailed}
-          onMomentumScrollEnd={handleMomentumScrollEnd}
-          contentContainerStyle={styles.listContent}
-          renderItem={renderActivity}
-          ListEmptyComponent={
-            !errorMessage ? (
-              <EmptyField
-                isFiltered={filter !== "all" || searchQuery.trim().length > 0}
-              />
-            ) : null
-          }
-          onEndReached={() => {
-            if (hasMore && !isLoadingMore) {
-              void loadMore();
-            }
-          }}
-          onEndReachedThreshold={0.5}
-        />
-
-        {/* FLOATING CREATE BUTTON */}
+        {/* FLOATING ADD BUTTON */}
 
         <Pressable
           onPress={openNewActivity}
@@ -329,15 +301,7 @@ export function Activities() {
             pointerEvents="none"
           >
             <Path
-              d="
-                M 12 0
-                L 52 0
-                L 52 40
-                L 40 52
-                L 0 52
-                L 0 12
-                Z
-              "
+              d="M 12 0 L 52 0 L 52 40 L 40 52 L 0 52 L 0 12 Z"
               fill={COLORS.gold}
               stroke={COLORS.lightGold}
               strokeWidth={1}
@@ -354,22 +318,9 @@ export function Activities() {
         </Pressable>
       </SafeAreaView>
 
-      {/* QUICK ADD MODAL */}
+      {/* ARRIVAL PARTICLE */}
 
-      <QuickAddModal
-        visible={selectedSuggestion !== null}
-        suggestion={selectedSuggestion}
-        isSaving={isSaving}
-        errorMessage={quickAddError}
-        onClose={closeSuggestion}
-        onConfirm={(durationMinutes, activityDate) => {
-          void handleQuickAdd(durationMinutes, activityDate);
-        }}
-      />
-
-      {/* INCOMING ACTIVITY PARTICLE */}
-
-      {arrival && arrivalTheme && (
+      {view === "list" && arrival && (
         <Animated.View
           pointerEvents="none"
           style={[styles.arrivalContainer, incomingParticleStyle]}
@@ -378,8 +329,9 @@ export function Activities() {
             style={[
               styles.arrivalParticle,
               {
-                backgroundColor: arrivalTheme.color,
-                shadowColor: arrivalTheme.color,
+                backgroundColor:
+                  CLASSIFICATION_THEME[arrival.classification].color,
+                shadowColor: CLASSIFICATION_THEME[arrival.classification].color,
               },
             ]}
           >
@@ -387,7 +339,8 @@ export function Activities() {
               style={[
                 styles.arrivalCore,
                 {
-                  backgroundColor: arrivalTheme.coreLight,
+                  backgroundColor:
+                    CLASSIFICATION_THEME[arrival.classification].coreLight,
                 },
               ]}
             />
@@ -397,10 +350,6 @@ export function Activities() {
     </View>
   );
 }
-
-/*
- * STYLES
- */
 
 const styles = StyleSheet.create({
   screen: {
@@ -412,8 +361,56 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  scroll: {
+    flex: 1,
+  },
+
   list: {
     flex: 1,
+  },
+
+  pageHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 4,
+  },
+
+  calendarContent: {
+    paddingBottom: 170,
+  },
+
+  calendarSection: {
+    paddingHorizontal: 20,
+  },
+
+  loading: {
+    marginTop: 35,
+    marginBottom: 25,
+  },
+
+  errorContainer: {
+    marginTop: 24,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderColor: COLORS.dangerBorder,
+    backgroundColor: COLORS.dangerBackground,
+    borderRadius: 12,
+  },
+
+  errorText: {
+    flex: 1,
+    color: COLORS.danger,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+
+  retryText: {
+    color: COLORS.gold,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1,
   },
 
   listContent: {
@@ -424,10 +421,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
 
-  /*
-   * FLOATING CREATE BUTTON
-   */
-
   floatingButton: {
     position: "absolute",
     bottom: 92,
@@ -436,21 +429,14 @@ const styles = StyleSheet.create({
     height: FLOATING_BUTTON_SIZE,
     alignItems: "center",
     justifyContent: "center",
-
     shadowColor: COLORS.gold,
-
     shadowOffset: {
       width: 0,
       height: 4,
     },
-
     elevation: 8,
     zIndex: 10,
   },
-
-  /*
-   * ARRIVAL ANIMATION
-   */
 
   arrivalContainer: {
     position: "absolute",
@@ -471,10 +457,8 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
-
     shadowOpacity: 1,
     shadowRadius: 18,
-
     shadowOffset: {
       width: 0,
       height: 0,
