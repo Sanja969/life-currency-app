@@ -1,5 +1,6 @@
 import React from "react";
 import { View } from "react-native";
+
 import Svg, {
   Circle,
   Defs,
@@ -8,16 +9,15 @@ import Svg, {
   Line,
   LinearGradient,
   Path,
-  Rect,
   Stop,
 } from "react-native-svg";
 
 export type LifeCurrencyTab =
   | "today"
   | "activities"
+  | "plan"
   | "progress"
-  | "settings"
-  | "plan";
+  | "settings";
 
 type Props = {
   name: LifeCurrencyTab;
@@ -42,6 +42,8 @@ export function LifeCurrencyTabIcon({ name, focused, size = 30 }: Props) {
         justifyContent: "center",
       }}
     >
+      {/* ACTIVE HALO */}
+
       {focused && (
         <View
           pointerEvents="none"
@@ -70,6 +72,7 @@ export function LifeCurrencyTabIcon({ name, focused, size = 30 }: Props) {
         </Defs>
 
         {/* TODAY — ORBITAL CLOCK */}
+
         {name === "today" && (
           <G>
             <Circle
@@ -113,162 +116,216 @@ export function LifeCurrencyTabIcon({ name, focused, size = 30 }: Props) {
           </G>
         )}
 
-        {/* ACTIVITIES — TIME TRACES */}
+        {/* ACTIVITIES — ENERGY TIMELINES */}
         {name === "activities" && (
           <G>
+            {/* First activity trace */}
             <Path
-              d="M7 9 H25"
+              d="M6 9 H26"
               stroke={color}
-              strokeWidth="1.5"
+              strokeWidth="1.35"
               strokeLinecap="round"
+              opacity={focused ? 0.9 : 0.7}
             />
-            <Path
-              d="M7 16 H25"
-              stroke={color}
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-            <Path
-              d="M7 23 H25"
-              stroke={color}
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-
-            <Circle cx="11" cy="9" r="2.5" fill={focused ? GOLD : MUTED} />
-            <Circle
-              cx="21"
-              cy="16"
-              r="2.5"
-              fill={focused ? LIGHT_GOLD : MUTED}
-            />
-            <Circle cx="15" cy="23" r="2.5" fill={focused ? GOLD : MUTED} />
 
             <Circle
               cx="11"
               cy="9"
-              r="4.1"
+              r="2.3"
+              fill={focused ? LIGHT_GOLD : MUTED}
+            />
+
+            {/* Second activity trace */}
+            <Path
+              d="M6 16 H26"
+              stroke={color}
+              strokeWidth="1.35"
+              strokeLinecap="round"
+              opacity={focused ? 0.9 : 0.7}
+            />
+
+            <Circle cx="21" cy="16" r="2.3" fill={focused ? GOLD : MUTED} />
+
+            {/* Third activity trace */}
+            <Path
+              d="M6 23 H26"
+              stroke={color}
+              strokeWidth="1.35"
+              strokeLinecap="round"
+              opacity={focused ? 0.9 : 0.7}
+            />
+
+            <Circle
+              cx="15"
+              cy="23"
+              r="2.3"
+              fill={focused ? LIGHT_GOLD : MUTED}
+            />
+
+            {/* Orbital accent */}
+            <Circle
+              cx="21"
+              cy="16"
+              r="4.4"
+              fill="none"
+              stroke={secondary}
+              strokeWidth="0.75"
+              opacity={focused ? 0.55 : 0.2}
+            />
+          </G>
+        )}
+
+        {/* PLAN — CELESTIAL COMPASS */}
+
+        {name === "plan" && (
+          <G>
+            {/* Outer compass ring */}
+
+            <Circle
+              cx="16"
+              cy="16"
+              r="11.5"
+              fill="none"
+              stroke={color}
+              strokeWidth="1.4"
+            />
+
+            {/* Inner orbital ring */}
+
+            <Circle
+              cx="16"
+              cy="16"
+              r="8.3"
               fill="none"
               stroke={secondary}
               strokeWidth="0.8"
-              opacity={focused ? 0.55 : 0.2}
+              opacity={focused ? 0.65 : 0.35}
             />
-          </G>
-        )}
 
-        {/* PLAN — INTENTION CALENDAR */}
-        {name === "plan" && (
-          <G>
-            {/* Calendar frame */}
-            <Rect
-              x="5.5"
-              y="7"
-              width="21"
-              height="20"
-              rx="4"
+            {/* Cardinal markers */}
+
+            <Path
+              d="
+                M16 2.5 V6.5
+                M16 25.5 V29.5
+                M2.5 16 H6.5
+                M25.5 16 H29.5
+              "
               fill="none"
               stroke={color}
               strokeWidth="1.5"
-            />
-
-            {/* Calendar binding */}
-            <Line
-              x1="11"
-              y1="4.5"
-              x2="11"
-              y2="10"
-              stroke={secondary}
-              strokeWidth="1.8"
               strokeLinecap="round"
             />
 
-            <Line
-              x1="21"
-              y1="4.5"
-              x2="21"
-              y2="10"
-              stroke={secondary}
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
+            {/* Four-point intention star */}
 
-            {/* Calendar divider */}
             <Path
-              d="M5.5 13 H26.5"
+              d="
+                M16 7
+                L18.8 13.2
+                L25 16
+                L18.8 18.8
+                L16 25
+                L13.2 18.8
+                L7 16
+                L13.2 13.2
+                Z
+              "
+              fill={focused ? "url(#tabGold)" : "none"}
               stroke={color}
               strokeWidth="1.2"
-              opacity="0.65"
+              strokeLinejoin="round"
             />
 
-            {/* Intention star */}
-            <Path
-              d="M16 15.5 L17.4 19.1 L21 20.5 L17.4 21.9 L16 25.5 L14.6 21.9 L11 20.5 L14.6 19.1 Z"
-              fill={focused ? "url(#tabGold)" : MUTED}
-              opacity={focused ? 1 : 0.8}
-            />
+            {/* Energy core */}
 
-            {/* Subtle orbital accent */}
             <Circle
               cx="16"
-              cy="20.5"
-              r="7.2"
-              fill="none"
-              stroke={secondary}
-              strokeWidth="0.7"
-              strokeDasharray="2 3"
-              opacity={focused ? 0.55 : 0.2}
+              cy="16"
+              r="2.2"
+              fill={focused ? LIGHT_GOLD : MUTED}
+            />
+
+            {/* Celestial accent */}
+
+            <Circle
+              cx="23.9"
+              cy="8.1"
+              r="1"
+              fill={focused ? LIGHT_GOLD : MUTED}
+              opacity={focused ? 0.9 : 0.45}
             />
           </G>
         )}
 
-        {/* PROGRESS — ASCENDING ENERGY */}
+        {/* PROGRESS — ASCENDING CONSTELLATION */}
+
         {name === "progress" && (
           <G>
-            <Rect
-              x="6"
-              y="19"
-              width="4.5"
-              height="7"
-              rx="1.5"
-              fill={focused ? GOLD : MUTED}
-              opacity="0.65"
+            {/* Ascending energy trajectory */}
+
+            <Path
+              d="
+                M5 24
+                L11.5 19
+                L17.5 21
+                L25.5 8
+              "
+              fill="none"
+              stroke={color}
+              strokeWidth="1.65"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />
 
-            <Rect
-              x="13.5"
-              y="14"
-              width="4.5"
-              height="12"
-              rx="1.5"
-              fill={focused ? GOLD : MUTED}
-              opacity="0.8"
-            />
+            {/* Progress nodes */}
 
-            <Rect
-              x="21"
-              y="9"
-              width="4.5"
-              height="17"
-              rx="1.5"
+            <Circle cx="5" cy="24" r="2.1" fill={focused ? GOLD : MUTED} />
+
+            <Circle cx="11.5" cy="19" r="2.1" fill={focused ? GOLD : MUTED} />
+
+            <Circle cx="17.5" cy="21" r="2.1" fill={focused ? GOLD : MUTED} />
+
+            <Circle
+              cx="25.5"
+              cy="8"
+              r="2.7"
               fill={focused ? "url(#tabGold)" : MUTED}
             />
 
-            <Path
-              d="M5 27.5 H27"
-              stroke={color}
-              strokeWidth="1"
-              opacity="0.55"
+            {/* Final milestone halo */}
+
+            <Circle
+              cx="25.5"
+              cy="8"
+              r="5"
+              fill="none"
+              stroke={secondary}
+              strokeWidth="0.8"
+              opacity={focused ? 0.65 : 0.25}
             />
 
+            {/* Horizon */}
+
             <Path
-              d="M23.3 2.5 L24.3 5.2 L27 6.2 L24.3 7.2 L23.3 9.9 L22.3 7.2 L19.6 6.2 L22.3 5.2 Z"
+              d="M5 28 H27"
+              stroke={secondary}
+              strokeWidth="0.8"
+              opacity={focused ? 0.45 : 0.25}
+            />
+
+            {/* Small celestial spark */}
+
+            <Path
+              d="M7.5 5 L8.3 7.2 L10.5 8 L8.3 8.8 L7.5 11 L6.7 8.8 L4.5 8 L6.7 7.2 Z"
               fill={focused ? LIGHT_GOLD : MUTED}
-              opacity={focused ? 1 : 0.65}
+              opacity={focused ? 0.8 : 0.4}
             />
           </G>
         )}
 
         {/* SETTINGS — GEOMETRIC CORE */}
+
         {name === "settings" && (
           <G>
             <Path

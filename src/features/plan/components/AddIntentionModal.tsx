@@ -1,4 +1,4 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 
 import {
@@ -8,16 +8,18 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 
+import { SafeAreaView } from "react-native-safe-area-context";
+
 import { AppButton } from "@/components/ui/AppButton";
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
 
 import { COLORS } from "@/theme/colors";
-
 import { ActivityCategory } from "@/types/activity";
 
 import type {
@@ -30,6 +32,7 @@ type Props = {
   intention?: WeeklyIntentionProgress | null;
   existingCategories: ActivityCategory[];
   isSaving: boolean;
+  defaultDirection?: IntentionDirection;
   onClose: () => void;
   onSave: (
     category: ActivityCategory,
@@ -37,6 +40,31 @@ type Props = {
     direction: IntentionDirection,
   ) => Promise<void>;
 };
+
+type DirectionOption = {
+  value: IntentionDirection;
+  title: string;
+  subtitle: string;
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  color: string;
+};
+
+const DIRECTION_OPTIONS: DirectionOption[] = [
+  {
+    value: "at_least",
+    title: "GROW",
+    subtitle: "Invest more time",
+    icon: "sparkles-outline",
+    color: COLORS.gold,
+  },
+  {
+    value: "at_most",
+    title: "PROTECT",
+    subtitle: "Set a time boundary",
+    icon: "shield-outline",
+    color: COLORS.growing,
+  },
+];
 
 function formatCategory(category: ActivityCategory): string {
   return category
@@ -50,60 +78,50 @@ export function AddIntentionModal({
   intention,
   existingCategories,
   isSaving,
+  defaultDirection = "at_least",
   onClose,
   onSave,
 }: Props) {
   const [category, setCategory] = useState<ActivityCategory | null>(null);
-
-  const [direction, setDirection] = useState<IntentionDirection>("at_least");
+  const [direction, setDirection] =
+    useState<IntentionDirection>(defaultDirection);
 
   const [hours, setHours] = useState("");
   const [minutes, setMinutes] = useState("");
 
   const isEditing = Boolean(intention);
+  const isGrow = direction === "at_least";
 
-  /*
-   * INITIALIZE FORM
-   */
+  const accentColor = isGrow ? COLORS.gold : COLORS.growing;
 
   useEffect(() => {
     if (!visible) return;
 
     setCategory(intention?.category ?? null);
-
-    setDirection(intention?.direction ?? "at_least");
+    setDirection(intention?.direction ?? defaultDirection);
 
     setHours(intention ? String(Math.floor(intention.targetMinutes / 60)) : "");
 
     setMinutes(intention ? String(intention.targetMinutes % 60) : "");
-  }, [visible, intention]);
-
-  /*
-   * AVAILABLE CATEGORIES
-   */
+  }, [visible, intention, defaultDirection]);
 
   const availableCategories = Object.values(ActivityCategory).filter(
     (item) =>
       item === intention?.category || !existingCategories.includes(item),
   );
 
-  /*
-   * SAVE INTENTION
-   */
-
   async function handleSave() {
     if (isSaving) return;
 
     if (!category) {
       Alert.alert(
-        "Choose a category",
-        "Select the life area you want to focus on.",
+        "Choose a life area",
+        "Select the area of life you want to focus on.",
       );
       return;
     }
 
     const parsedHours = hours.trim() === "" ? 0 : Number(hours);
-
     const parsedMinutes = minutes.trim() === "" ? 0 : Number(minutes);
 
     if (
@@ -129,7 +147,6 @@ export function AddIntentionModal({
 
     try {
       await onSave(category, targetMinutes, direction);
-
       onClose();
     } catch (error) {
       console.error("Failed to save intention:", error);
@@ -141,30 +158,6 @@ export function AddIntentionModal({
     }
   }
 
-  /*
-   * DIRECTION OPTIONS
-   */
-
-  const directionOptions: {
-    value: IntentionDirection;
-    title: string;
-    description: string;
-    icon: "trending-up" | "shield-check-outline";
-  }[] = [
-    {
-      value: "at_least",
-      title: "At least",
-      description: "I want to dedicate more time to this.",
-      icon: "trending-up",
-    },
-    {
-      value: "at_most",
-      title: "At most",
-      description: "I want to limit my time in this area.",
-      icon: "shield-check-outline",
-    },
-  ];
-
   return (
     <Modal
       visible={visible}
@@ -174,436 +167,568 @@ export function AddIntentionModal({
         if (!isSaving) onClose();
       }}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1"
-        style={{
-          backgroundColor: COLORS.background,
-        }}
-      >
-        {/* HEADER */}
-
-        <View
-          className="flex-row items-center justify-between px-5 pb-5 pt-7"
-          style={{
-            borderBottomWidth: 1,
-            borderBottomColor: COLORS.border,
-          }}
+      <SafeAreaView edges={["top", "bottom"]} style={styles.screen}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.keyboardContainer}
         >
-          <View className="flex-1 pr-4">
-            <Text
-              className="text-[10px] font-bold tracking-[2px]"
-              style={{
-                color: COLORS.gold,
-              }}
-            >
-              LIFE CURRENCY
-            </Text>
+          {/* HEADER */}
 
-            <Text
-              className="mt-3 text-[27px] font-semibold tracking-[-0.5px]"
-              style={{
-                color: COLORS.text,
-              }}
-            >
-              {isEditing ? "Edit intention" : "New intention"}
-            </Text>
+          <View style={styles.header}>
+            <View style={styles.headerText}>
+              <Text style={styles.eyebrow}>LIFE CURRENCY · YOUR DIRECTION</Text>
 
-            <Text
-              className="mt-2 text-[12px]"
-              style={{
-                color: COLORS.muted,
-              }}
+              <Text style={styles.title}>
+                {isEditing ? "Refine your intention" : "Set your intention"}
+              </Text>
+
+              <Text style={styles.subtitle}>Give your time a direction.</Text>
+            </View>
+
+            <Pressable
+              onPress={onClose}
+              disabled={isSaving}
+              accessibilityRole="button"
+              accessibilityLabel="Close intention modal"
+              style={({ pressed }) => [
+                styles.closeButton,
+                { opacity: isSaving ? 0.5 : pressed ? 0.7 : 1 },
+              ]}
             >
-              Shape how you spend your time.
-            </Text>
+              <Ionicons name="close" size={21} color={COLORS.gold} />
+            </Pressable>
           </View>
 
-          <Pressable
-            onPress={onClose}
-            disabled={isSaving}
-            accessibilityRole="button"
-            accessibilityLabel="Close intention modal"
-            className="h-10 w-10 items-center justify-center"
-            style={({ pressed }) => ({
-              borderWidth: 1,
-              borderColor: COLORS.goldBorder,
-              backgroundColor: COLORS.goldBackground,
-              opacity: isSaving ? 0.5 : pressed ? 0.75 : 1,
-            })}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.content}
           >
-            <MaterialCommunityIcons
-              name="close"
-              size={20}
-              color={COLORS.gold}
-            />
-          </Pressable>
-        </View>
+            {/* INTENTION TYPE */}
 
-        {/* CONTENT */}
+            <View style={styles.sectionHeading}>
+              <View style={styles.sectionDot} />
+              <Text style={styles.sectionLabel}>
+                HOW WILL YOU SHAPE YOUR TIME?
+              </Text>
+            </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 26,
-            paddingBottom: 50,
-          }}
-        >
-          {/* LIFE AREA */}
-
-          <View className="mb-4 flex-row items-center">
-            <View
-              className="mr-2 h-[6px] w-[6px]"
-              style={{
-                backgroundColor: COLORS.gold,
-              }}
-            />
-
-            <Text
-              className="text-[10px] font-bold tracking-[1.8px]"
-              style={{
-                color: COLORS.muted,
-              }}
-            >
-              LIFE AREA
+            <Text style={styles.sectionDescription}>
+              Choose what you'd like to grow or protect.
             </Text>
-          </View>
 
-          <Text
-            className="mb-5 text-[13px] leading-[21px]"
-            style={{
-              color: COLORS.muted,
-            }}
-          >
-            Choose the area of life you want to focus on.
-          </Text>
+            <View style={styles.directionRow}>
+              {DIRECTION_OPTIONS.map((option) => {
+                const selected = direction === option.value;
 
-          {/* CATEGORY SELECTOR */}
-
-          <View className="flex-row flex-wrap">
-            {availableCategories.map((item) => {
-              const selected = category === item;
-
-              const disabled = isEditing || isSaving;
-
-              return (
-                <Pressable
-                  key={item}
-                  onPress={() => setCategory(item)}
-                  disabled={disabled}
-                  accessibilityRole="button"
-                  accessibilityState={{
-                    selected,
-                    disabled,
-                  }}
-                  className="mb-2 mr-2 border px-4 py-3"
-                  style={({ pressed }) => ({
-                    backgroundColor: selected
-                      ? COLORS.goldBackground
-                      : COLORS.surface,
-
-                    borderColor: selected ? COLORS.gold : COLORS.border,
-
-                    opacity:
-                      isEditing && !selected
-                        ? 0.45
-                        : disabled
-                          ? 0.7
-                          : pressed
-                            ? 0.75
-                            : 1,
-                  })}
-                >
-                  <Text
-                    className="text-[13px] font-medium"
-                    style={{
-                      color: selected ? COLORS.lightGold : COLORS.muted,
+                return (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => setDirection(option.value)}
+                    disabled={isSaving}
+                    accessibilityRole="radio"
+                    accessibilityState={{
+                      checked: selected,
+                      disabled: isSaving,
                     }}
+                    style={({ pressed }) => [
+                      styles.directionCard,
+                      {
+                        borderColor: selected ? option.color : COLORS.border,
+                        backgroundColor: selected
+                          ? COLORS.goldBackground
+                          : COLORS.surface,
+                        opacity: isSaving ? 0.5 : pressed ? 0.75 : 1,
+                      },
+                    ]}
                   >
-                    {formatCategory(item)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                    <View style={styles.directionTop}>
+                      <View
+                        style={[
+                          styles.directionIcon,
+                          {
+                            borderColor: selected
+                              ? option.color
+                              : COLORS.border,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={option.icon}
+                          size={20}
+                          color={selected ? option.color : COLORS.muted}
+                        />
+                      </View>
 
-          {/* DIVIDER */}
+                      <Ionicons
+                        name={selected ? "radio-button-on" : "radio-button-off"}
+                        size={19}
+                        color={selected ? option.color : COLORS.subtle}
+                      />
+                    </View>
 
-          <View
-            className="my-7 h-[1px]"
-            style={{
-              backgroundColor: COLORS.border,
-            }}
-          />
-
-          {/* INTENTION DIRECTION */}
-
-          <View className="mb-4 flex-row items-center">
-            <View
-              className="mr-2 h-[6px] w-[6px]"
-              style={{
-                backgroundColor: COLORS.gold,
-              }}
-            />
-
-            <Text
-              className="text-[10px] font-bold tracking-[1.8px]"
-              style={{
-                color: COLORS.muted,
-              }}
-            >
-              WHAT IS YOUR INTENTION?
-            </Text>
-          </View>
-
-          <Text
-            className="mb-5 text-[13px] leading-[21px]"
-            style={{
-              color: COLORS.muted,
-            }}
-          >
-            Do you want to dedicate more time or set a limit?
-          </Text>
-
-          <View className="gap-3">
-            {directionOptions.map((option) => {
-              const selected = direction === option.value;
-
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => setDirection(option.value)}
-                  disabled={isSaving}
-                  accessibilityRole="radio"
-                  accessibilityState={{
-                    checked: selected,
-                    disabled: isSaving,
-                  }}
-                  style={({ pressed }) => ({
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingHorizontal: 16,
-                    paddingVertical: 16,
-                    borderWidth: 1,
-                    borderColor: selected ? COLORS.gold : COLORS.border,
-                    backgroundColor: selected
-                      ? COLORS.goldBackground
-                      : COLORS.surface,
-                    opacity: pressed ? 0.75 : 1,
-                  })}
-                >
-                  <MaterialCommunityIcons
-                    name={option.icon}
-                    size={23}
-                    color={selected ? COLORS.gold : COLORS.muted}
-                  />
-
-                  <View
-                    style={{
-                      flex: 1,
-                      marginLeft: 13,
-                    }}
-                  >
                     <Text
-                      style={{
-                        color: selected ? COLORS.lightGold : COLORS.text,
-                        fontSize: 14,
-                        fontWeight: "600",
-                      }}
+                      style={[
+                        styles.directionTitle,
+                        { color: selected ? option.color : COLORS.text },
+                      ]}
                     >
                       {option.title}
                     </Text>
 
-                    <Text
-                      style={{
-                        color: COLORS.muted,
-                        fontSize: 12,
-                        lineHeight: 18,
-                        marginTop: 4,
-                      }}
-                    >
-                      {option.description}
+                    <Text style={styles.directionSubtitle}>
+                      {option.subtitle}
                     </Text>
-                  </View>
 
-                  <MaterialCommunityIcons
-                    name={selected ? "radiobox-marked" : "radiobox-blank"}
-                    size={21}
-                    color={selected ? COLORS.gold : COLORS.subtle}
-                  />
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* DIVIDER */}
-
-          <View
-            className="my-7 h-[1px]"
-            style={{
-              backgroundColor: COLORS.border,
-            }}
-          />
-
-          {/* WEEKLY TIME INTENTION */}
-
-          <View className="mb-5 flex-row items-center">
-            <View
-              className="mr-2 h-[6px] w-[6px]"
-              style={{
-                backgroundColor: COLORS.gold,
-              }}
-            />
-
-            <Text
-              className="text-[10px] font-bold tracking-[1.8px]"
-              style={{
-                color: COLORS.muted,
-              }}
-            >
-              WEEKLY TIME INTENTION
-            </Text>
-          </View>
-
-          <CosmicPanel
-            variant="subtle"
-            contentStyle={{
-              padding: 18,
-            }}
-          >
-            <Text
-              className="mb-5 text-[13px] leading-[21px]"
-              style={{
-                color: COLORS.muted,
-              }}
-            >
-              {direction === "at_least"
-                ? "How much time would you like to dedicate to this area each week?"
-                : "What is the maximum time you want to spend in this area each week?"}
-            </Text>
-
-            {/* HOURS / MINUTES */}
-
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <Text
-                  className="mb-2 text-[12px] font-medium"
-                  style={{
-                    color: COLORS.muted,
-                  }}
-                >
-                  Hours
-                </Text>
-
-                <TextInput
-                  value={hours}
-                  onChangeText={setHours}
-                  keyboardType="number-pad"
-                  placeholder="0"
-                  placeholderTextColor={COLORS.subtle}
-                  editable={!isSaving}
-                  maxLength={3}
-                  accessibilityLabel="Hours"
-                  style={{
-                    height: 58,
-                    borderWidth: 1,
-                    borderColor: COLORS.goldBorder,
-                    backgroundColor: COLORS.goldBackground,
-                    paddingHorizontal: 16,
-                    color: COLORS.text,
-                    fontSize: 20,
-                    fontWeight: "600",
-                    textAlign: "center",
-                  }}
-                />
-              </View>
-
-              <View className="flex-1">
-                <Text
-                  className="mb-2 text-[12px] font-medium"
-                  style={{
-                    color: COLORS.muted,
-                  }}
-                >
-                  Minutes
-                </Text>
-
-                <TextInput
-                  value={minutes}
-                  onChangeText={setMinutes}
-                  keyboardType="number-pad"
-                  placeholder="0"
-                  placeholderTextColor={COLORS.subtle}
-                  editable={!isSaving}
-                  maxLength={2}
-                  accessibilityLabel="Minutes"
-                  style={{
-                    height: 58,
-                    borderWidth: 1,
-                    borderColor: COLORS.goldBorder,
-                    backgroundColor: COLORS.goldBackground,
-                    paddingHorizontal: 16,
-                    color: COLORS.text,
-                    fontSize: 20,
-                    fontWeight: "600",
-                    textAlign: "center",
-                  }}
-                />
-              </View>
+                    <Text style={styles.directionRule}>
+                      {option.value === "at_least" ? "AT LEAST" : "AT MOST"}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
 
-            {/* HELPER TEXT */}
+            {/* LIFE AREA */}
 
-            <View className="mt-5 flex-row items-start">
-              <MaterialCommunityIcons
-                name="information-outline"
-                size={17}
-                color={COLORS.gold}
+            <View style={styles.sectionDivider} />
+
+            <View style={styles.sectionHeading}>
+              <View
+                style={[styles.sectionDot, { backgroundColor: accentColor }]}
               />
-
-              <Text
-                className="ml-2 flex-1 text-[12px] leading-[19px]"
-                style={{
-                  color: COLORS.muted,
-                }}
-              >
-                Time is calculated from all recorded activities in this
-                category, regardless of classification.
-              </Text>
+              <Text style={styles.sectionLabel}>LIFE AREA</Text>
             </View>
-          </CosmicPanel>
 
-          {/* SAVE BUTTON */}
+            <Text style={styles.sectionDescription}>
+              Which part of your life does this intention belong to?
+            </Text>
 
-          <AppButton
-            variant="primary"
-            leadingIcon={isEditing ? "checkmark" : "add"}
-            loading={isSaving}
-            accessibilityLabel={
-              isEditing ? "Save intention changes" : "Add intention"
-            }
-            onPress={() => void handleSave()}
-            style={{
-              marginTop: 32,
-            }}
-          >
-            {isEditing ? "Save changes" : "Add intention"}
-          </AppButton>
+            <View style={styles.categories}>
+              {availableCategories.map((item) => {
+                const selected = category === item;
+                const disabled = isEditing || isSaving;
 
-          {/* FOOTER */}
+                return (
+                  <Pressable
+                    key={item}
+                    onPress={() => setCategory(item)}
+                    disabled={disabled}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected, disabled }}
+                    style={({ pressed }) => [
+                      styles.categoryChip,
+                      {
+                        borderColor: selected ? accentColor : COLORS.border,
+                        backgroundColor: selected
+                          ? COLORS.goldBackground
+                          : COLORS.surface,
+                        opacity:
+                          isEditing && !selected
+                            ? 0.45
+                            : disabled
+                              ? 0.7
+                              : pressed
+                                ? 0.75
+                                : 1,
+                      },
+                    ]}
+                  >
+                    {selected && (
+                      <Ionicons
+                        name="checkmark"
+                        size={13}
+                        color={accentColor}
+                      />
+                    )}
 
-          <Text
-            className="mt-6 text-center text-[12px] italic leading-[19px]"
-            style={{
-              color: COLORS.subtle,
-            }}
-          >
-            Small intentions. Meaningful change.
-          </Text>
-        </ScrollView>
-      </KeyboardAvoidingView>
+                    <Text
+                      style={[
+                        styles.categoryText,
+                        {
+                          color: selected ? COLORS.lightGold : COLORS.muted,
+                        },
+                      ]}
+                    >
+                      {formatCategory(item)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {isEditing && (
+              <Text style={styles.lockedHint}>
+                The life area stays the same when editing an intention.
+              </Text>
+            )}
+
+            {/* WEEKLY TIME */}
+
+            <View style={styles.sectionDivider} />
+
+            <View style={styles.sectionHeading}>
+              <View
+                style={[styles.sectionDot, { backgroundColor: accentColor }]}
+              />
+              <Text style={styles.sectionLabel}>WEEKLY TIME</Text>
+            </View>
+
+            <Text style={styles.sectionDescription}>
+              {isGrow
+                ? "How much time would you like to invest each week?"
+                : "What's the maximum time you want to spend each week?"}
+            </Text>
+
+            <CosmicPanel
+              variant="subtle"
+              accent={accentColor}
+              contentStyle={styles.timePanel}
+            >
+              <View style={styles.timeHeader}>
+                <Ionicons
+                  name={isGrow ? "time-outline" : "shield-outline"}
+                  size={17}
+                  color={accentColor}
+                />
+
+                <Text style={[styles.timeRule, { color: accentColor }]}>
+                  {isGrow ? "AT LEAST" : "AT MOST"}
+                </Text>
+
+                <Text style={styles.timeRuleSuffix}>PER WEEK</Text>
+              </View>
+
+              <View style={styles.timeInputs}>
+                <View style={styles.timeInputGroup}>
+                  <Text style={styles.inputLabel}>HOURS</Text>
+
+                  <TextInput
+                    value={hours}
+                    onChangeText={setHours}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor={COLORS.subtle}
+                    editable={!isSaving}
+                    maxLength={3}
+                    accessibilityLabel="Hours"
+                    style={[
+                      styles.timeInput,
+                      { borderColor: COLORS.goldBorder },
+                    ]}
+                  />
+                </View>
+
+                <Text style={styles.timeSeparator}>:</Text>
+
+                <View style={styles.timeInputGroup}>
+                  <Text style={styles.inputLabel}>MINUTES</Text>
+
+                  <TextInput
+                    value={minutes}
+                    onChangeText={setMinutes}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor={COLORS.subtle}
+                    editable={!isSaving}
+                    maxLength={2}
+                    accessibilityLabel="Minutes"
+                    style={[
+                      styles.timeInput,
+                      { borderColor: COLORS.goldBorder },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.infoRow}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={16}
+                  color={accentColor}
+                />
+
+                <Text style={styles.infoText}>
+                  Time includes all recorded activities in this category,
+                  regardless of classification.
+                </Text>
+              </View>
+            </CosmicPanel>
+
+            {/* ACTION */}
+
+            <AppButton
+              variant="primary"
+              leadingIcon={isEditing ? "checkmark" : "add"}
+              loading={isSaving}
+              accessibilityLabel={
+                isEditing ? "Save intention changes" : "Create intention"
+              }
+              onPress={() => void handleSave()}
+              style={styles.saveButton}
+            >
+              {isEditing ? "Save changes" : "Create intention"}
+            </AppButton>
+
+            <Text style={styles.footer}>
+              Small intentions. Meaningful change.
+            </Text>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+
+  keyboardContainer: {
+    flex: 1,
+  },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 22,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+
+  headerText: {
+    flex: 1,
+    paddingRight: 12,
+  },
+
+  eyebrow: {
+    color: COLORS.gold,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+  },
+
+  title: {
+    color: COLORS.text,
+    fontSize: 26,
+    fontWeight: "600",
+    letterSpacing: -0.5,
+    marginTop: 11,
+  },
+
+  subtitle: {
+    color: COLORS.muted,
+    fontSize: 12,
+    marginTop: 8,
+  },
+
+  closeButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+    backgroundColor: COLORS.goldBackground,
+  },
+
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 25,
+    paddingBottom: 55,
+  },
+
+  sectionHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    marginBottom: 10,
+  },
+
+  sectionDot: {
+    width: 6,
+    height: 6,
+    backgroundColor: COLORS.gold,
+  },
+
+  sectionLabel: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+  },
+
+  sectionDescription: {
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 19,
+    marginBottom: 18,
+  },
+
+  directionRow: {
+    flexDirection: "row",
+    gap: 11,
+  },
+
+  directionCard: {
+    flex: 1,
+    minHeight: 148,
+    padding: 14,
+    borderWidth: 1,
+  },
+
+  directionTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+
+  directionIcon: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+
+  directionTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+  },
+
+  directionSubtitle: {
+    color: COLORS.muted,
+    fontSize: 11,
+    lineHeight: 17,
+    marginTop: 7,
+  },
+
+  directionRule: {
+    color: COLORS.subtle,
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    marginTop: 12,
+  },
+
+  sectionDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 28,
+  },
+
+  categories: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+
+  categoryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    borderWidth: 1,
+  },
+
+  categoryText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+
+  lockedHint: {
+    color: COLORS.subtle,
+    fontSize: 11,
+    marginTop: 12,
+  },
+
+  timePanel: {
+    padding: 18,
+  },
+
+  timeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 20,
+  },
+
+  timeRule: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.3,
+  },
+
+  timeRuleSuffix: {
+    color: COLORS.subtle,
+    fontSize: 10,
+    letterSpacing: 1,
+  },
+
+  timeInputs: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 12,
+  },
+
+  timeInputGroup: {
+    flex: 1,
+  },
+
+  inputLabel: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1,
+    marginBottom: 9,
+  },
+
+  timeInput: {
+    height: 62,
+    borderWidth: 1,
+    backgroundColor: COLORS.goldBackground,
+    color: COLORS.text,
+    textAlign: "center",
+    fontSize: 23,
+    fontWeight: "600",
+  },
+
+  timeSeparator: {
+    color: COLORS.gold,
+    fontSize: 24,
+    paddingBottom: 16,
+  },
+
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 9,
+    marginTop: 20,
+  },
+
+  infoText: {
+    flex: 1,
+    color: COLORS.muted,
+    fontSize: 11,
+    lineHeight: 18,
+  },
+
+  saveButton: {
+    marginTop: 32,
+  },
+
+  footer: {
+    color: COLORS.subtle,
+    fontSize: 12,
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: 23,
+  },
+});

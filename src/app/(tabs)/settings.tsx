@@ -2,9 +2,19 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Constants from "expo-constants";
 import { useRef } from "react";
 
-import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { ScreenHeader } from "@/components/layout/ScreenHeader";
+import { CosmicPanel } from "@/components/ui/CosmicPanel";
 
 import { activityService } from "@/services/ActivityService";
 import { dataBackupService } from "@/services/DataBackupService";
@@ -15,7 +25,7 @@ type SettingsRowProps = {
   title: string;
   description: string;
   destructive?: boolean;
-  onPress?: () => void;
+  onPress: () => void;
 };
 
 function SettingsRow({
@@ -27,66 +37,39 @@ function SettingsRow({
 }: SettingsRowProps) {
   const accent = destructive ? COLORS.danger : COLORS.gold;
 
-  const iconBackground = destructive
-    ? COLORS.dangerBackground
-    : COLORS.goldBackground;
-
-  const iconBorder = destructive ? COLORS.dangerBorder : COLORS.goldBorder;
-
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint={description}
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 18,
-        paddingVertical: 19,
-        opacity: pressed ? 0.65 : 1,
-      })}
+      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.68 : 1 }]}
     >
       <View
-        style={{
-          width: 42,
-          height: 42,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: iconBackground,
-          borderWidth: 1,
-          borderColor: iconBorder,
-        }}
+        style={[
+          styles.rowIcon,
+          {
+            backgroundColor: destructive
+              ? COLORS.dangerBackground
+              : COLORS.goldBackground,
+            borderColor: destructive ? COLORS.dangerBorder : COLORS.goldBorder,
+          },
+        ]}
       >
         <MaterialCommunityIcons name={icon} size={21} color={accent} />
       </View>
 
-      <View
-        style={{
-          marginLeft: 14,
-          flex: 1,
-        }}
-      >
+      <View style={styles.rowText}>
         <Text
-          style={{
-            color: destructive ? COLORS.danger : COLORS.text,
-            fontSize: 14,
-            fontWeight: "600",
-          }}
+          style={[
+            styles.rowTitle,
+            { color: destructive ? COLORS.danger : COLORS.text },
+          ]}
         >
           {title}
         </Text>
 
-        <Text
-          style={{
-            color: COLORS.muted,
-            fontSize: 12,
-            lineHeight: 18,
-            marginTop: 5,
-          }}
-        >
-          {description}
-        </Text>
+        <Text style={styles.rowDescription}>{description}</Text>
       </View>
 
       <MaterialCommunityIcons
@@ -99,45 +82,34 @@ function SettingsRow({
 }
 
 function SettingsDivider() {
-  return (
-    <View
-      style={{
-        height: 1,
-        marginLeft: 74,
-        backgroundColor: COLORS.border,
-      }}
-    />
-  );
+  return <View style={styles.divider} />;
 }
 
-function SettingsSectionHeader({ title }: { title: string }) {
-  const isDangerZone = title === "DANGER ZONE";
-
+function SectionHeader({
+  title,
+  destructive = false,
+}: {
+  title: string;
+  destructive?: boolean;
+}) {
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        marginTop: 32,
-        marginBottom: 15,
-        gap: 9,
-      }}
-    >
+    <View style={styles.sectionHeader}>
       <View
-        style={{
-          width: 6,
-          height: 6,
-          backgroundColor: isDangerZone ? COLORS.danger : COLORS.gold,
-        }}
+        style={[
+          styles.sectionDot,
+          {
+            backgroundColor: destructive ? COLORS.danger : COLORS.gold,
+          },
+        ]}
       />
 
       <Text
-        style={{
-          color: isDangerZone ? COLORS.danger : COLORS.muted,
-          fontSize: 10,
-          fontWeight: "700",
-          letterSpacing: 1.8,
-        }}
+        style={[
+          styles.sectionTitle,
+          {
+            color: destructive ? COLORS.danger : COLORS.muted,
+          },
+        ]}
       >
         {title}
       </Text>
@@ -149,12 +121,9 @@ export default function SettingsScreen() {
   const operationRunning = useRef(false);
 
   function startOperation() {
-    if (operationRunning.current) {
-      return false;
-    }
+    if (operationRunning.current) return false;
 
     operationRunning.current = true;
-
     return true;
   }
 
@@ -162,26 +131,22 @@ export default function SettingsScreen() {
     operationRunning.current = false;
   }
 
-  // EXPORT BACKUP
-
   async function handleExportData() {
     if (!startOperation()) return;
 
     try {
       await dataBackupService.exportData();
     } catch (error) {
-      console.error("Failed to export Life Currency data:", error);
+      console.error("Failed to export activity backup:", error);
 
       Alert.alert(
         "Export failed",
-        "Your Life Currency data could not be exported. Please try again.",
+        "Your activity backup could not be exported. Please try again.",
       );
     } finally {
       finishOperation();
     }
   }
-
-  // IMPORT BACKUP
 
   async function handleImportData() {
     if (!startOperation()) return;
@@ -189,19 +154,40 @@ export default function SettingsScreen() {
     let confirmationShown = false;
 
     try {
-      const activities = await dataBackupService.pickBackup();
+      const backup = await dataBackupService.pickBackup();
 
-      if (!activities) {
+      if (!backup) {
         return;
       }
 
       confirmationShown = true;
 
+      const isV2 = backup.version === 2;
+
+      const activitiesCount = backup.activities.length;
+
+      const intentionsCount = backup.weeklyIntentions?.length ?? 0;
+
+      const reflectionsCount = backup.dailyReflections?.length ?? 0;
+
+      const backupDescription = isV2
+        ? `This backup contains:\n\n` +
+          `• ${activitiesCount} activities\n` +
+          `• ${intentionsCount} weekly intentions\n` +
+          `• ${reflectionsCount} daily reflections`
+        : `This is an older backup containing ` +
+          `${activitiesCount} activities.\n\n` +
+          `Weekly intentions and daily reflections ` +
+          `on this device will remain unchanged.`;
+
+      const replacementWarning = isV2
+        ? "Restoring will replace all existing activities, " +
+          "weekly intentions, and daily reflections on this device."
+        : "Restoring will replace your existing activity history.";
+
       Alert.alert(
-        "Restore backup?",
-        `This backup contains ${activities.length} ${
-          activities.length === 1 ? "activity" : "activities"
-        }.\n\nRestoring it will replace all activity data currently stored on this device.`,
+        "Restore Life Currency backup?",
+        `${backupDescription}\n\n${replacementWarning}\n\nThis action cannot be undone.`,
         [
           {
             text: "Cancel",
@@ -213,18 +199,20 @@ export default function SettingsScreen() {
             style: "destructive",
             onPress: async () => {
               try {
-                await dataBackupService.restoreBackup(activities);
+                await dataBackupService.restoreBackup(backup);
 
                 Alert.alert(
                   "Backup restored",
-                  "Your activity history has been restored successfully.",
+                  isV2
+                    ? "Your activities, weekly intentions, and daily reflections have been restored successfully."
+                    : "Your activity history has been restored successfully.",
                 );
               } catch (error) {
                 console.error("Failed to restore Life Currency backup:", error);
 
                 Alert.alert(
                   "Restore failed",
-                  "Your activity data could not be restored. Please try again.",
+                  "Your backup could not be restored. Your existing data has been preserved.",
                 );
               } finally {
                 finishOperation();
@@ -250,33 +238,29 @@ export default function SettingsScreen() {
     }
   }
 
-  // EXPORT CSV
-
   async function handleExportCsv() {
     if (!startOperation()) return;
 
     try {
       await dataBackupService.exportCsv();
     } catch (error) {
-      console.error("Failed to export Life Currency CSV:", error);
+      console.error("Failed to export CSV:", error);
 
       Alert.alert(
         "Export failed",
-        "Your activity data could not be exported as CSV. Please try again.",
+        "Your activities could not be exported as CSV. Please try again.",
       );
     } finally {
       finishOperation();
     }
   }
 
-  // DELETE ALL DATA
-
   function handleDeleteAllData() {
     if (!startOperation()) return;
 
     Alert.alert(
-      "Delete all activity data?",
-      "This will permanently delete your entire activity history from this device. This action cannot be undone.",
+      "Delete activity history?",
+      "This permanently deletes all recorded activities from this device. Your weekly intentions are not deleted.\n\nThis action cannot be undone.",
       [
         {
           text: "Cancel",
@@ -291,18 +275,15 @@ export default function SettingsScreen() {
               await activityService.deleteAllActivities();
 
               Alert.alert(
-                "Activity data deleted",
-                "Your activity history has been permanently deleted.",
+                "Activity history deleted",
+                "Your recorded activities have been permanently deleted.",
               );
             } catch (error) {
-              console.error(
-                "Failed to delete Life Currency activity data:",
-                error,
-              );
+              console.error("Failed to delete activities:", error);
 
               Alert.alert(
                 "Delete failed",
-                "Your activity data could not be deleted. Please try again.",
+                "Your activity history could not be deleted. Please try again.",
               );
             } finally {
               finishOperation();
@@ -310,99 +291,32 @@ export default function SettingsScreen() {
           },
         },
       ],
-      {
-        cancelable: false,
-      },
+      { cancelable: false },
     );
   }
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: COLORS.background,
-      }}
-    >
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+    <View style={styles.screen}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 18,
-            paddingBottom: 130,
-          }}
+          contentContainerStyle={styles.scrollContent}
         >
-          {/* HEADER */}
-
-          <View>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 9,
-              }}
-            >
-              <View
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: COLORS.gold,
-                }}
-              />
-
-              <Text
-                style={{
-                  color: COLORS.gold,
-                  fontSize: 10,
-                  fontWeight: "700",
-                  letterSpacing: 1.8,
-                }}
-              >
-                LIFE CURRENCY
-              </Text>
-            </View>
-
-            <Text
-              style={{
-                color: COLORS.text,
-                fontSize: 34,
-                lineHeight: 42,
-                fontWeight: "600",
-                letterSpacing: -1.1,
-                marginTop: 15,
-              }}
-            >
-              Settings
-            </Text>
-
-            <Text
-              style={{
-                color: COLORS.muted,
-                fontSize: 14,
-                lineHeight: 22,
-                marginTop: 8,
-              }}
-            >
-              Manage your data and preferences.
-            </Text>
-          </View>
+          <ScreenHeader
+            eyebrow="YOUR SPACE"
+            title="Settings"
+            subtitle="Your data. Your control."
+          />
 
           {/* DATA & PRIVACY */}
 
-          <SettingsSectionHeader title="DATA & PRIVACY" />
+          <SectionHeader title="DATA & PRIVACY" />
 
-          <View
-            style={{
-              backgroundColor: COLORS.surface,
-              borderBottomWidth: 1,
-              borderBottomColor: COLORS.border,
-            }}
-          >
+          <CosmicPanel variant="subtle" contentStyle={styles.panelContent}>
             <SettingsRow
               icon="export-variant"
-              title="Export data"
-              description="Save a backup of your activity history."
+              title="Export backup"
+              description="Save activities, intentions, and reflections."
               onPress={handleExportData}
             />
 
@@ -410,8 +324,8 @@ export default function SettingsScreen() {
 
             <SettingsRow
               icon="import"
-              title="Import data"
-              description="Restore your history from a Life Currency backup."
+              title="Restore backup"
+              description="Restore your Life Currency data from a backup."
               onPress={handleImportData}
             />
 
@@ -419,45 +333,60 @@ export default function SettingsScreen() {
 
             <SettingsRow
               icon="file-delimited-outline"
-              title="Export as CSV"
-              description="Open your activity history in spreadsheets."
+              title="Export activities as CSV"
+              description="View your activity history in a spreadsheet."
               onPress={handleExportCsv}
             />
-          </View>
+          </CosmicPanel>
 
-          {/* PRIVACY NOTE */}
+          {/* PRIVACY */}
 
-          <View className="mt-4 flex-row items-start px-1">
-            <MaterialCommunityIcons
-              name="shield-check-outline"
-              size={17}
-              color={COLORS.gold}
+          <View style={styles.privacyCard}>
+            {/* Gold accent */}
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: 42,
+                height: 2,
+                backgroundColor: COLORS.gold,
+                opacity: 0.7,
+              }}
             />
 
-            <Text
-              className="ml-2 flex-1 text-[12px] leading-[19px]"
-              style={{ color: COLORS.subtle }}
-            >
-              Your activity history is stored on this device. Export a backup
-              before deleting the app or changing devices.
-            </Text>
+            <View style={styles.privacyIcon}>
+              <MaterialCommunityIcons
+                name="shield-check-outline"
+                size={21}
+                color={COLORS.gold}
+              />
+            </View>
+
+            <View style={styles.privacyText}>
+              <Text style={styles.privacyTitle}>
+                Your data stays on your device
+              </Text>
+              <Text style={styles.privacyDescription}>
+                Your activities, weekly intentions, and daily reflections are
+                stored on this device. Export a backup before deleting the app
+                or switching devices.
+              </Text>
+            </View>
           </View>
 
           {/* DANGER ZONE */}
 
-          <SettingsSectionHeader title="DANGER ZONE" />
+          <SectionHeader title="DANGER ZONE" destructive />
 
-          <View
-            style={{
-              backgroundColor: COLORS.surface,
-              borderBottomWidth: 1,
-              borderBottomColor: COLORS.border,
-            }}
-          >
+          <View style={styles.dangerCard}>
+            <View style={styles.dangerAccent} />
+
             <SettingsRow
               icon="delete-outline"
-              title="Delete all activity data"
-              description="Permanently remove your activity history from this device."
+              title="Delete activity history"
+              description="Permanently remove all recorded activities."
               destructive
               onPress={handleDeleteAllData}
             />
@@ -465,95 +394,44 @@ export default function SettingsScreen() {
 
           {/* ABOUT */}
 
-          <SettingsSectionHeader title="ABOUT" />
+          <SectionHeader title="ABOUT" />
 
-          <View
-            style={{
-              backgroundColor: COLORS.surface,
-              borderBottomWidth: 1,
-              borderBottomColor: COLORS.border,
-              padding: 18,
-            }}
-          >
-            <View
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: 48,
-                height: 2,
-                backgroundColor: COLORS.gold,
-              }}
-            />
+          <CosmicPanel variant="subtle" contentStyle={styles.aboutContent}>
+            <View style={styles.aboutAccent} />
 
-            <View className="flex-row items-center">
-              <View
-                style={{
-                  width: 42,
-                  height: 42,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: COLORS.goldBackground,
-                  borderWidth: 1,
-                  borderColor: COLORS.goldBorder,
-                }}
-              >
+            <View style={styles.aboutRow}>
+              <View style={styles.appIcon}>
                 <MaterialCommunityIcons
                   name="orbit"
-                  size={23}
+                  size={25}
                   color={COLORS.gold}
                 />
               </View>
 
-              <View className="ml-3.5 flex-1">
-                <Text
-                  className="text-[15px] font-semibold"
-                  style={{ color: COLORS.text }}
-                >
-                  Life Currency
+              <View style={styles.appInfo}>
+                <Text style={styles.appName}>Life Currency</Text>
+
+                <Text style={styles.appDescription}>
+                  Make every hour count.
                 </Text>
 
-                <Text
-                  className="mt-1 text-[12px]"
-                  style={{ color: COLORS.muted }}
-                >
+                <Text style={styles.appVersion}>
                   Version {Constants.expoConfig?.version ?? "1.0.0"}
                 </Text>
               </View>
 
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderColor: COLORS.goldBorder,
-                  backgroundColor: COLORS.goldBackground,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                }}
-              >
-                <Text
-                  className="text-[10px] font-semibold"
-                  style={{ color: COLORS.gold }}
-                >
-                  v1
-                </Text>
+              <View style={styles.versionBadge}>
+                <Text style={styles.versionBadgeText}>v1</Text>
               </View>
             </View>
-          </View>
+          </CosmicPanel>
 
           {/* FOOTER */}
 
-          <View className="mt-9 items-center">
-            <View
-              className="mb-4 h-px w-10"
-              style={{
-                backgroundColor: COLORS.goldBorder,
-              }}
-            />
+          <View style={styles.footer}>
+            <View style={styles.footerLine} />
 
-            <Text
-              className="text-center text-[12px] italic tracking-[0.3px]"
-              style={{ color: COLORS.muted }}
-            >
+            <Text style={styles.footerText}>
               Your time is your life currency.
             </Text>
           </View>
@@ -562,3 +440,218 @@ export default function SettingsScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+
+  safeArea: {
+    flex: 1,
+  },
+
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 130,
+  },
+
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    marginTop: 31,
+    marginBottom: 14,
+  },
+
+  sectionDot: {
+    width: 6,
+    height: 6,
+  },
+
+  sectionTitle: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+  },
+
+  panelContent: {
+    padding: 0,
+  },
+
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 17,
+    paddingVertical: 18,
+  },
+
+  rowIcon: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+
+  rowText: {
+    flex: 1,
+    marginLeft: 14,
+  },
+
+  rowTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  rowDescription: {
+    color: COLORS.muted,
+    fontSize: 11,
+    lineHeight: 17,
+    marginTop: 5,
+  },
+
+  divider: {
+    height: 1,
+    marginLeft: 74,
+    backgroundColor: COLORS.border,
+  },
+
+  privacyCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    padding: 17,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+    backgroundColor: COLORS.goldBackground,
+    borderRadius: 0,
+  },
+
+  dangerCard: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.dangerBorder,
+    borderRadius: 0,
+    overflow: "hidden",
+  },
+
+  privacyText: {
+    flex: 1,
+    marginLeft: 10,
+  },
+
+  privacyTitle: {
+    color: COLORS.lightGold,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  privacyDescription: {
+    color: COLORS.muted,
+    fontSize: 11,
+    lineHeight: 18,
+    marginTop: 7,
+  },
+
+  dangerAccent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: 45,
+    height: 2,
+    backgroundColor: COLORS.danger,
+  },
+
+  aboutContent: {
+    padding: 18,
+  },
+
+  aboutAccent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: 48,
+    height: 2,
+    backgroundColor: COLORS.gold,
+  },
+
+  aboutRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  appIcon: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.goldBackground,
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+  },
+
+  appInfo: {
+    flex: 1,
+    marginLeft: 13,
+  },
+
+  appName: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
+  appDescription: {
+    color: COLORS.muted,
+    fontSize: 11,
+    marginTop: 4,
+  },
+
+  appVersion: {
+    color: COLORS.subtle,
+    fontSize: 10,
+    marginTop: 7,
+  },
+
+  versionBadge: {
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+    backgroundColor: COLORS.goldBackground,
+  },
+
+  versionBadgeText: {
+    color: COLORS.gold,
+    fontSize: 10,
+    fontWeight: "600",
+  },
+
+  footer: {
+    alignItems: "center",
+    marginTop: 36,
+  },
+
+  footerLine: {
+    width: 42,
+    height: 1,
+    backgroundColor: COLORS.goldBorder,
+    marginBottom: 15,
+  },
+
+  footerText: {
+    color: COLORS.muted,
+    fontSize: 12,
+    fontStyle: "italic",
+    letterSpacing: 0.3,
+    textAlign: "center",
+  },
+  privacyIcon: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

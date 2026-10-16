@@ -2,18 +2,26 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 
+import { getDatabase } from "@/database/database";
+
 import {
     Activity,
     ActivityCategory,
     ActivityClassification,
 } from "@/types/activity";
 
+import type { IntentionDirection } from "@/types/weeklyIntention";
+
 import { activityService } from "@/services/ActivityService";
 
 const BACKUP_FORMAT = "life-currency-backup";
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 
 const MAX_BACKUP_SIZE_BYTES = 10 * 1024 * 1024;
+
+// --------------------------------------------------
+// TYPES
+// --------------------------------------------------
 
 type SerializedActivity = {
     id: number;
@@ -27,11 +35,69 @@ type SerializedActivity = {
     updatedAt: string;
 };
 
-type LifeCurrencyBackup = {
+type SerializedWeeklyIntention = {
+    id: number;
+    category: ActivityCategory;
+    weekStart: string;
+    targetMinutes: number;
+    direction: IntentionDirection;
+    createdAt: string;
+    updatedAt: string;
+};
+
+type SerializedDailyReflection = {
+    id: number;
+    reflectionDate: string;
+    content: string;
+    createdAt: string;
+    updatedAt: string;
+};
+
+type BackupV1 = {
     format: typeof BACKUP_FORMAT;
-    version: typeof BACKUP_VERSION;
+    version: 1;
     exportedAt: string;
     activities: SerializedActivity[];
+};
+
+type BackupV2 = {
+    format: typeof BACKUP_FORMAT;
+    version: 2;
+    exportedAt: string;
+    activities: SerializedActivity[];
+    weeklyIntentions: SerializedWeeklyIntention[];
+    dailyReflections: SerializedDailyReflection[];
+};
+
+type SupportedBackup = BackupV1 | BackupV2;
+
+export type ParsedLifeCurrencyBackup = {
+    version: 1 | 2;
+    activities: Activity[];
+    weeklyIntentions: SerializedWeeklyIntention[] | null;
+    dailyReflections: SerializedDailyReflection[] | null;
+};
+
+// --------------------------------------------------
+// DATABASE ROWS
+// --------------------------------------------------
+
+type WeeklyIntentionRow = {
+    id: number;
+    category: string;
+    week_start: string;
+    target_minutes: number;
+    direction: IntentionDirection;
+    created_at: string;
+    updated_at: string;
+};
+
+type DailyReflectionRow = {
+    id: number;
+    reflection_date: string;
+    content: string;
+    created_at: string;
+    updated_at: string;
 };
 
 // --------------------------------------------------
@@ -51,10 +117,80 @@ function isValidIsoDate(value: unknown): value is string {
     );
 }
 
+function isValidCalendarDate(value: unknown): value is string {
+    if (
+        typeof value !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(value)
+    ) {
+        return false;
+    }
+
+    const date = new Date(`${value}T00:00:00.000Z`);
+
+    return (
+        !Number.isNaN(date.getTime()) &&
+        date.toISOString().slice(0, 10) === value
+    );
+}
+
+function isValidId(value: unknown): value is number {
+    return Number.isSafeInteger(value) && Number(value) > 0;
+}
+
+function isValidPositiveMinutes(
+    value: unknown,
+): value is number {
+    return Number.isSafeInteger(value) && Number(value) > 0;
+}
+
+function isValidCategory(
+    value: unknown,
+): value is ActivityCategory {
+    return Object.values(ActivityCategory).includes(
+        value as ActivityCategory,
+    );
+}
+
+function isValidClassification(
+    value: unknown,
+): value is ActivityClassification {
+    return Object.values(ActivityClassification).includes(
+        value as ActivityClassification,
+    );
+}
+
+function isValidDirection(
+    value: unknown,
+): value is IntentionDirection {
+    return value === "at_least" || value === "at_most";
+}
+
+/**
+ * SQLite CURRENT_TIMESTAMP uses:
+ * YYYY-MM-DD HH:mm:ss
+ *
+ * ISO timestamps are also supported.
+ */
+function databaseTimestampToIso(value: string): string {
+    const normalized = value.replace(" ", "T");
+
+    const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(
+        normalized,
+    );
+
+    const date = new Date(
+        hasTimezone ? normalized : `${normalized}Z`,
+    );
+
+    if (Number.isNaN(date.getTime())) {
+        throw new Error("Invalid database timestamp.");
+    }
+
+    return date.toISOString();
+}
+
 function createTimestamp(): string {
-    return new Date()
-        .toISOString()
-        .replace(/[:.]/g, "-");
+    return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
 function getCacheDirectory(): string {
@@ -75,8 +211,7 @@ async function shareFile(
     dialogTitle: string,
     UTI: string,
 ): Promise<void> {
-    const sharingAvailable =
-        await Sharing.isAvailableAsync();
+    const sharingAvailable = await Sharing.isAvailableAsync();
 
     if (!sharingAvailable) {
         throw new Error(
@@ -99,8 +234,6 @@ function escapeCsvValue(
             ? ""
             : String(value);
 
-    // Prevent spreadsheet applications from
-    // interpreting user-entered text as formulas.
     const potentiallyUnsafe =
         /^\s*[=+\-@]/.test(stringValue) ||
         /^[\t\r\n]/.test(stringValue);
@@ -113,40 +246,285 @@ function escapeCsvValue(
 }
 
 // --------------------------------------------------
+// VALIDATION
+// --------------------------------------------------
+
+function isRecord(
+    value: unknown,
+): value is Record<string, unknown> {
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        !Array.isArray(value)
+    );
+}
+
+function validateActivities(
+    activities: unknown,
+): activities is SerializedActivity[] {
+    if (!Array.isArray(activities)) {
+        return false;
+    }
+
+    const ids = new Set<number>();
+
+    return activities.every((value) => {
+        if (!isRecord(value)) {
+            return false;
+        }
+
+        if (!isValidId(value.id)) {
+            return false;
+        }
+
+        if (ids.has(value.id)) {
+            return false;
+        }
+
+        ids.add(value.id);
+
+        return (
+            typeof value.title === "string" &&
+            value.title.trim().length > 0 &&
+            isValidPositiveMinutes(value.durationMinutes) &&
+            isValidClassification(value.classification) &&
+            isValidCategory(value.category) &&
+            isValidIsoDate(value.activityDate) &&
+            isValidIsoDate(value.createdAt) &&
+            isValidIsoDate(value.updatedAt) &&
+            (
+                value.description === undefined ||
+                value.description === null ||
+                typeof value.description === "string"
+            )
+        );
+    });
+}
+
+function validateWeeklyIntentions(
+    intentions: unknown,
+): intentions is SerializedWeeklyIntention[] {
+    if (!Array.isArray(intentions)) {
+        return false;
+    }
+
+    const ids = new Set<number>();
+    const uniqueWeeks = new Set<string>();
+
+    return intentions.every((value) => {
+        if (!isRecord(value)) {
+            return false;
+        }
+
+        if (
+            !isValidId(value.id) ||
+            !isValidCategory(value.category) ||
+            !isValidCalendarDate(value.weekStart) ||
+            !isValidPositiveMinutes(value.targetMinutes) ||
+            !isValidDirection(value.direction) ||
+            !isValidIsoDate(value.createdAt) ||
+            !isValidIsoDate(value.updatedAt)
+        ) {
+            return false;
+        }
+
+        const uniqueKey = JSON.stringify([
+            value.category,
+            value.weekStart,
+        ]);
+
+        if (
+            ids.has(value.id) ||
+            uniqueWeeks.has(uniqueKey)
+        ) {
+            return false;
+        }
+
+        ids.add(value.id);
+        uniqueWeeks.add(uniqueKey);
+
+        return true;
+    });
+}
+
+function validateDailyReflections(
+    reflections: unknown,
+): reflections is SerializedDailyReflection[] {
+    if (!Array.isArray(reflections)) {
+        return false;
+    }
+
+    const ids = new Set<number>();
+    const dates = new Set<string>();
+
+    return reflections.every((value) => {
+        if (!isRecord(value)) {
+            return false;
+        }
+
+        if (
+            !isValidId(value.id) ||
+            !isValidCalendarDate(value.reflectionDate) ||
+            typeof value.content !== "string" ||
+            value.content.trim().length === 0 ||
+            !isValidIsoDate(value.createdAt) ||
+            !isValidIsoDate(value.updatedAt)
+        ) {
+            return false;
+        }
+
+        if (
+            ids.has(value.id) ||
+            dates.has(value.reflectionDate)
+        ) {
+            return false;
+        }
+
+        ids.add(value.id);
+        dates.add(value.reflectionDate);
+
+        return true;
+    });
+}
+
+function isValidBackup(
+    value: unknown,
+): value is SupportedBackup {
+    if (!isRecord(value)) {
+        return false;
+    }
+
+    if (
+        value.format !== BACKUP_FORMAT ||
+        !isValidIsoDate(value.exportedAt) ||
+        !validateActivities(value.activities)
+    ) {
+        return false;
+    }
+
+    if (value.version === 1) {
+        return true;
+    }
+
+    if (value.version === 2) {
+        return (
+            validateWeeklyIntentions(value.weeklyIntentions) &&
+            validateDailyReflections(value.dailyReflections)
+        );
+    }
+
+    return false;
+}
+
+// --------------------------------------------------
 // DATA BACKUP SERVICE
 // --------------------------------------------------
 
 export class DataBackupService {
     // ------------------------------------------------
-    // EXPORT JSON BACKUP
+    // EXPORT BACKUP V2
     // ------------------------------------------------
 
     async exportData(): Promise<void> {
-        const activities =
-            await activityService.getAllActivities();
+        const database = await getDatabase();
 
-        const backup: LifeCurrencyBackup = {
-            format: BACKUP_FORMAT,
-            version: BACKUP_VERSION,
-            exportedAt: new Date().toISOString(),
+        // Read all backup tables from one consistent
+        // SQLite snapshot.
+        let backup: BackupV2 | undefined;
 
-            activities: activities.map((activity) => ({
-                id: activity.id,
-                title: activity.title,
-                description: activity.description,
-                durationMinutes: activity.durationMinutes,
-                classification: activity.classification,
-                category: activity.category,
-                activityDate: activity.activityDate.toISOString(),
-                createdAt: activity.createdAt.toISOString(),
-                updatedAt: activity.updatedAt.toISOString(),
-            })),
-        };
+        await database.withExclusiveTransactionAsync(
+
+            async (tx): Promise<void> => {
+                const activityRows = await tx.getAllAsync<{
+                    id: number;
+                    title: string;
+                    description: string | null;
+                    duration_minutes: number;
+                    classification: ActivityClassification;
+                    category: ActivityCategory;
+                    activity_date: string;
+                    created_at: string;
+                    updated_at: string;
+                }>(
+                    `SELECT *
+           FROM activities
+           ORDER BY id ASC`,
+                );
+
+                const weeklyRows =
+                    await tx.getAllAsync<WeeklyIntentionRow>(
+                        `SELECT *
+             FROM weekly_intentions
+             ORDER BY id ASC`,
+                    );
+
+                const reflectionRows =
+                    await tx.getAllAsync<DailyReflectionRow>(
+                        `SELECT *
+             FROM daily_reflections
+             ORDER BY id ASC`,
+                    );
+
+                backup = {
+                    format: BACKUP_FORMAT,
+                    version: BACKUP_VERSION,
+                    exportedAt: new Date().toISOString(),
+
+                    activities: activityRows.map((activity) => ({
+                        id: activity.id,
+                        title: activity.title,
+                        description: activity.description,
+                        durationMinutes: activity.duration_minutes,
+                        classification: activity.classification,
+                        category: activity.category,
+                        activityDate: databaseTimestampToIso(
+                            activity.activity_date,
+                        ),
+                        createdAt: databaseTimestampToIso(
+                            activity.created_at,
+                        ),
+                        updatedAt: databaseTimestampToIso(
+                            activity.updated_at,
+                        ),
+                    })),
+
+                    weeklyIntentions: weeklyRows.map((intention) => ({
+                        id: intention.id,
+                        category: intention.category as ActivityCategory,
+                        weekStart: intention.week_start,
+                        targetMinutes: intention.target_minutes,
+                        direction: intention.direction,
+                        createdAt: databaseTimestampToIso(
+                            intention.created_at,
+                        ),
+                        updatedAt: databaseTimestampToIso(
+                            intention.updated_at,
+                        ),
+                    })),
+
+                    dailyReflections: reflectionRows.map((reflection) => ({
+                        id: reflection.id,
+                        reflectionDate: reflection.reflection_date,
+                        content: reflection.content,
+                        createdAt: databaseTimestampToIso(
+                            reflection.created_at,
+                        ),
+                        updatedAt: databaseTimestampToIso(
+                            reflection.updated_at,
+                        ),
+                    })),
+                };
+            },
+        );
+
+        if (!backup) {
+            throw new Error("Failed to create Life Currency backup.");
+        }
 
         const directory = getCacheDirectory();
 
         const fileUri =
-            `${directory}life-currency-backup-${createTimestamp()}.json`;
+            `${directory}life-currency-backup-v2-${createTimestamp()}.json`;
 
         await FileSystem.writeAsStringAsync(
             fileUri,
@@ -159,7 +537,7 @@ export class DataBackupService {
         await shareFile(
             fileUri,
             "application/json",
-            "Export Life Currency data",
+            "Export Life Currency backup",
             "public.json",
         );
     }
@@ -168,13 +546,12 @@ export class DataBackupService {
     // PICK AND VALIDATE BACKUP
     // ------------------------------------------------
 
-    async pickBackup(): Promise<Activity[] | null> {
-        const result =
-            await DocumentPicker.getDocumentAsync({
-                type: "application/json",
-                copyToCacheDirectory: true,
-                multiple: false,
-            });
+    async pickBackup(): Promise<ParsedLifeCurrencyBackup | null> {
+        const result = await DocumentPicker.getDocumentAsync({
+            type: "application/json",
+            copyToCacheDirectory: true,
+            multiple: false,
+        });
 
         if (result.canceled) {
             return null;
@@ -188,7 +565,6 @@ export class DataBackupService {
             );
         }
 
-        // Check reported file size before reading.
         if (
             typeof asset.size === "number" &&
             asset.size > MAX_BACKUP_SIZE_BYTES
@@ -198,7 +574,6 @@ export class DataBackupService {
             );
         }
 
-        // Also check the actual cached file size.
         const fileInfo = await FileSystem.getInfoAsync(asset.uri);
 
         if (!fileInfo.exists || fileInfo.isDirectory) {
@@ -216,13 +591,12 @@ export class DataBackupService {
             );
         }
 
-        const content =
-            await FileSystem.readAsStringAsync(
-                asset.uri,
-                {
-                    encoding: FileSystem.EncodingType.UTF8,
-                },
-            );
+        const content = await FileSystem.readAsStringAsync(
+            asset.uri,
+            {
+                encoding: FileSystem.EncodingType.UTF8,
+            },
+        );
 
         let parsed: unknown;
 
@@ -234,110 +608,33 @@ export class DataBackupService {
             );
         }
 
-        if (!this.isValidBackup(parsed)) {
+        if (!isValidBackup(parsed)) {
             throw new Error(
                 "This is not a valid Life Currency backup.",
             );
         }
 
-        return parsed.activities.map((activity) => ({
-            ...activity,
+        return {
+            version: parsed.version,
 
-            description: activity.description ?? undefined,
+            activities: parsed.activities.map((activity) => ({
+                ...activity,
+                description: activity.description ?? undefined,
+                activityDate: new Date(activity.activityDate),
+                createdAt: new Date(activity.createdAt),
+                updatedAt: new Date(activity.updatedAt),
+            })),
 
-            activityDate: new Date(activity.activityDate),
+            weeklyIntentions:
+                parsed.version === 2
+                    ? parsed.weeklyIntentions
+                    : null,
 
-            createdAt: new Date(activity.createdAt),
-
-            updatedAt: new Date(activity.updatedAt),
-        }));
-    }
-
-    // ------------------------------------------------
-    // VALIDATE BACKUP STRUCTURE
-    // ------------------------------------------------
-
-    private isValidBackup(
-        value: unknown,
-    ): value is LifeCurrencyBackup {
-        if (
-            typeof value !== "object" ||
-            value === null ||
-            Array.isArray(value)
-        ) {
-            return false;
-        }
-
-        const backup =
-            value as Record<string, unknown>;
-
-        if (
-            backup.format !== BACKUP_FORMAT ||
-            backup.version !== BACKUP_VERSION ||
-            !isValidIsoDate(backup.exportedAt) ||
-            !Array.isArray(backup.activities)
-        ) {
-            return false;
-        }
-
-        const seenIds = new Set<number>();
-
-        return backup.activities.every((activity) => {
-            if (
-                typeof activity !== "object" ||
-                activity === null ||
-                Array.isArray(activity)
-            ) {
-                return false;
-            }
-
-            const item =
-                activity as Record<string, unknown>;
-
-            // Validate ID.
-            if (
-                !Number.isSafeInteger(item.id) ||
-                (item.id as number) <= 0
-            ) {
-                return false;
-            }
-
-            const id = item.id as number;
-
-            // Prevent duplicate activity IDs.
-            if (seenIds.has(id)) {
-                return false;
-            }
-
-            seenIds.add(id);
-
-            // Validate remaining fields.
-            return (
-                typeof item.title === "string" &&
-                item.title.trim().length > 0 &&
-
-                Number.isSafeInteger(item.durationMinutes) &&
-                (item.durationMinutes as number) > 0 &&
-
-                Object.values(ActivityClassification).includes(
-                    item.classification as ActivityClassification,
-                ) &&
-
-                Object.values(ActivityCategory).includes(
-                    item.category as ActivityCategory,
-                ) &&
-
-                isValidIsoDate(item.activityDate) &&
-                isValidIsoDate(item.createdAt) &&
-                isValidIsoDate(item.updatedAt) &&
-
-                (
-                    item.description === undefined ||
-                    item.description === null ||
-                    typeof item.description === "string"
-                )
-            );
-        });
+            dailyReflections:
+                parsed.version === 2
+                    ? parsed.dailyReflections
+                    : null,
+        };
     }
 
     // ------------------------------------------------
@@ -345,15 +642,134 @@ export class DataBackupService {
     // ------------------------------------------------
 
     async restoreBackup(
-        activities: Activity[],
+        backup: ParsedLifeCurrencyBackup,
     ): Promise<void> {
-        await activityService.replaceAllActivities(
-            activities,
-        );
+        // A v1 backup contains activities only.
+        // Keep the previous restore behavior.
+        if (backup.version === 1) {
+            await activityService.replaceAllActivities(
+                backup.activities,
+            );
+
+            return;
+        }
+
+        if (
+            backup.weeklyIntentions === null ||
+            backup.dailyReflections === null
+        ) {
+            throw new Error(
+                "Backup v2 is missing required data.",
+            );
+        }
+
+        const database = await getDatabase();
+
+        await database.withExclusiveTransactionAsync(async (tx) => {
+            // --------------------------------------------
+            // CLEAR EXISTING DATA
+            // --------------------------------------------
+
+            await tx.runAsync(
+                `DELETE FROM activities`,
+            );
+
+            await tx.runAsync(
+                `DELETE FROM weekly_intentions`,
+            );
+
+            await tx.runAsync(
+                `DELETE FROM daily_reflections`,
+            );
+
+            // --------------------------------------------
+            // RESTORE ACTIVITIES
+            // --------------------------------------------
+
+            for (const activity of backup.activities) {
+                await tx.runAsync(
+                    `INSERT INTO activities (
+            id,
+            title,
+            description,
+            duration_minutes,
+            classification,
+            category,
+            activity_date,
+            created_at,
+            updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        activity.id,
+                        activity.title,
+                        activity.description ?? null,
+                        activity.durationMinutes,
+                        activity.classification,
+                        activity.category,
+                        activity.activityDate.toISOString(),
+                        activity.createdAt.toISOString(),
+                        activity.updatedAt.toISOString(),
+                    ],
+                );
+            }
+
+            // --------------------------------------------
+            // RESTORE WEEKLY INTENTIONS
+            // --------------------------------------------
+
+            for (const intention of backup.weeklyIntentions!) {
+                await tx.runAsync(
+                    `INSERT INTO weekly_intentions (
+            id,
+            category,
+            week_start,
+            target_minutes,
+            direction,
+            created_at,
+            updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        intention.id,
+                        intention.category,
+                        intention.weekStart,
+                        intention.targetMinutes,
+                        intention.direction,
+                        intention.createdAt,
+                        intention.updatedAt,
+                    ],
+                );
+            }
+
+            // --------------------------------------------
+            // RESTORE DAILY REFLECTIONS
+            // --------------------------------------------
+
+            for (const reflection of backup.dailyReflections!) {
+                await tx.runAsync(
+                    `INSERT INTO daily_reflections (
+            id,
+            reflection_date,
+            content,
+            created_at,
+            updated_at
+          )
+          VALUES (?, ?, ?, ?, ?)`,
+                    [
+                        reflection.id,
+                        reflection.reflectionDate,
+                        reflection.content,
+                        reflection.createdAt,
+                        reflection.updatedAt,
+                    ],
+                );
+            }
+        });
     }
 
     // ------------------------------------------------
-    // EXPORT CSV
+    // EXPORT CSV — ACTIVITIES ONLY
     // ------------------------------------------------
 
     async exportCsv(): Promise<void> {
@@ -384,7 +800,6 @@ export class DataBackupService {
 
         const csv = [
             header.map(escapeCsvValue).join(","),
-
             ...rows.map((row) =>
                 row.map(escapeCsvValue).join(","),
             ),

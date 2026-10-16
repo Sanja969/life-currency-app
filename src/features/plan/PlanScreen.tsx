@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 
+import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import { CosmicPanel } from "@/components/ui/CosmicPanel";
 
 import { COLORS } from "@/theme/colors";
@@ -22,11 +23,11 @@ import { ActivityCategory } from "@/types/activity";
 import type { WeeklyIntentionProgress } from "@/types/weeklyIntention";
 
 import { AddIntentionModal } from "./components/AddIntentionModal";
+import { IntentionConstellation } from "./components/IntentionConstellation";
 import { WeeklyIntentionCard } from "./components/WeeklyIntentionCard";
 
 import { useWeeklyIntentions } from "./hooks/useWeeklyIntentions";
 import { getWeekStart } from "./utils/weekUtils";
-import { ScreenHeader } from "@/components/layout/ScreenHeader";
 
 /*
  * CONSTANTS
@@ -35,6 +36,8 @@ import { ScreenHeader } from "@/components/layout/ScreenHeader";
 const FLOATING_BUTTON_SIZE = 52;
 
 const WEEK_ARROW_BACKGROUND = COLORS.goldBackground;
+
+type IntentionSegment = "grow" | "protect";
 
 /*
  * HELPERS
@@ -60,31 +63,6 @@ function formatWeekRange(weekStart: string): string {
 }
 
 /*
- * ALIGNMENT STAT
- */
-
-type AlignmentStatProps = {
-  label: string;
-  value: number;
-  icon: React.ComponentProps<typeof Ionicons>["name"];
-  color: string;
-};
-
-function AlignmentStat({ label, value, icon, color }: AlignmentStatProps) {
-  return (
-    <View style={styles.alignmentStat}>
-      <View style={styles.statHeader}>
-        <Ionicons name={icon} size={17} color={color} />
-
-        <Text style={styles.statValue}>{value}</Text>
-      </View>
-
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
-/*
  * PLAN SCREEN
  */
 
@@ -92,7 +70,6 @@ export default function PlanScreen() {
   const {
     weekStart,
     intentions,
-    intentionSummary,
 
     isLoading,
     isSaving,
@@ -118,6 +95,8 @@ export default function PlanScreen() {
 
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [activeSegment, setActiveSegment] = useState<IntentionSegment>("grow");
+
   /*
    * DERIVED VALUES
    */
@@ -125,6 +104,17 @@ export default function PlanScreen() {
   const isCurrentWeek = weekStart === getWeekStart();
 
   const hasIntentions = intentions.length > 0;
+
+  const growIntentions = intentions.filter(
+    (intention) => intention.direction === "at_least",
+  );
+
+  const protectIntentions = intentions.filter(
+    (intention) => intention.direction === "at_most",
+  );
+
+  const visibleIntentions =
+    activeSegment === "grow" ? growIntentions : protectIntentions;
 
   const usedCategories = new Set(
     intentions.map((intention) => intention.category),
@@ -325,136 +315,193 @@ export default function PlanScreen() {
             </CosmicPanel>
           )}
 
-          {/* WEEKLY ALIGNMENT */}
-
-          {!isLoading && !errorMessage && hasIntentions && (
-            <CosmicPanel
-              variant="default"
-              accent={COLORS.gold}
-              style={styles.alignmentPanel}
-              contentStyle={styles.alignmentContent}
-            >
-              {/* PANEL HEADER */}
-
-              <View style={styles.alignmentHeader}>
-                <View>
-                  <Text style={styles.alignmentLabel}>WEEKLY ALIGNMENT</Text>
-
-                  <Text style={styles.alignmentSubtitle}>
-                    Your intentions at a glance
-                  </Text>
-                </View>
-
-                <Ionicons
-                  name="compass-outline"
-                  size={21}
-                  color={COLORS.gold}
-                />
-              </View>
-
-              {/* TOTAL INTENTIONS */}
-
-              <View style={styles.totalRow}>
-                <Text style={styles.totalValue}>{intentionSummary.total}</Text>
-
-                <View style={styles.totalDescription}>
-                  <Text style={styles.totalTitle}>
-                    {intentionSummary.total === 1
-                      ? "Weekly intention"
-                      : "Weekly intentions"}
-                  </Text>
-
-                  <Text style={styles.totalCaption}>
-                    Shaping how you spend your time
-                  </Text>
-                </View>
-              </View>
-
-              {/* DIVIDER */}
-
-              <View style={styles.alignmentDivider} />
-
-              {/* STATUS GRID */}
-
-              <View style={styles.statsGrid}>
-                <AlignmentStat
-                  label="Reached"
-                  value={intentionSummary.reached}
-                  icon="checkmark-circle-outline"
-                  color={COLORS.restoring}
-                />
-
-                <AlignmentStat
-                  label="In progress"
-                  value={intentionSummary.inProgress}
-                  icon="time-outline"
-                  color={COLORS.gold}
-                />
-
-                <AlignmentStat
-                  label="Within limit"
-                  value={intentionSummary.withinLimit}
-                  icon="shield-checkmark-outline"
-                  color={COLORS.growing}
-                />
-
-                <AlignmentStat
-                  label="Over limit"
-                  value={intentionSummary.overLimit}
-                  icon="alert-circle-outline"
-                  color={COLORS.leak}
-                />
-              </View>
-
-              {/* ALIGNMENT NOTE */}
-
-              <Text style={styles.alignmentNote}>
-                Based on the activities you've recorded. Your intentions are a
-                guide, not a judgment.
-              </Text>
-            </CosmicPanel>
-          )}
-
-          {/* INTENTIONS HEADER */}
+          {/* INTENTION CONSTELLATION */}
 
           {!isLoading && !errorMessage && (
-            <View style={styles.intentionsHeader}>
-              <Text style={styles.sectionLabel}>YOUR WEEKLY INTENTIONS</Text>
-
-              <Text style={styles.intentionCount}>
-                {intentions.length}{" "}
-                {intentions.length === 1 ? "intention" : "intentions"}
-              </Text>
-            </View>
+            <IntentionConstellation
+              intentions={intentions}
+              onAddIntention={openAddModal}
+            />
           )}
 
-          {/* EMPTY STATE */}
+          {/* INTENTIONS HEADER + SEGMENTS */}
 
-          {!isLoading && !errorMessage && !hasIntentions && (
-            <CosmicPanel variant="signal" contentStyle={styles.emptyContent}>
-              <Ionicons name="compass-outline" size={30} color={COLORS.gold} />
+          {!isLoading && !errorMessage && hasIntentions && (
+            <>
+              <View style={styles.intentionsHeader}>
+                <Text style={styles.sectionLabel}>YOUR WEEKLY INTENTIONS</Text>
 
-              <Text style={styles.emptyTitle}>Start with an intention</Text>
+                <Text style={styles.intentionCount}>
+                  {intentions.length}{" "}
+                  {intentions.length === 1 ? "intention" : "intentions"}
+                </Text>
+              </View>
 
-              <Text style={styles.emptyDescription}>
-                Choose where you want to dedicate more time or set a healthy
-                limit. Small intentions can lead to meaningful changes.
-              </Text>
-            </CosmicPanel>
+              {/* GROW / PROTECT SEGMENTED CONTROL */}
+
+              <View style={styles.segmentedControl}>
+                <Pressable
+                  onPress={() => setActiveSegment("grow")}
+                  accessibilityRole="tab"
+                  accessibilityState={{
+                    selected: activeSegment === "grow",
+                  }}
+                  style={[
+                    styles.segment,
+                    activeSegment === "grow" && styles.segmentActiveGrow,
+                  ]}
+                >
+                  <Ionicons
+                    name="sparkles-outline"
+                    size={16}
+                    color={
+                      activeSegment === "grow" ? COLORS.gold : COLORS.muted
+                    }
+                  />
+
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      activeSegment === "grow" && styles.segmentTextGrow,
+                    ]}
+                  >
+                    GROW
+                  </Text>
+
+                  <View
+                    style={[
+                      styles.segmentBadge,
+                      activeSegment === "grow" && styles.segmentBadgeGrow,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentBadgeText,
+                        activeSegment === "grow" && styles.segmentBadgeTextGrow,
+                      ]}
+                    >
+                      {growIntentions.length}
+                    </Text>
+                  </View>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setActiveSegment("protect")}
+                  accessibilityRole="tab"
+                  accessibilityState={{
+                    selected: activeSegment === "protect",
+                  }}
+                  style={[
+                    styles.segment,
+                    activeSegment === "protect" && styles.segmentActiveProtect,
+                  ]}
+                >
+                  <Ionicons
+                    name="shield-outline"
+                    size={16}
+                    color={
+                      activeSegment === "protect"
+                        ? COLORS.growing
+                        : COLORS.muted
+                    }
+                  />
+
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      activeSegment === "protect" && styles.segmentTextProtect,
+                    ]}
+                  >
+                    PROTECT
+                  </Text>
+
+                  <View
+                    style={[
+                      styles.segmentBadge,
+                      activeSegment === "protect" && styles.segmentBadgeProtect,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentBadgeText,
+                        activeSegment === "protect" &&
+                          styles.segmentBadgeTextProtect,
+                      ]}
+                    >
+                      {protectIntentions.length}
+                    </Text>
+                  </View>
+                </Pressable>
+              </View>
+
+              {/* FILTERED INTENTION LIST */}
+
+              {visibleIntentions.length > 0 ? (
+                <View style={styles.cardsContainer}>
+                  {visibleIntentions.map((intention) => (
+                    <WeeklyIntentionCard
+                      key={intention.id}
+                      intention={intention}
+                      onEdit={() => openEditModal(intention)}
+                      onDelete={() => handleDelete(intention.category)}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <CosmicPanel
+                  variant="subtle"
+                  accent={
+                    activeSegment === "grow" ? COLORS.gold : COLORS.growing
+                  }
+                  style={styles.emptySegmentPanel}
+                  contentStyle={styles.emptySegmentContent}
+                >
+                  <Ionicons
+                    name={
+                      activeSegment === "grow"
+                        ? "sparkles-outline"
+                        : "shield-outline"
+                    }
+                    size={27}
+                    color={
+                      activeSegment === "grow" ? COLORS.gold : COLORS.growing
+                    }
+                  />
+
+                  <Text style={styles.emptySegmentTitle}>
+                    {activeSegment === "grow"
+                      ? "Nothing to grow yet"
+                      : "No limits set yet"}
+                  </Text>
+
+                  <Text style={styles.emptySegmentDescription}>
+                    {activeSegment === "grow"
+                      ? "Choose where you'd like to invest more of your time."
+                      : "Create a boundary for the time you want to protect."}
+                  </Text>
+
+                  {!allCategoriesUsed && (
+                    <Pressable
+                      onPress={openAddModal}
+                      disabled={isBusy}
+                      accessibilityRole="button"
+                      accessibilityLabel="Add intention"
+                      style={({ pressed }) => [
+                        styles.emptySegmentButton,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <Ionicons name="add" size={17} color={COLORS.gold} />
+
+                      <Text style={styles.emptySegmentButtonText}>
+                        Add intention
+                      </Text>
+                    </Pressable>
+                  )}
+                </CosmicPanel>
+              )}
+            </>
           )}
-
-          {/* INTENTION LIST */}
-
-          {!isLoading &&
-            !errorMessage &&
-            intentions.map((intention) => (
-              <WeeklyIntentionCard
-                key={intention.id}
-                intention={intention}
-                onEdit={() => openEditModal(intention)}
-                onDelete={() => handleDelete(intention.category)}
-              />
-            ))}
 
           {/* FOOTER */}
 
@@ -496,14 +543,14 @@ export default function PlanScreen() {
             >
               <Path
                 d="
-                    M 12 0
-                    L 52 0
-                    L 52 40
-                    L 40 52
-                    L 0 52
-                    L 0 12
-                    Z
-                  "
+                  M 12 0
+                  L 52 0
+                  L 52 40
+                  L 40 52
+                  L 0 52
+                  L 0 12
+                  Z
+                "
                 fill={COLORS.gold}
                 stroke={COLORS.lightGold}
                 strokeWidth={1}
@@ -527,6 +574,7 @@ export default function PlanScreen() {
           intention={editingIntention}
           existingCategories={intentions.map((item) => item.category)}
           isSaving={isBusy}
+          defaultDirection={activeSegment === "grow" ? "at_least" : "at_most"}
           onClose={closeModal}
           onSave={saveIntention}
         />
@@ -629,124 +677,14 @@ const styles = StyleSheet.create({
   },
 
   /*
-   * WEEKLY ALIGNMENT
-   */
-
-  alignmentPanel: {
-    marginBottom: 30,
-  },
-
-  alignmentContent: {
-    paddingHorizontal: 22,
-    paddingTop: 23,
-    paddingBottom: 22,
-  },
-
-  alignmentHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-  },
-
-  alignmentLabel: {
-    color: COLORS.gold,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-  },
-
-  alignmentSubtitle: {
-    color: COLORS.muted,
-    fontSize: 12,
-    marginTop: 7,
-  },
-
-  totalRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 26,
-    gap: 15,
-  },
-
-  totalValue: {
-    color: COLORS.text,
-    fontSize: 42,
-    fontWeight: "600",
-    letterSpacing: -1.3,
-  },
-
-  totalDescription: {
-    flex: 1,
-  },
-
-  totalTitle: {
-    color: COLORS.text,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-
-  totalCaption: {
-    color: COLORS.muted,
-    fontSize: 11,
-    marginTop: 5,
-  },
-
-  alignmentDivider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginTop: 23,
-    marginBottom: 20,
-  },
-
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-
-  alignmentStat: {
-    width: "47%",
-    backgroundColor: COLORS.goldBackground,
-    borderWidth: 1,
-    borderColor: COLORS.goldBorder,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-  },
-
-  statHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-  },
-
-  statValue: {
-    color: COLORS.text,
-    fontSize: 22,
-    fontWeight: "600",
-  },
-
-  statLabel: {
-    color: COLORS.muted,
-    fontSize: 11,
-    marginTop: 9,
-  },
-
-  alignmentNote: {
-    color: COLORS.subtle,
-    fontSize: 11,
-    lineHeight: 18,
-    marginTop: 20,
-  },
-
-  /*
-   * INTENTIONS
+   * INTENTIONS HEADER
    */
 
   intentionsHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 15,
   },
 
   intentionCount: {
@@ -755,28 +693,138 @@ const styles = StyleSheet.create({
   },
 
   /*
-   * EMPTY STATE
+   * SEGMENTED CONTROL
    */
 
-  emptyContent: {
-    paddingHorizontal: 24,
-    paddingVertical: 34,
+  segmentedControl: {
+    flexDirection: "row",
+    padding: 4,
+    gap: 4,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+    backgroundColor: COLORS.goldBackground,
+  },
+
+  segment: {
+    flex: 1,
+    minHeight: 46,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: "transparent",
   },
 
-  emptyTitle: {
-    color: COLORS.text,
-    fontSize: 17,
-    fontWeight: "600",
-    marginTop: 18,
+  segmentActiveGrow: {
+    backgroundColor: COLORS.background,
+    borderColor: COLORS.goldBorder,
   },
 
-  emptyDescription: {
+  segmentActiveProtect: {
+    backgroundColor: COLORS.background,
+    borderColor: COLORS.growing,
+  },
+
+  segmentText: {
     color: COLORS.muted,
-    fontSize: 13,
-    lineHeight: 21,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.1,
+  },
+
+  segmentTextGrow: {
+    color: COLORS.gold,
+  },
+
+  segmentTextProtect: {
+    color: COLORS.growing,
+  },
+
+  segmentBadge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    backgroundColor: COLORS.border,
+  },
+
+  segmentBadgeGrow: {
+    backgroundColor: COLORS.goldBackground,
+  },
+
+  segmentBadgeProtect: {
+    backgroundColor: COLORS.goldBackground,
+  },
+
+  segmentBadgeText: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+  },
+
+  segmentBadgeTextGrow: {
+    color: COLORS.gold,
+  },
+
+  segmentBadgeTextProtect: {
+    color: COLORS.growing,
+  },
+
+  cardsContainer: {
+    marginTop: 2,
+  },
+
+  /*
+   * EMPTY SEGMENT
+   */
+
+  emptySegmentPanel: {
+    marginBottom: 12,
+  },
+
+  emptySegmentContent: {
+    alignItems: "center",
+    paddingHorizontal: 22,
+    paddingVertical: 32,
+  },
+
+  emptySegmentTitle: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 15,
+  },
+
+  emptySegmentDescription: {
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 20,
     textAlign: "center",
-    marginTop: 12,
+    marginTop: 10,
+  },
+
+  emptySegmentButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+    backgroundColor: COLORS.goldBackground,
+  },
+
+  emptySegmentButtonText: {
+    color: COLORS.gold,
+    fontSize: 12,
+    fontWeight: "600",
   },
 
   /*
