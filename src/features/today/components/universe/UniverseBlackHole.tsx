@@ -56,7 +56,7 @@ export function UniverseBlackHole({
       pointerEvents="none"
       style={[styles.container, { width: size, height: size }]}
     >
-      <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
+      <Animated.View style={[styles.imageContainer, animatedStyle]}>
         <Image
           source={eclipseImage}
           style={styles.image}
@@ -115,5 +115,14 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginTop: 5,
     textAlign: "center",
+  },
+  imageContainer: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    top: 0,
+    left: 0,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

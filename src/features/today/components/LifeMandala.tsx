@@ -122,6 +122,29 @@ function buildCategories(activities: Activity[]): UniverseCategory[] {
   });
 }
 
+function getUniverseInsight(
+  dominant: UniverseCategory | null,
+  totalDuration: number,
+): string {
+  if (totalDuration === 0 || !dominant) {
+    return "Your universe begins with a single moment.";
+  }
+
+  switch (dominant.classification) {
+    case ActivityClassification.Serves:
+      return "Your time is becoming something meaningful.";
+
+    case ActivityClassification.Restores:
+      return "Some moments give more than they take.";
+
+    case ActivityClassification.DoesNotServe:
+      return "Awareness is where change begins.";
+
+    default:
+      return "Every moment shapes your universe.";
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* COSMIC BACKGROUND                                                          */
 /* -------------------------------------------------------------------------- */
@@ -275,12 +298,14 @@ function UniverseWorld({
   category,
   type,
   position,
+  compact,
   onPress,
 }: {
   category: UniverseCategory;
   type: ArtworkType;
   position: WorldPosition;
   onPress: () => void;
+  compact?: boolean;
 }) {
   return (
     <Pressable
@@ -302,7 +327,9 @@ function UniverseWorld({
         size={ARTWORK_SIZE}
       />
 
-      <View style={styles.worldStatistics}>
+      <View
+        style={[styles.worldStatistics, compact && styles.compactStatistics]}
+      >
         <Text style={styles.worldDuration}>
           {formatDuration(category.duration)}
         </Text>
@@ -467,6 +494,7 @@ export function LifeMandala({ activities }: LifeMandalaProps) {
             category={categories[0]}
             type="tree"
             position={{ top: 14, left: 100 }}
+            compact
             onPress={() => setSelectedCategory(categories[0])}
           />
 
@@ -474,7 +502,7 @@ export function LifeMandala({ activities }: LifeMandalaProps) {
           <UniverseWorld
             category={categories[1]}
             type="lotus"
-            position={{ top: 202, left: 4 }}
+            position={{ top: 202, left: -10 }}
             onPress={() => setSelectedCategory(categories[1])}
           />
 
@@ -482,7 +510,7 @@ export function LifeMandala({ activities }: LifeMandalaProps) {
           <UniverseWorld
             category={categories[2]}
             type="vortex"
-            position={{ top: 202, left: 196 }}
+            position={{ top: 202, left: 210 }}
             onPress={() => setSelectedCategory(categories[2])}
           />
 
@@ -503,9 +531,7 @@ export function LifeMandala({ activities }: LifeMandalaProps) {
       </View>
 
       <Text style={styles.insightText}>
-        {totalDuration === 0
-          ? "Your universe begins with a single moment."
-          : `Most of your observed time flowed into ${dominant?.title.toLowerCase()}.`}
+        {getUniverseInsight(dominant, totalDuration)}
       </Text>
 
       {/* DETAILS */}
@@ -581,13 +607,17 @@ const styles = StyleSheet.create({
 
   worldPercentage: {
     color: COLORS.muted,
-    fontSize: 10,
-    marginTop: 3,
+
+    fontSize: 11,
+
+    fontWeight: "500",
+
+    marginTop: 4,
   },
 
   blackHolePosition: {
     position: "absolute",
-    top: 126,
+    top: 141,
     left: 100,
     zIndex: 2,
   },
@@ -728,5 +758,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 24,
     marginTop: 12,
+  },
+  compactStatistics: {
+    marginTop: -18,
   },
 });
