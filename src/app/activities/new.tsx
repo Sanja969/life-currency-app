@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Alert, Keyboard, ScrollView, StyleSheet, View } from "react-native";
 
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Animated, {
@@ -17,7 +17,6 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { ActivityForm } from "@/components/ActivityForm";
-import { AppButton } from "@/components/ui/AppButton";
 import { setPendingActivityArrival } from "@/lib/activityArrival";
 import { activityService } from "@/services/ActivityService";
 import { CLASSIFICATION_THEME } from "@/theme/classification";
@@ -32,6 +31,33 @@ import { ScreenTopBar } from "@/components/layout/ScreenTopBar";
 
 export default function CreateActivityScreen() {
   const router = useRouter();
+
+  const { gapStart, gapDuration } = useLocalSearchParams<{
+    gapStart?: string;
+    gapDuration?: string;
+  }>();
+
+  const initialValues = useMemo(() => {
+    if (!gapStart || !gapDuration) {
+      return undefined;
+    }
+
+    const date = new Date(gapStart);
+    const duration = Number(gapDuration);
+
+    if (
+      Number.isNaN(date.getTime()) ||
+      !Number.isSafeInteger(duration) ||
+      duration < 15
+    ) {
+      return undefined;
+    }
+
+    return {
+      activityDate: date,
+      durationMinutes: duration,
+    };
+  }, [gapStart, gapDuration]);
 
   const [activities, setActivities] = useState<Activity[]>([]);
 
@@ -360,6 +386,7 @@ export default function CreateActivityScreen() {
           <ActivityForm
             mode="create"
             activities={activities}
+            initialValues={initialValues}
             onSubmit={handleCreate}
           />
         </ScrollView>

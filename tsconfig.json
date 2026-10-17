@@ -6,7 +6,8 @@
     "strict": true,
     "paths": {
       "@/*": ["src/*"],
-      "@assets/*": ["./assets/*"]
+      "@assets/*": ["./assets/*"],
+      "@utils/*": ["./utils/*"]
     }
   },
   "include": [

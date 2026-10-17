@@ -16,6 +16,7 @@ import { LifeMandala } from "./components/LifeMandala";
 import { TodaySignal } from "./components/TodaySignal";
 import { TodayActivitySummary } from "./components/TodayActivitySummary";
 import { DailyReflectionCard } from "./components/DailyReflectionCard";
+import { TheSpaceBetween } from "./components/TheSpaceBetween";
 
 import { useToday } from "./hooks/useToday";
 import { COLORS } from "@/theme/colors";
@@ -165,6 +166,9 @@ export function Today({ scrollRef }: TodayProps) {
 
       <Section>
         <TodayActivitySummary statistics={statistics} />
+      </Section>
+      <Section>
+        <TheSpaceBetween activities={activities} />
       </Section>
 
       <View

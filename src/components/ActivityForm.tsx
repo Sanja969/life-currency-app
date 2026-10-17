@@ -329,10 +329,13 @@ export function ActivityForm({
       shouldValidate: true,
     });
 
-    setValue("durationMinutes", suggestion.durationMinutes, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
+    if (!initialValues?.durationMinutes) {
+      setValue("durationMinutes", suggestion.durationMinutes, {
+        shouldDirty: true,
+
+        shouldValidate: true,
+      });
+    }
 
     setValue("description", suggestion.description ?? "", {
       shouldDirty: true,
